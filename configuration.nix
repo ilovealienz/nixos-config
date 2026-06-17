@@ -9,7 +9,7 @@
     ./modules/amd.nix
     ./modules/social.nix
     ./modules/dev.nix
-    ./hosts/pc-system.nix
+    # ./hosts/pc-system.nix
     # ./modules/nvidia.nix
     # ./modules/intel.nix
   ];
@@ -43,20 +43,19 @@
   # nix-ld for generic Linux binaries
   programs.nix-ld.enable = true;
   programs.nix-ld.libraries = with pkgs; [
-    wayland
-    libxkbcommon
-    libGL
-    mesa
-    vulkan-loader
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXrandr
-    xorg.libXi
-    fontconfig
-    freetype
-    openssl
-  ];
-
+   wayland
+   libxkbcommon
+   libGL
+   mesa
+   vulkan-loader
+   libx11
+   libxcursor
+   libxrandr
+   libxi
+   fontconfig
+   freetype
+   openssl
+ ];
   # XDG portal
   xdg.portal = {
     enable = true;
