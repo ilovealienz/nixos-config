@@ -39,28 +39,30 @@
 
   # ZSH
   programs.zsh.enable = true;
-  
- programs.nix-ld.libraries = with pkgs; [
-  wayland
-  libxkbcommon
-  libGL
-  mesa
-  vulkan-loader
-  xorg.libX11
-  xorg.libXcursor
-  xorg.libXrandr
-  xorg.libXi
-  fontconfig
-  freetype
-  openssl
+
+  # nix-ld for generic Linux binaries
+  programs.nix-ld.enable = true;
+  programs.nix-ld.libraries = with pkgs; [
+    wayland
+    libxkbcommon
+    libGL
+    mesa
+    vulkan-loader
+    xorg.libX11
+    xorg.libXcursor
+    xorg.libXrandr
+    xorg.libXi
+    fontconfig
+    freetype
+    openssl
   ];
 
- xdg.portal = {
-  enable = true;
-  extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-  config.common.default = "*";
+  # XDG portal
+  xdg.portal = {
+    enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+    config.common.default = "*";
   };
-
 
   # KDE Plasma
   services.xserver.enable = true;
@@ -84,6 +86,7 @@
     pulse.enable = true;
   };
 
+  # Electron Wayland
   environment.sessionVariables.ELECTRON_OZONE_PLATFORM_HINT = "auto";
 
   # Remove unwanted KDE packages
@@ -109,6 +112,24 @@
 
   # Flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  # Weekly cleanup
+  systemd.timers.nix-cleanup = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "weekly";
+      Persistent = true;
+    };
+  };
+
+  systemd.services.nix-cleanup = {
+    serviceConfig.Type = "oneshot";
+    script = ''
+      nix-env --delete-generations +3 --profile /nix/var/nix/profiles/system
+      nix-collect-garbage
+      /run/current-system/bin/switch-to-configuration boot
+    '';
+  };
 
   system.stateVersion = "26.05";
 }
