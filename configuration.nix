@@ -74,6 +74,8 @@
     config.common.default = "*";
   };
 
+  services.flatpak.enable = true;
+
   # KDE Plasma
   services.xserver.enable = true;
   services.displayManager.sddm.enable = true;
