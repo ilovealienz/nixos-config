@@ -43,19 +43,30 @@
   # nix-ld for generic Linux binaries
   programs.nix-ld.enable = true;
   programs.nix-ld.libraries = with pkgs; [
-   wayland
-   libxkbcommon
-   libGL
-   mesa
-   vulkan-loader
-   libx11
-   libxcursor
-   libxrandr
-   libxi
-   fontconfig
-   freetype
-   openssl
- ];
+  wayland
+  libxkbcommon
+  libGL
+  mesa
+  vulkan-loader
+  libx11
+  libxcursor
+  libxrandr
+  libxi
+  fontconfig
+  freetype
+  openssl
+  gtk3
+  pango
+  harfbuzz
+  atk
+  cairo
+  gdk-pixbuf
+  glib
+  zlib
+  stdenv.cc.cc.lib
+  xorg.libxcb
+];
+
   # XDG portal
   xdg.portal = {
     enable = true;
