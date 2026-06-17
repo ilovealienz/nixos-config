@@ -16,5 +16,6 @@
     gnome-disk-utility
     wl-clipboard
     libnotify
+    proton-vpn
   ];
 }
