@@ -28,6 +28,7 @@
     shellAliases = {
       nxrebuild = "sudo nixos-rebuild switch --flake /etc/nixos#nixos";
       nxupdate = "sudo nix flake update /etc/nixos && nxrebuild";
+      nxpush = "GIT_SSH_COMMAND='ssh -i /home/pc/.ssh/id_ed25519' sudo -E git -C /etc/nixos add -f . && GIT_SSH_COMMAND='ssh -i /home/pc/.ssh/id_ed25519' sudo -E git -C /etc/nixos commit -m 'update' && GIT_SSH_COMMAND='ssh -i /home/pc/.ssh/id_ed25519' sudo -E git -C /etc/nixos push";
     };
   };
 }
