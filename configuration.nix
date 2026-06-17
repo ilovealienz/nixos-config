@@ -55,8 +55,6 @@
    fontconfig
    freetype
    openssl
-   wl-clipboard
-   libnotify
  ];
   # XDG portal
   xdg.portal = {
