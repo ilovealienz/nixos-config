@@ -99,7 +99,17 @@
   };
 
   # Electron Wayland
-  environment.sessionVariables.ELECTRON_OZONE_PLATFORM_HINT = "auto";
+  environment.sessionVariables = {
+  ELECTRON_OZONE_PLATFORM_HINT = "auto";
+  XDG_CURRENT_DESKTOP = "KDE";
+  DESKTOP_SESSION = "plasma";
+  };
+
+
+  environment.shellAliases = {
+  chromium-browser = "brave";
+  x-www-browser = "brave";
+  };
 
   # Remove unwanted KDE packages
   environment.plasma6.excludePackages = with pkgs.kdePackages; [

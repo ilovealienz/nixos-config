@@ -17,5 +17,20 @@
     wl-clipboard
     libnotify
     proton-vpn
+    xdg-utils
+    (writeShellScriptBin "chromium-browser" ''
+      if pgrep librewolf > /dev/null; then
+        librewolf "$@" &
+        exit 0
+      fi
+      exec librewolf "$@"
+    '')
+    (writeShellScriptBin "x-www-browser" ''
+      if pgrep librewolf > /dev/null; then
+        librewolf "$@" &
+        exit 0
+      fi
+      exec librewolf "$@"
+    '')
   ];
 }
