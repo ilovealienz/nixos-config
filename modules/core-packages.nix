@@ -20,6 +20,7 @@
     xdg-utils
     fzf
     nix-search-tv
+    gparted
     (writeShellScriptBin "chromium-browser" ''
       if pgrep librewolf > /dev/null; then
         librewolf "$@" &
