@@ -18,6 +18,8 @@
     libnotify
     proton-vpn
     xdg-utils
+    fzf
+    nix-search-tv
     (writeShellScriptBin "chromium-browser" ''
       if pgrep librewolf > /dev/null; then
         librewolf "$@" &
