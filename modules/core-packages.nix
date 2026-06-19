@@ -21,6 +21,7 @@
     fzf
     nix-search-tv
     gparted
+    wireguard-tools
     (writeShellScriptBin "chromium-browser" ''
       if pgrep librewolf > /dev/null; then
         librewolf "$@" &

@@ -6,10 +6,10 @@
     ./modules/core-packages.nix
     ./modules/gaming.nix
     ./modules/media.nix
-    # ./modules/amd.nix
+    ./modules/amd.nix
     ./modules/social.nix
     ./modules/dev.nix
-    # ./hosts/pc-system.nix
+    ./hosts/pc-system.nix
     # ./modules/nvidia.nix
     # ./modules/intel.nix
   ];
@@ -87,6 +87,12 @@
 
   # Printing
   services.printing.enable = true;
+
+  # Netbird
+  services.netbird.enable = true;
+  environment.systemPackages = [ pkgs.netbird-ui ];
+
+
 
   # Audio
   services.pulseaudio.enable = false;
