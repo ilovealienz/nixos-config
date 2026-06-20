@@ -88,12 +88,6 @@
   # Printing
   services.printing.enable = true;
 
-  # Netbird
-  services.netbird.enable = true;
-  environment.systemPackages = [ pkgs.netbird-ui ];
-
-
-
   # Audio
   services.pulseaudio.enable = false;
   security.rtkit.enable = true;
