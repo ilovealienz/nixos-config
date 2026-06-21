@@ -9,6 +9,5 @@
     spotify
     streamlink
     streamlink-twitch-gui-bin
-    yacreader
   ];
 }
