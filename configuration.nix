@@ -9,7 +9,7 @@
     ./modules/unstable.nix
     ./modules/social.nix
     ./modules/dev.nix
-    ./hosts/pc-system.nix
+    # ./hosts/pc-system.nix
     # ./modules/amd.nix
     # ./modules/nvidia.nix
     # ./modules/intel.nix
