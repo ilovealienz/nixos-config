@@ -6,7 +6,6 @@
     ./modules/core-packages.nix
     ./modules/gaming.nix
     ./modules/media.nix
-    ./modules/unstable.nix
     ./modules/social.nix
     ./modules/dev.nix
     # ./hosts/pc-system.nix
