@@ -8,8 +8,8 @@
     ./modules/media.nix
     ./modules/social.nix
     ./modules/dev.nix
-    # ./hosts/pc-system.nix
-    # ./modules/amd.nix
+    ./hosts/pc-system.nix
+    ./modules/amd.nix
     # ./modules/nvidia.nix
     # ./modules/intel.nix
   ];
@@ -64,7 +64,7 @@
   glib
   zlib
   stdenv.cc.cc.lib
-  xorg.libxcb
+  libxcb
 ];
 
   # XDG portal

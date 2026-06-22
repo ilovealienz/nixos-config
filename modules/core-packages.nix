@@ -12,7 +12,6 @@
     vscodium
     vim
     mission-center
-    librewolf
     gnome-disk-utility
     wl-clipboard
     libnotify
