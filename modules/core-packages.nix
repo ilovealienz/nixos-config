@@ -9,6 +9,7 @@
     unzip
     fastfetch
     brave
+    floorp-bin
     vscodium
     vim
     mission-center
@@ -22,18 +23,18 @@
     gparted
     wireguard-tools
     (writeShellScriptBin "chromium-browser" ''
-      if pgrep librewolf > /dev/null; then
-        librewolf "$@" &
+      if pgrep floorp > /dev/null; then
+        floorp "$@" &
         exit 0
       fi
-      exec librewolf "$@"
+      exec floorp "$@"
     '')
     (writeShellScriptBin "x-www-browser" ''
-      if pgrep librewolf > /dev/null; then
-        librewolf "$@" &
+      if pgrep floorp > /dev/null; then
+        floorp "$@" &
         exit 0
       fi
-      exec librewolf "$@"
+      exec floorp "$@"
     '')
   ];
 }
