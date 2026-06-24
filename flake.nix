@@ -17,22 +17,40 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, plasma-manager, ... }: {
-    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = {
-        pkgs-unstable = nixpkgs-unstable.legacyPackages.x86_64-linux;
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, plasma-manager, ... }:
+  let
+    system = "x86_64-linux";
+    pkgs-unstable = nixpkgs-unstable.legacyPackages.${system};
+    sharedModules = [
+      home-manager.nixosModules.home-manager
+      {
+        home-manager.sharedModules = [
+          plasma-manager.homeModules.plasma-manager
+        ];
+        home-manager.useGlobalPkgs = true;
+      }
+    ];
+  in {
+    nixosConfigurations = {
+      pc = nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit pkgs-unstable; };
+        modules = sharedModules ++ [
+          ./configuration.nix
+          ./hosts/pc-system.nix
+          ./modules/amd.nix
+          { networking.hostName = "pc"; }
+        ];
       };
-      modules = [
-        ./configuration.nix
-        home-manager.nixosModules.home-manager
-        {
-          home-manager.sharedModules = [
-            plasma-manager.homeModules.plasma-manager
-          ];
-          home-manager.useGlobalPkgs = true;
-        }
-      ];
+
+      generic = nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit pkgs-unstable; };
+        modules = sharedModules ++ [
+          ./configuration.nix
+          { networking.hostName = "generic"; }
+        ];
+      };
     };
   };
 }

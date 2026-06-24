@@ -8,8 +8,6 @@
     ./modules/media.nix
     ./modules/social.nix
     ./modules/dev.nix
-    ./hosts/pc-system.nix
-    ./modules/amd.nix
     # ./modules/nvidia.nix
     # ./modules/intel.nix
   ];
@@ -19,7 +17,6 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # Hostname
-  networking.hostName = "nixos";
   networking.networkmanager.enable = true;
 
   # Timezone & locale
