@@ -9,7 +9,7 @@
     Service = {
       Type = "oneshot";
       ExecStartPre = "${pkgs.coreutils}/bin/sleep 5";
-      ExecStart = "${pkgs.spotify}/bin/spotify";
+      ExecStart = "${pkgs.bash}/bin/bash -c 'rm -rf \${HOME}/.cache/spotify && exec ${pkgs.spotify}/bin/spotify'";
     };
     Install = {
       WantedBy = [ "graphical-session.target" ];

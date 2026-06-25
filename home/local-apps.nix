@@ -71,14 +71,5 @@ EOF
     ${pkgs.xdg-utils}/bin/xdg-mime default uwuplsplay.desktop application/x-uwuplsplay
     ${pkgs.xdg-utils}/bin/xdg-mime default uwuplsplay.desktop x-scheme-handler/uwupls
     ${pkgs.desktop-file-utils}/bin/update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1
-
-    # enable-pc-host script
-    cat > "$HOME/enable-pc-host.sh" << 'EOF'
-#!/usr/bin/env bash
-# Uncomments pc-system.nix for this machine
-sudo sed -i 's|# ./hosts/pc-system.nix|./hosts/pc-system.nix|' /etc/nixos/configuration.nix
-echo "Done. Run 'nxrebuild' to apply."
-EOF
-    chmod +x "$HOME/enable-pc-host.sh"
   '';
 }
