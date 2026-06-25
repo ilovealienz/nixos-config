@@ -1,5 +1,8 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+
+{
   home.sessionPath = [ "$HOME/.bin" ];
+
   programs.zsh = {
     enable = true;
     oh-my-zsh = {
@@ -30,12 +33,9 @@
       fpup = "flatpak update";
     };
     initContent = ''
-      nxrun() {
-        nix-search-tv print | fzf --ansi --preview 'nix-search-tv preview {}' --reverse --query "''${1:-}" | sed 's|nixpkgs/||' | xargs -I{} nix run nixpkgs#{}
-      }
-      nxsearch() {
-        nix-search-tv print | fzf --ansi --preview 'nix-search-tv preview {}' --reverse --query "''${1:-}" | sed 's|nixpkgs/||'
-      }
+      nxrun() { nix run nixpkgs#"$1" }
+      nxsrun() { nix-search-tv print | fzf --ansi --preview 'nix-search-tv preview {}' --reverse --query "''${1:-}" | sed 's|nixpkgs/||' | xargs -I{} nix run nixpkgs#{} }
+      nxsearch() { nix-search-tv print | fzf --ansi --preview 'nix-search-tv preview {}' --reverse --query "''${1:-}" | sed 's|nixpkgs/||' }
       [[ -f ~/.aliases ]] && source ~/.aliases
     '';
   };
