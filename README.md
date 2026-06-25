@@ -74,7 +74,7 @@ add the right module to your machine's entry in `flake.nix`:
 | alias | what it does |
 |---|---|
 | `nxrebuild` | rebuild and switch (auto-detects machine from hostname) |
-| `nxupdate` | update flake inputs and rebuild |
+| `nxupdate` | update packages and rebuild |
 | `nxpush` | commit and push config to github |
 | `nxclean` | garbage collect old nix store paths |
 | `nxrun` | run a package temporarily without installing |
