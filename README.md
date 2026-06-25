@@ -15,9 +15,9 @@ my personal nixos config using flakes, home manager and plasma manager. modular 
 │   ├── gtk.nix                # gtk3/gtk4 theming
 │   ├── plasma.nix             # kde plasma settings
 │   ├── packages.nix           # user packages
-│   └── local-apps.nix        # uwuplsplay, stremio-cliuwu, zipline-upload
+│   └── local-apps.nix         # uwuplsplay, stremio-cliuwu, zipline-upload
 ├── hosts/
-│   └── pc-system.nix         # drive mounts for my pc (pc config only)
+│   └── pc-system.nix          # drive mounts for my pc (pc config only)
 └── modules/
     ├── core-packages.nix      # essentials
     ├── gaming.nix             # steam, lutris, bottles, gamemode, etc
@@ -33,7 +33,7 @@ my personal nixos config using flakes, home manager and plasma manager. modular 
 
 the flake has multiple configs — each machine uses its own entry based on hostname:
 
-- `pc` — my desktop (amd gpu, 3 monitors, drive mounts)
+- `pc` — my personal pc config
 - `generic` — base config, no machine-specific stuff
 
 ## fresh install
@@ -77,8 +77,8 @@ add the right module to your machine's entry in `flake.nix`:
 | `nxupdate` | update flake inputs and rebuild |
 | `nxpush` | commit and push config to github |
 | `nxclean` | garbage collect old nix store paths |
-| `nxrun vlc` | run a package temporarily without installing |
-| `nxsearch vlc` | fuzzy search nixpkgs and run selected package |
+| `nxrun` | run a package temporarily without installing |
+| `nxsearch` | fuzzy search nixpkgs and run selected package |
 | `fpup` | update flatpak apps |
 
 ## mpv config
