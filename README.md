@@ -77,8 +77,9 @@ add the right module to your machine's entry in `flake.nix`:
 | `nxupdate` | update packages and rebuild |
 | `nxpush` | commit and push config to github |
 | `nxclean` | garbage collect old nix store paths |
-| `nxrun` | run a package temporarily without installing |
-| `nxsearch` | fuzzy search nixpkgs and run selected package |
+| `nxrun vlc` | run a package directly by name |
+| `nxsrun vlc` | fuzzy search nixpkgs and run selected package |
+| `nxsearch vlc` | fuzzy search nixpkgs and return package name |
 | `fpup` | update flatpak apps |
 
 ## mpv config
