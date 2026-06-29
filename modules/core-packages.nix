@@ -6,6 +6,7 @@
     curl
     wget
     htop
+    tree
     unzip
     fastfetch
     brave
