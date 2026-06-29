@@ -7,6 +7,7 @@
     wget
     htop
     tree
+    bat
     unzip
     fastfetch
     brave
