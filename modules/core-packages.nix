@@ -24,6 +24,7 @@
     nix-search-tv
     gparted
     wireguard-tools
+    pokeget-rs
     (writeShellScriptBin "chromium-browser" ''
       if pgrep floorp > /dev/null; then
         floorp "$@" &

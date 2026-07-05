@@ -7,7 +7,7 @@
       After = "graphical-session.target";
     };
     Service = {
-      Type = "oneshot";
+      Type = "simple";
       ExecStartPre = "${pkgs.coreutils}/bin/sleep 5";
       ExecStart = "${pkgs.bash}/bin/bash -c 'rm -rf \${HOME}/.cache/spotify && exec ${pkgs.spotify}/bin/spotify'";
     };
@@ -22,7 +22,7 @@
       After = "graphical-session.target";
     };
     Service = {
-      Type = "oneshot";
+      Type = "simple";
       ExecStartPre = "${pkgs.coreutils}/bin/sleep 3";
       ExecStart = "${pkgs.vesktop}/bin/vesktop";
     };

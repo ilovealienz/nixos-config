@@ -33,7 +33,7 @@
       fpup = "flatpak update";
     };
     initContent = ''
-      nxrun() { nix run nixpkgs#"$1" }
+      nxrun() { nix run nixpkgs#"$1" -- ''${@:2} }
       nxsrun() { nix-search-tv print | fzf --ansi --preview 'nix-search-tv preview {}' --reverse --query "''${1:-}" | sed 's|nixpkgs/||' | xargs -I{} nix run nixpkgs#{} }
       nxsearch() { nix-search-tv print | fzf --ansi --preview 'nix-search-tv preview {}' --reverse --query "''${1:-}" | sed 's|nixpkgs/||' }
       [[ -f ~/.aliases ]] && source ~/.aliases
