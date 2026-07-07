@@ -1,6 +1,7 @@
 { pkgs, pkgs-unstable, ... }: {
   environment.systemPackages = with pkgs; [
     mpv
+    gimp
     ffmpeg
     obs-studio
     yt-dlp
