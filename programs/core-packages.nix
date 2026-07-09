@@ -13,7 +13,7 @@
     brave
     floorp-bin
     vscodium
-    vim
+    neovim
     mission-center
     gnome-disk-utility
     wl-clipboard
