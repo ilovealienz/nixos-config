@@ -20,7 +20,10 @@
   outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, plasma-manager, ... }:
   let
     system = "x86_64-linux";
-    pkgs-unstable = nixpkgs-unstable.legacyPackages.${system};
+    pkgs-unstable = import nixpkgs-unstable {
+      inherit system;
+      config.allowUnfree = true;
+    };
     sharedModules = [
       home-manager.nixosModules.home-manager
       {
@@ -37,9 +40,18 @@
         specialArgs = { inherit pkgs-unstable; };
         modules = sharedModules ++ [
           ./configuration.nix
-          ./hosts/pc-system.nix
-          ./modules/amd.nix
+          ./hosts/pc.nix
           { networking.hostName = "pc"; }
+        ];
+      };
+
+      laptop = nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit pkgs-unstable; };
+        modules = sharedModules ++ [
+          ./configuration.nix
+          ./hosts/laptop.nix
+          { networking.hostName = "laptop"; }
         ];
       };
 

@@ -6,35 +6,40 @@ my personal nixos config using flakes, home manager and plasma manager. modular 
 
 ```
 /etc/nixos/
-├── flake.nix                  # inputs + machine configs (pc, generic)
-├── configuration.nix          # shared system config
+├── flake.nix                  # inputs + host list (pc, laptop, generic)
+├── configuration.nix          # shared system config (incl. plasma import)
 ├── home.nix                   # home manager root
 ├── home/
-│   ├── shell.nix              # zsh, aliases, functions
-│   ├── autostart.nix          # spotify + vesktop autostart
-│   ├── gtk.nix                # gtk3/gtk4 theming
-│   ├── plasma.nix             # kde plasma settings
-│   ├── packages.nix           # user packages
-│   └── local-apps.nix         # uwuplsplay, stremio-cliuwu, zipline-upload
+│   ├── shell.nix               # zsh, aliases, functions
+│   ├── autostart.nix           # spotify + vesktop autostart
+│   ├── gtk.nix                 # gtk3/gtk4 theming
+│   ├── plasma.nix              # kde plasma settings
+│   ├── packages.nix            # user packages
+│   └── local-apps.nix          # uwuplsplay, stremio-cliuwu, zipline-upload
 ├── hosts/
-│   └── pc-system.nix          # drive mounts for my pc (pc config only)
-└── modules/
-    ├── core-packages.nix      # essentials
-    ├── gaming.nix             # steam, lutris, bottles, gamemode, etc
-    ├── media.nix              # mpv, obs, spotify, yt-dlp, etc
-    ├── social.nix             # vesktop, telegram
-    ├── dev.nix                # rust, go, python
-    ├── amd.nix                # amd gpu (pc config only)
-    ├── nvidia.nix             # nvidia gpu (commented out, swap when needed)
-    └── intel.nix              # intel gpu (commented out, swap when needed)
+│   ├── pc.nix                  # pc: amd gpu, drive mounts
+│   └── laptop.nix              # laptop: intel gpu
+├── desktops/
+│   └── plasma.nix              # kde plasma, imported directly in configuration.nix
+├── hardware/
+│   ├── amd.nix                 # amd gpu (pc)
+│   ├── nvidia.nix               # nvidia gpu (currently empty, fill in if needed)
+│   └── intel.nix               # intel gpu (laptop)
+└── programs/
+    ├── core-packages.nix       # essentials
+    ├── gaming.nix              # steam, lutris, bottles, gamemode, etc
+    ├── media.nix               # mpv, obs, spotify, yt-dlp, etc
+    ├── social.nix              # vesktop, telegram
+    └── dev.nix                 # rust, go, python
 ```
 
 ## machines
 
 the flake has multiple configs — each machine uses its own entry based on hostname:
 
-- `pc` — my personal pc config
-- `generic` — base config, no machine-specific stuff
+- `pc` — desktop, AMD GPU, drive mounts
+- `laptop` — laptop, Intel GPU
+- `generic` — base config, no machine-specific hardware
 
 ## fresh install
 
@@ -52,8 +57,9 @@ the flake has multiple configs — each machine uses its own entry based on host
    # for a generic setup
    sudo nixos-rebuild switch --flake /etc/nixos#generic
 
-   # or if you're setting up as my pc
+   # or pick your machine
    sudo nixos-rebuild switch --flake /etc/nixos#pc
+   sudo nixos-rebuild switch --flake /etc/nixos#laptop
    ```
 5. set your password:
    ```bash
@@ -64,10 +70,14 @@ after the first rebuild your hostname is set automatically, so from then on just
 
 ## gpu
 
-add the right module to your machine's entry in `flake.nix`:
-- amd → `./modules/amd.nix` (already in pc config)
-- nvidia → `./modules/nvidia.nix`
-- intel → `./modules/intel.nix`
+each host's file in `hosts/` imports the right GPU module from `hardware/`:
+- `hosts/pc.nix` → `hardware/amd.nix`
+- `hosts/laptop.nix` → `hardware/intel.nix`
+- nvidia → `hardware/nvidia.nix` (currently a stub, fill in `hardware.nvidia.*` options before using)
+
+## desktop environment
+
+`desktops/plasma.nix` is imported directly in `configuration.nix`, since it's not something that changes often. To try a different DE, copy `desktops/plasma.nix` to e.g. `desktops/hyprland.nix`, edit it for the new DE, then swap which one's imported in `configuration.nix` — and comment/uncomment `home/gtk.nix` / `home/plasma.nix` in `home.nix` to match, since those are Plasma-specific.
 
 ## aliases
 

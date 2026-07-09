@@ -3,13 +3,12 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ./modules/core-packages.nix
-    ./modules/gaming.nix
-    ./modules/media.nix
-    ./modules/social.nix
-    ./modules/dev.nix
-    # ./modules/nvidia.nix
-    # ./modules/intel.nix
+    ./desktops/plasma.nix
+    ./programs/core-packages.nix
+    ./programs/gaming.nix
+    ./programs/media.nix
+    ./programs/social.nix
+    ./programs/dev.nix
   ];
 
   # Bootloader
@@ -40,29 +39,29 @@
   # nix-ld for generic Linux binaries
   programs.nix-ld.enable = true;
   programs.nix-ld.libraries = with pkgs; [
-  wayland
-  libxkbcommon
-  libGL
-  mesa
-  vulkan-loader
-  libx11
-  libxcursor
-  libxrandr
-  libxi
-  fontconfig
-  freetype
-  openssl
-  gtk3
-  pango
-  harfbuzz
-  atk
-  cairo
-  gdk-pixbuf
-  glib
-  zlib
-  stdenv.cc.cc.lib
-  libxcb
-];
+    wayland
+    libxkbcommon
+    libGL
+    mesa
+    vulkan-loader
+    libx11
+    libxcursor
+    libxrandr
+    libxi
+    fontconfig
+    freetype
+    openssl
+    gtk3
+    pango
+    harfbuzz
+    atk
+    cairo
+    gdk-pixbuf
+    glib
+    zlib
+    stdenv.cc.cc.lib
+    libxcb
+  ];
 
   # XDG portal
   xdg.portal = {
@@ -72,11 +71,6 @@
   };
 
   services.flatpak.enable = true;
-
-  # KDE Plasma
-  services.xserver.enable = true;
-  services.displayManager.sddm.enable = true;
-  services.desktopManager.plasma6.enable = true;
 
   # Keyboard
   services.xserver.xkb = { layout = "gb"; variant = ""; };
@@ -97,22 +91,13 @@
 
   # Electron Wayland
   environment.sessionVariables = {
-  ELECTRON_OZONE_PLATFORM_HINT = "auto";
-  XDG_CURRENT_DESKTOP = "KDE";
-  DESKTOP_SESSION = "plasma";
+    ELECTRON_OZONE_PLATFORM_HINT = "auto";
   };
-
 
   environment.shellAliases = {
-  chromium-browser = "brave";
-  x-www-browser = "brave";
+    chromium-browser = "brave";
+    x-www-browser = "brave";
   };
-
-  # Remove unwanted KDE packages
-  environment.plasma6.excludePackages = with pkgs.kdePackages; [
-    elisa
-    kate
-  ];
 
   # User
   users.users.pc = {

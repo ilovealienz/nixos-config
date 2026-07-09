@@ -1,6 +1,8 @@
 { ... }:
 
 {
+  imports = [ ../hardware/amd.nix ];
+
   fileSystems."/mnt/Shared" = {
     device = "/dev/disk/by-label/Shared";
     fsType = "auto";
