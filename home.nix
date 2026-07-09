@@ -8,6 +8,7 @@
     ./home/plasma.nix
     ./home/packages.nix
     ./home/fastfetch.nix
+    ./home/konsole.nix
     ./home/local-apps.nix
   ];
 
