@@ -89,7 +89,7 @@ Color=216,222,233
 Color=216,222,233
 
 [General]
-Blur=true
+Blur=false
 Description=Nordic
-Opacity=0.75
+Opacity=1.0
 Wallpaper=
