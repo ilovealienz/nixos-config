@@ -9,6 +9,7 @@
     tree
     bat
     nh
+    tealdeer
     unzip
     fastfetch
     brave
