@@ -33,35 +33,33 @@
         home-manager.useGlobalPkgs = true;
       }
     ];
+
+    mkHost = { hostname, desktop, extraModules ? [] }:
+      nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit pkgs-unstable desktop; };
+        modules = sharedModules ++ extraModules ++ [
+          ./configuration.nix
+          { networking.hostName = hostname; }
+        ];
+      };
   in {
     nixosConfigurations = {
-      pc = nixpkgs.lib.nixosSystem {
-        inherit system;
-        specialArgs = { inherit pkgs-unstable; };
-        modules = sharedModules ++ [
-          ./configuration.nix
-          ./hosts/pc.nix
-          { networking.hostName = "pc"; }
-        ];
+      pc = mkHost {
+        hostname = "pc";
+        desktop = "hyprland";
+        extraModules = [ ./hosts/pc.nix ];
       };
 
-      laptop = nixpkgs.lib.nixosSystem {
-        inherit system;
-        specialArgs = { inherit pkgs-unstable; };
-        modules = sharedModules ++ [
-          ./configuration.nix
-          ./hosts/laptop.nix
-          { networking.hostName = "laptop"; }
-        ];
+      laptop = mkHost {
+        hostname = "laptop";
+        desktop = "plasma";
+        extraModules = [ ./hosts/laptop.nix ];
       };
 
-      generic = nixpkgs.lib.nixosSystem {
-        inherit system;
-        specialArgs = { inherit pkgs-unstable; };
-        modules = sharedModules ++ [
-          ./configuration.nix
-          { networking.hostName = "generic"; }
-        ];
+      generic = mkHost {
+        hostname = "generic";
+        desktop = "plasma";
       };
     };
   };

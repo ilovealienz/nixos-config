@@ -1,9 +1,9 @@
-{ config, pkgs, ... }:
+{ config, pkgs, desktop, ... }:
 
 {
   imports = [
     ./hardware-configuration.nix
-    ./desktops/plasma.nix
+    (./desktops + "/${desktop}.nix")
     ./programs/core-packages.nix
     ./programs/gaming.nix
     ./programs/media.nix
