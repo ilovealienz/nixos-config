@@ -127,13 +127,13 @@
   };
 
   systemd.services.nix-cleanup = {
-    serviceConfig.Type = "oneshot";
-    script = ''
-      nix-env --delete-generations +3 --profile /nix/var/nix/profiles/system
-      nix-collect-garbage
+   serviceConfig.Type = "oneshot";
+    path = [ pkgs.nh ];
+     script = ''
+      nh clean all --keep 3
       /run/current-system/bin/switch-to-configuration boot
     '';
-  };
+   };
 
   system.stateVersion = "26.05";
 }

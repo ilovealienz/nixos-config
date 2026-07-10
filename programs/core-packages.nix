@@ -8,6 +8,7 @@
     htop
     tree
     bat
+    nh
     unzip
     fastfetch
     brave
