@@ -47,7 +47,7 @@
     nixosConfigurations = {
       pc = mkHost {
         hostname = "pc";
-        desktop = "hyprland";
+        desktop = "plasma";
         extraModules = [ ./hosts/pc.nix ];
       };
 
