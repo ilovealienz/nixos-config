@@ -14,4 +14,8 @@
     gnome-contacts
     totem
   ];
+
+  environment.systemPackages = with pkgs; [
+    imv
+  ];
 }
