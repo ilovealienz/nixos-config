@@ -20,8 +20,8 @@ in
       ${pkgs.curl}/bin/curl -L \
         "https://github.com/ilovealienz/uwuplsplay/releases/latest/download/uwuplsplay-linux" \
         -o "$HOME/.bin/uwuplsplay"
-      ${pkgs.patchelf}/bin/patchelf --set-interpreter ${glibcPath} "$HOME/.bin/uwuplsplay"
     fi
+    ${pkgs.patchelf}/bin/patchelf --set-interpreter ${glibcPath} "$HOME/.bin/uwuplsplay"
     chmod +x "$HOME/.bin/uwuplsplay"
 
     # stremio-cliuwu
@@ -29,8 +29,8 @@ in
       ${pkgs.curl}/bin/curl -L \
         "https://github.com/ilovealienz/stremio-cliuwu/releases/latest/download/stremio-cliuwu-linux" \
         -o "$HOME/.bin/stremio-cliuwu"
-      ${pkgs.patchelf}/bin/patchelf --set-interpreter ${glibcPath} "$HOME/.bin/stremio-cliuwu"
     fi
+    ${pkgs.patchelf}/bin/patchelf --set-interpreter ${glibcPath} "$HOME/.bin/stremio-cliuwu"
     chmod +x "$HOME/.bin/stremio-cliuwu"
 
     # zipline-upload
@@ -38,11 +38,11 @@ in
       ${pkgs.curl}/bin/curl -L \
         "https://github.com/ilovealienz/my-zipline-uploader/releases/latest/download/zipline-upload" \
         -o "$HOME/.bin/zipline-upload"
-      ${pkgs.patchelf}/bin/patchelf \
+    fi
+    ${pkgs.patchelf}/bin/patchelf \
         --set-interpreter ${glibcPath} \
         --set-rpath ${rpath} \
         "$HOME/.bin/zipline-upload"
-    fi
     chmod +x "$HOME/.bin/zipline-upload"
 
     # uwuplsplay mime/protocol registration

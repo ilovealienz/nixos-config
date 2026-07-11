@@ -9,6 +9,7 @@
     ./programs/media.nix
     ./programs/social.nix
     ./programs/dev.nix
+    ./programs/virt.nix
   ];
 
   # Bootloader
