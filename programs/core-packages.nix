@@ -8,7 +8,6 @@
     htop
     tree
     bat
-    nh
     tealdeer
     unzip
     fastfetch
