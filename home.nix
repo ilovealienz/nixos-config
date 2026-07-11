@@ -1,15 +1,16 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, desktop, ... }:
 
 {
   imports = [
     ./home/shell.nix
     ./home/autostart.nix
-    ./home/gtk.nix
-    ./home/plasma.nix
     ./home/packages.nix
     ./home/fastfetch.nix
     ./home/konsole.nix
     ./home/local-apps.nix
+  ] ++ lib.optionals (desktop == "plasma") [
+    ./home/gtk.nix
+    ./home/plasma.nix
   ];
 
   home.username = "pc";

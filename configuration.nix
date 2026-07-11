@@ -110,6 +110,7 @@
 
   # Home Manager
   home-manager.users.pc = import ./home.nix;
+  home-manager.extraSpecialArgs = { inherit desktop; };
   home-manager.backupFileExtension = "backup";
 
   # Unfree packages
