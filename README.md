@@ -79,6 +79,14 @@ each host's file in `hosts/` imports the right GPU module from `hardware/`:
 
 `desktops/plasma.nix` is imported directly in `configuration.nix`, since it's not something that changes often. To try a different DE, copy `desktops/plasma.nix` to e.g. `desktops/hyprland.nix`, edit it for the new DE, then swap which one's imported in `configuration.nix` — and comment/uncomment `home/gtk.nix` / `home/plasma.nix` in `home.nix` to match, since those are Plasma-specific.
 
+## emoji picker
+
+`Meta+; (u can use whatever)` opens an emoji picker (rofimoji), set up via System Settings → Shortcuts → Custom Shortcuts:
+
+```
+rofimoji --action clipboard --typer ydotool --selector-args="-theme ~/.config/rofi/emoji-dark.rasi -icon-theme Papirus -font 'hack 12.7'"
+```
+
 ## aliases
 
 | alias | what it does |

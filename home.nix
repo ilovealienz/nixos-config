@@ -11,6 +11,7 @@
   ] ++ lib.optionals (desktop == "plasma") [
     ./home/gtk.nix
     ./home/plasma.nix
+    ./home/rofi.nix
   ];
 
   home.username = "pc";
