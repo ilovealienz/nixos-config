@@ -5,8 +5,6 @@
     enable = true;
     kwin.titlebarButtons.right = [ "minimize" "maximize" "close" ];
 
-
-
     workspace = {
       colorScheme = "BreezeDark";
       iconTheme = "Papirus-Dark";

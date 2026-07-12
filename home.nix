@@ -17,6 +17,7 @@
   home.homeDirectory = "/home/pc";
   home.stateVersion = "26.05";
 
+  home.packages = [ pkgs.sshfs ];
   programs.git = {
     enable = true;
     settings = {

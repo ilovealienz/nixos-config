@@ -2,8 +2,7 @@
 
 {
   environment.systemPackages = with pkgs; [
-    vesktop
     telegram-desktop
-    element-desktop
+    signal-desktop
   ];
 }

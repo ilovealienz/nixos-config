@@ -14,4 +14,15 @@
     elisa
     kate
   ];
+
+  environment.systemPackages =
+    (with pkgs.kdePackages; [
+      kdeconnect-kde
+    ])
+    ++ (with pkgs; [
+      rofi
+      rofimoji
+    ]);
+
+  programs.ydotool.enable = true;
 }

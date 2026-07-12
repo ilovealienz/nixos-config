@@ -16,15 +16,15 @@
     };
   };
 
-  systemd.user.services.vesktop-delayed = {
+  systemd.user.services.signal-delayed = {
     Unit = {
-      Description = "Vesktop delayed autostart";
+      Description = "Signal delayed autostart";
       After = "graphical-session.target";
     };
     Service = {
       Type = "simple";
       ExecStartPre = "${pkgs.coreutils}/bin/sleep 3";
-      ExecStart = "${pkgs.vesktop}/bin/vesktop";
+      ExecStart = "${pkgs.signal-desktop}/bin/signal-desktop";
     };
     Install = {
       WantedBy = [ "graphical-session.target" ];

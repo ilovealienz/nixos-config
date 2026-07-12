@@ -104,7 +104,7 @@
   users.users.pc = {
     isNormalUser = true;
     description = "pc";
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [ "networkmanager" "wheel" "ydotool" ];
     shell = pkgs.zsh;
   };
 
