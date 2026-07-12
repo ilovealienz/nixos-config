@@ -13,11 +13,12 @@
   environment.plasma6.excludePackages = with pkgs.kdePackages; [
     elisa
     kate
+    okular
   ];
 
   environment.systemPackages =
     (with pkgs.kdePackages; [
-      kdeconnect-kde
+      
     ])
     ++ (with pkgs; [
       rofi
