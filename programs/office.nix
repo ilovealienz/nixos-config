@@ -1,7 +1,7 @@
-{ pkgs, ... }:
+{ pkgs, desktop, ... }:
 
 {
   environment.systemPackages = with pkgs; [
-    libreoffice
+    (if desktop == "plasma" then libreoffice-qt else libreoffice)
   ];
 }
