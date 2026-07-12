@@ -6,6 +6,7 @@
     (./desktops + "/${desktop}.nix")
     ./programs/core-packages.nix
     ./programs/gaming.nix
+    ./programs/office.nix
     ./programs/media.nix
     ./programs/social.nix
     ./programs/dev.nix
