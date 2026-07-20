@@ -5,5 +5,6 @@
     rustup
     go
     python3
+    cloudflared
   ];
 }
