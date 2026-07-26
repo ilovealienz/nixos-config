@@ -63,6 +63,10 @@
     zlib
     stdenv.cc.cc.lib
     libxcb
+    libpulseaudio
+    alsa-lib
+    pipewire
+    libjack2
   ];
 
   # XDG portal
@@ -72,7 +76,15 @@
     config.common.default = "*";
   };
 
+  # Flatpak
   services.flatpak.enable = true;
+
+  # AppImage
+  programs.appimage = {
+    enable = true;
+    binfmt = true;
+  };        # ← this semicolon
+
 
   # Keyboard
   services.xserver.xkb = { layout = "gb"; variant = ""; };

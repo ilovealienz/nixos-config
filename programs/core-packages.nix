@@ -8,6 +8,7 @@
     htop
     tree
     bat
+    fd
     tealdeer
     unzip
     fastfetch
