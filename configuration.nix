@@ -20,6 +20,15 @@
   # Hostname
   networking.networkmanager.enable = true;
 
+  # Bluetooth
+  hardware.bluetooth.enable = true;
+  hardware.bluetooth.powerOnBoot = true;
+  hardware.bluetooth.settings = {
+    General = {
+      Experimental = true;   # enables battery % reporting for supported devices
+    };
+  };
+
   # Timezone & locale
   time.timeZone = "Europe/London";
   i18n.defaultLocale = "en_GB.UTF-8";

@@ -8,6 +8,7 @@
   programs.dconf.enable = true;
   services.xserver.enable = true;
   services.displayManager.sddm.enable = true;
+  services.blueman.enable = true;
 
   environment.sessionVariables = {
     XDG_CURRENT_DESKTOP = "Hyprland";
