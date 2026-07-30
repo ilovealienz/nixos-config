@@ -45,7 +45,10 @@
         format-disconnected = "offline";
         on-click = "kitty --class kitty-float -e nmtui";
       };
-      clock = { format = "{:%a %d %b  %H:%M}"; };
+      clock = {
+        format = "{:%a %d %b  %H:%M}";
+        format-alt = "{:(%a)%d/(%-m)%B/%Y %H:%M:%S}";
+      };
 
       };
       style = ''

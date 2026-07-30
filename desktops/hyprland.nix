@@ -57,6 +57,12 @@
     libnotify
     feh
     wmenu
+    xarchiver
+    xfce.thunar-archive-plugin
+    zip
+    unzip
+    p7zip
+    unrar
 
     # cursor + GTK plumbing
     bibata-cursors

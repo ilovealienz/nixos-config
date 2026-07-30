@@ -12,7 +12,7 @@
       ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" "$file" || exit 0
 
       choice=$(printf "open\ncopy\nupload (zipline)\nupload advanced\ndelete" \
-        | wmenu -f 'Inter 11' -N 24221c -n d4b07b -S e5a440 -s 24221c -p "shot:")
+        | wmenu -f 'Inter 13' -N 24221c -n d4b07b -S e5a440 -s 24221c -p "shot:")
 
       case "$choice" in
         open)               xdg-open "$file" ;;
@@ -80,7 +80,7 @@
       bind = [
         "$mod, Return, exec, kitty"
         "$mod SHIFT, D, exec, fuzzel"
-        "$mod, D, exec, wmenu-run -f 'Inter 11' -N 24221c -n d4b07b -S e5a440 -s 24221c"
+        "$mod, D, exec, wmenu-run -f 'Inter 13' -N 24221c -n d4b07b -S e5a440 -s 24221c"
         "$mod, E, exec, thunar"
         "$mod, Q, killactive"
         "$mod SHIFT, E, exit"
