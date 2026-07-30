@@ -15,9 +15,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
-  };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, plasma-manager, ... }:
+    stylix = {
+      url = "github:nix-community/stylix/release-26.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, plasma-manager, stylix, ... }:
   let
     system = "x86_64-linux";
     pkgs-unstable = import nixpkgs-unstable {
@@ -29,6 +33,7 @@
       {
         home-manager.sharedModules = [
           plasma-manager.homeModules.plasma-manager
+	  stylix.homeModules.stylix
         ];
         home-manager.useGlobalPkgs = true;
       }
@@ -47,7 +52,7 @@
     nixosConfigurations = {
       pc = mkHost {
         hostname = "pc";
-        desktop = "plasma";
+        desktop = "hyprland";
         extraModules = [ ./hosts/pc.nix ];
       };
 

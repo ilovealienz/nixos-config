@@ -4,6 +4,7 @@
   environment.systemPackages = with pkgs; [
     git
     curl
+    killall
     wget
     htop
     tree

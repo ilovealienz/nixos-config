@@ -1,11 +1,10 @@
 { pkgs, ... }:
-
 {
   gtk = {
     enable = true;
     theme = {
-      name = "Breeze-Dark";
-      package = pkgs.kdePackages.breeze-gtk;
+      name = "adw-gtk3-dark";
+      package = pkgs.adw-gtk3;
     };
     gtk3.extraCss = ''
       headerbar {
@@ -100,5 +99,13 @@
       gtk-recent-files-limit = 0;
       gtk-application-prefer-dark-theme = 1;
     };
+  };
+
+  dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
+
+  qt = {
+    enable = true;
+    platformTheme.name = "adwaita";
+    style.name = "adwaita-dark";
   };
 }

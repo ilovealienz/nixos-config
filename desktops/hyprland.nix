@@ -4,11 +4,14 @@
     enable = true;
     xwayland.enable = true;
   };
-
   programs.dconf.enable = true;
-  services.xserver.enable = true;
-  services.displayManager.sddm.enable = true;
+
+  #TTY login manager
+  services.displayManager.ly.enable = true;
   services.blueman.enable = true;
+
+  # Polkit
+  security.polkit.enable = true;
 
   environment.sessionVariables = {
     XDG_CURRENT_DESKTOP = "Hyprland";
@@ -16,24 +19,52 @@
     NIXOS_OZONE_WL = "1";
   };
 
-  xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-hyprland pkgs.xdg-desktop-portal-gtk ];
+  # XDPH
+  xdg.portal.extraPortals = [
+    pkgs.xdg-desktop-portal-hyprland
+    pkgs.xdg-desktop-portal-gtk
+  ];
+
+  fonts.packages = with pkgs; [
+    nerd-fonts.monaspace
+    inter
+    dejavu_fonts
+    noto-fonts
+    noto-fonts-color-emoji
+
+  ];
 
   environment.systemPackages = with pkgs; [
-    uwsm
+    # core stack
     kitty
     waybar
-    wofi
-    hyprpaper
+    fuzzel
+    mako
+    polkit_gnome
+    swaybg
+
+    # hyprland-native tools
     hyprlock
     hypridle
-    playerctl
-    nwg-displays
-    bibata-cursors
-    xfce.thunar
-    tumbler
-    gsettings-desktop-schemas
-    glib
+
+    # utilities
+    wl-clipboard
     grim
     slurp
+    playerctl
+    brightnessctl
+    pavucontrol
+    libnotify
+    feh
+    wmenu
+
+    # cursor + GTK plumbing
+    bibata-cursors
+    gsettings-desktop-schemas
+    glib
+
+    # GUI file manager
+    xfce.thunar
+    tumbler
   ];
 }
