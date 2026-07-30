@@ -62,6 +62,8 @@
       input = {
         kb_layout = "gb";
         follow_mouse = 1;
+	accel_profile = "flat";
+	force_no_accel = true;
       };
 
       dwindle = {
@@ -79,8 +81,8 @@
 
       bind = [
         "$mod, Return, exec, kitty"
-        "$mod SHIFT, D, exec, fuzzel"
-        "$mod, D, exec, wmenu-run -f 'Inter 13' -N 24221c -n d4b07b -S e5a440 -s 24221c"
+        "$mod SHIFT, R, exec, fuzzel"
+        "$mod, R, exec, wmenu-run -f 'Inter 13' -N 24221c -n d4b07b -S e5a440 -s 24221c"
         "$mod, E, exec, thunar"
         "$mod, Q, killactive"
         "$mod SHIFT, E, exit"
@@ -145,6 +147,9 @@
     };
 
     extraConfig = ''
+
+      layerrule = ignore_alpha 0, match:namespace waybar
+
       # floating popups
       windowrule = float on, size 900 600, center on, match:class kitty-float
       windowrule = float on, match:class pavucontrol

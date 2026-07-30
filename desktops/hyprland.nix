@@ -58,7 +58,7 @@
     feh
     wmenu
     xarchiver
-    xfce.thunar-archive-plugin
+    thunar-archive-plugin
     zip
     unzip
     p7zip
@@ -70,7 +70,7 @@
     glib
 
     # GUI file manager
-    xfce.thunar
+    thunar
     tumbler
   ];
 }

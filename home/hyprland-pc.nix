@@ -1,6 +1,6 @@
 { lib, pkgs, osConfig, ... }:
 let
-  wallpaper = ../walls/mc-4k.png;
+  wallpaper = ../walls/1.png;
   isPc = osConfig.networking.hostName == "pc";
 in
 lib.mkIf isPc {

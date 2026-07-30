@@ -47,11 +47,21 @@
       };
       clock = {
         format = "{:%a %d %b  %H:%M}";
-        format-alt = "{:(%a)%d/(%-m)%B/%Y %H:%M:%S}";
+        tooltip-format = "{:%A, %d %B %Y}";
+        actions = {
+          on-click-right = "mode";
+        };
+        calendar = {
+          mode = "month";
+          format = {
+            today = "<span color='#e5a440'><b>{}</b></span>";
+          };
+        };
       };
 
-      };
-      style = ''
+    };
+    style = ''
+
       * {
         font-family: "Inter", "DejaVu Sans", sans-serif;
         font-size: 13px;
@@ -63,6 +73,14 @@
 
       window#waybar {
         background: #24221c;
+        color: #d4b07b;
+      }
+
+      tooltip {
+        background-color: #24221c;
+        border: 0px solid #e5a440;
+      }
+      tooltip label {
         color: #d4b07b;
       }
 
