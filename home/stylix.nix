@@ -50,6 +50,7 @@
       hyprlock.enable = false;
       kitty.enable = false;
       fuzzel.enable = false;
+      mako.enable = false;
     };
   };
 }

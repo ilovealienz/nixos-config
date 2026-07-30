@@ -18,6 +18,7 @@
     ./home/hyprland.nix
     ./home/hyprland-pc.nix
     ./home/fuzzel.nix
+    ./home/mako.nix
   ];
 
   home.username = "pc";

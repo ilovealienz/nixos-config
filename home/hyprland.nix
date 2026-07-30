@@ -1,5 +1,30 @@
 { pkgs, ... }:
-{
+ {
+
+  home.packages = [
+    (pkgs.writeShellScriptBin "screenshot-menu" ''
+      pics="$(${pkgs.xdg-user-dirs}/bin/xdg-user-dir PICTURES)"
+      dir="$pics/Screenshots/$(date +%Y-%m)"
+      mkdir -p "$dir"
+      file="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
+
+      # capture region; abort if slurp cancelled (Esc)
+      ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" "$file" || exit 0
+
+      choice=$(printf "open\ncopy\nupload (zipline)\nupload advanced\ndelete" \
+        | wmenu -f 'Inter 11' -N 24221c -n d4b07b -S e5a440 -s 24221c -p "shot:")
+
+      case "$choice" in
+        open)               xdg-open "$file" ;;
+        copy)               ${pkgs.wl-clipboard}/bin/wl-copy < "$file" ;;
+        "upload (zipline)") $HOME/.bin/zipline-upload "$file" ;;
+        "upload advanced")  $HOME/.bin/zipline-upload --advanced "$file" ;;
+        delete)             rm "$file" ;;
+      esac
+
+    '')
+  ];
+	
   wayland.windowManager.hyprland = {
     enable = true;
     configType = "hyprlang";
@@ -10,7 +35,6 @@
         "waybar"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
         "hypridle"
-        "mako"
       ];
 
       env = [
@@ -97,7 +121,7 @@
         "$mod SHIFT, 9, movetoworkspace, 9"
 
         ''$mod SHIFT, S, exec, grim -g "$(slurp)" - | wl-copy''
-        '', Print, exec, grim ~/Pictures/$(date +%Y-%m-%d_%H-%M-%S).png''
+	'', Print, exec, screenshot-menu''
       ];
 
       bindel = [
