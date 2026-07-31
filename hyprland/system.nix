@@ -6,7 +6,7 @@
   };
   programs.dconf.enable = true;
 
-  #TTY login manager
+  # TTY login manager
   services.displayManager.ly.enable = true;
   services.blueman.enable = true;
 
@@ -19,7 +19,7 @@
     NIXOS_OZONE_WL = "1";
   };
 
-  # XDPH
+  # XDPH — per-window screenshare
   xdg.portal.extraPortals = [
     pkgs.xdg-desktop-portal-hyprland
     pkgs.xdg-desktop-portal-gtk
@@ -31,11 +31,9 @@
     dejavu_fonts
     noto-fonts
     noto-fonts-color-emoji
-
   ];
 
   environment.systemPackages = with pkgs; [
-    # core stack
     kitty
     waybar
     fuzzel
@@ -43,11 +41,9 @@
     polkit_gnome
     swaybg
 
-    # hyprland-native tools
     hyprlock
     hypridle
 
-    # utilities
     wl-clipboard
     grim
     slurp
@@ -64,12 +60,11 @@
     p7zip
     unrar
 
-    # cursor + GTK plumbing
     bibata-cursors
+    gruvbox-plus-icons
     gsettings-desktop-schemas
     glib
 
-    # GUI file manager
     thunar
     tumbler
   ];

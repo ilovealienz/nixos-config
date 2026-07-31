@@ -1,4 +1,5 @@
-{ pkgs, pkgs-unstable, ... }: {
+{ pkgs, ... }:
+{
   environment.systemPackages = with pkgs; [
     mpv
     qbittorrent
@@ -7,9 +8,5 @@
     obs-studio
     yt-dlp
     spotify
-    streamlink
-    streamlink-twitch-gui-bin
-  ] ++ (with pkgs-unstable; [
-    yacreader
-  ]);
+  ];
 }

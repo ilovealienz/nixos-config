@@ -1,23 +1,21 @@
-{ config, pkgs, desktop, ... }:
+{ config, pkgs, ... }:
 
 {
   imports = [
     ./hardware-configuration.nix
-    (./desktops + "/${desktop}.nix")
+    ./hyprland/system.nix
     ./programs/core-packages.nix
     ./programs/gaming.nix
-    ./programs/office.nix
     ./programs/media.nix
     ./programs/social.nix
     ./programs/dev.nix
-    ./programs/virt.nix
   ];
 
   # Bootloader
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # Hostname
+  # Networking
   networking.networkmanager.enable = true;
 
   # Bluetooth
@@ -88,13 +86,6 @@
   # Flatpak
   services.flatpak.enable = true;
 
-  # AppImage
-  programs.appimage = {
-    enable = true;
-    binfmt = true;
-  };        # ← this semicolon
-
-
   # Keyboard
   services.xserver.xkb = { layout = "gb"; variant = ""; };
   console.keyMap = "uk";
@@ -132,7 +123,6 @@
 
   # Home Manager
   home-manager.users.pc = import ./home.nix;
-  home-manager.extraSpecialArgs = { inherit desktop; };
   home-manager.backupFileExtension = "backup";
 
   # Unfree packages
@@ -140,15 +130,6 @@
 
   # Flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
-  # Weekly cleanup
-  systemd.timers.nix-cleanup = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = "weekly";
-      Persistent = true;
-    };
-  };
 
   system.stateVersion = "26.05";
 }

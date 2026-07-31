@@ -1,5 +1,5 @@
 { ... }:
 
 {
-  imports = [ ../hardware/intel.nix ];
+  imports = [ ../hardware/graphics.nix ];
 }

@@ -34,7 +34,6 @@
       exec-once = [
         "waybar"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
-        "hypridle"
       ];
 
       env = [
@@ -184,8 +183,19 @@
         before_sleep_cmd = "loginctl lock-session";
       };
       listener = [
-        { timeout = 600; on-timeout = "loginctl lock-session"; }
-        { timeout = 900; on-timeout = "hyprctl dispatch dpms off"; on-resume = "hyprctl dispatch dpms on"; }
+        # don't lock/blank while a game is running — controller input isn't seen
+        # as activity by the wayland idle protocol (hyprwm/Hyprland#9170)
+        {
+          timeout = 600;
+          on-timeout = "loginctl lock-session";
+          condition_cmd = "! pgrep -x 'steam|gamescope|bottles' > /dev/null";
+        }
+        {
+          timeout = 900;
+          on-timeout = "hyprctl dispatch dpms off";
+          on-resume = "hyprctl dispatch dpms on";
+          condition_cmd = "! pgrep -x 'steam|gamescope|bottles' > /dev/null";
+        }
       ];
     };
   };

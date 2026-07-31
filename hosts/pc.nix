@@ -1,7 +1,7 @@
 { ... }:
 
 {
-  imports = [ ../hardware/amd.nix ];
+  imports = [ ../hardware/graphics.nix ];
 
   fileSystems."/mnt/Shared" = {
     device = "/dev/disk/by-label/Shared";

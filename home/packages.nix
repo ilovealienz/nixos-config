@@ -1,10 +1,6 @@
 { pkgs, ... }:
 
 {
-  home.packages = with pkgs; [
-    papirus-icon-theme
-  ];
-
   programs.nh = {
   enable = true;
   clean = {

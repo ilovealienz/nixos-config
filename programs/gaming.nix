@@ -5,10 +5,7 @@
   programs.gamemode.enable = true;
 
   environment.systemPackages = with pkgs; [
-    lutris
     bottles
-    wine
-    winetricks
     prismlauncher
     protonplus
   ];
