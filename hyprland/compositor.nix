@@ -43,6 +43,7 @@
       exec-once = [
         "waybar"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
+	"${pkgs.swaybg}/bin/swaybg -m fill -i ${../walls/1.png}"
       ];
 
       env = [

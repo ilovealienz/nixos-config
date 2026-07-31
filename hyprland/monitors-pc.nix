@@ -1,6 +1,5 @@
-{ lib, pkgs, osConfig, ... }:
+{ lib, osConfig, ... }:
 let
-  wallpaper = ../walls/1.png;
   isPc = osConfig.networking.hostName == "pc";
 in
 lib.mkIf isPc {
@@ -17,11 +16,6 @@ lib.mkIf isPc {
       "3, monitor:HDMI-A-2, default:true"
       "4, monitor:DP-1"
       "5, monitor:DP-1"
-    ];
-
-    # swaybg draws on all outputs; no IPC, no socket, no race
-    exec-once = [
-      "${pkgs.swaybg}/bin/swaybg -m fill -i ${wallpaper}"
     ];
   };
 }
