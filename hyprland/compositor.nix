@@ -1,4 +1,13 @@
 { pkgs, ... }:
+
+ let
+  # swayosd on the focused monitor only (default shows on all three)
+  osd = pkgs.writeShellScript "osd-focused" ''
+    exec ${pkgs.swayosd}/bin/swayosd-client \
+      --monitor "$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused == true).name')" \
+      "$@"
+  '';
+ in
  {
 
   home.packages = [
@@ -126,14 +135,14 @@
       ];
 
       bindel = [
-        ", XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
-        ", XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
-        ", XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-        ", XF86MonBrightnessUp, exec, brightnessctl set 5%+"
-        ", XF86MonBrightnessDown, exec, brightnessctl set 5%-"
+        ", XF86AudioRaiseVolume, exec, ${osd} --output-volume raise"
+        ", XF86AudioLowerVolume, exec, ${osd} --output-volume lower"
+        ", XF86MonBrightnessUp, exec, ${osd} --brightness raise"
+        ", XF86MonBrightnessDown, exec, ${osd} --brightness lower"
       ];
 
       bindl = [
+        ", XF86AudioMute, exec, ${osd} --output-volume mute-toggle"
         ", XF86AudioPlay, exec, playerctl play-pause"
         ", XF86AudioNext, exec, playerctl next"
         ", XF86AudioPrev, exec, playerctl previous"
@@ -182,22 +191,16 @@
         lock_cmd = "pidof hyprlock || hyprlock";
         before_sleep_cmd = "loginctl lock-session";
       };
-      listener = [
-        # don't lock/blank while a game is running — controller input isn't seen
-        # as activity by the wayland idle protocol (hyprwm/Hyprland#9170)
-        {
-          timeout = 600;
-          on-timeout = "loginctl lock-session";
-          condition_cmd = "! pgrep -x 'steam|gamescope|bottles' > /dev/null";
-        }
-        {
-          timeout = 900;
-          on-timeout = "hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
-          condition_cmd = "! pgrep -x 'steam|gamescope|bottles' > /dev/null";
-        }
+   listener = [
+        { timeout = 600; on-timeout = "loginctl lock-session"; }
+        { timeout = 900; on-timeout = "hyprctl dispatch dpms off"; on-resume = "hyprctl dispatch dpms on"; }
       ];
     };
+  };
+
+  services.swayosd = {
+    enable = true;
+    topMargin = 0.85;
   };
 
   programs.hyprlock = {

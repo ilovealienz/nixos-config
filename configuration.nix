@@ -15,6 +15,9 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # SFTP support
+  services.gvfs.enable = true;
+
   # Networking
   networking.networkmanager.enable = true;
 

@@ -11,7 +11,7 @@
 
       modules-left = [ "hyprland/workspaces" ];
       modules-center = [ "hyprland/window" ];
-      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "network" "clock" ];
+      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "network" "battery" "clock" "idle_inhibitor" ];
 
       "hyprland/workspaces" = {
         format = "{icon}";
@@ -44,21 +44,42 @@
         format-ethernet = "{ifname}";
         format-disconnected = "offline";
         on-click = "kitty --class kitty-float -e nmtui";
+        on-click-right = "blueman-manager";
+      };
+      battery = {
+        states = { warning = 30; critical = 15; };
+        format = "bat {capacity}%";
+        format-charging = "chg {capacity}%";
+        format-plugged = "plug {capacity}%";
+        tooltip-format = "{timeTo}";
       };
       clock = {
         format = "{:%a %d %b  %H:%M}";
-        tooltip-format = "{:%A, %d %B %Y}";
-        actions = {
-          on-click-right = "mode";
-        };
+        tooltip-format = "<tt>{calendar}</tt>";
         calendar = {
           mode = "month";
+          weeks-pos = "right";
           format = {
-            today = "<span color='#e5a440'><b>{}</b></span>";
+            months    = "<span color='#e5a440'><b>{}</b></span>";
+            days      = "<span color='#d4b07b'>{}</span>";
+            weeks     = "<span color='#87765d'>W{}</span>";
+            weekdays  = "<span color='#e18245'><b>{}</b></span>";
+            today     = "<span color='#e56b55'><b><u>{}</u></b></span>";
           };
         };
+        actions = {
+          on-click-right  = "mode";
+          on-scroll-up    = "shift_up";
+          on-scroll-down  = "shift_down";
+        };
       };
-
+      idle_inhibitor = {
+        format = "{icon}";
+        format-icons = {
+          activated = " ";
+          deactivated = " ";
+        };
+      };
     };
     style = ''
 
@@ -74,6 +95,7 @@
       window#waybar {
         background: #24221c;
         color: #d4b07b;
+
       }
 
       tooltip {
@@ -110,10 +132,22 @@
 
       #window { color: #87765d; }
 
-      #tray, #cpu, #memory, #pulseaudio, #network, #clock {
+      #tray, #cpu, #memory, #pulseaudio, #network, #battery, #clock {
         padding: 0 9px;
         color: #d4b07b;
       }
+
+      /* thin toggle sliver — outline = idle on, filled = idle paused */
+      #idle_inhibitor {
+        min-width: 3px;
+        margin: 0 0 0 4px;
+        padding: 0;
+        background: #473f31;
+      }
+      #idle_inhibitor.activated {
+        background: #e5a440;
+      }
+
     '';
 
 
