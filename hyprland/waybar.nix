@@ -11,7 +11,7 @@
 
       modules-left = [ "hyprland/workspaces" ];
       modules-center = [ "hyprland/window" ];
-      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "network" "battery" "clock" "idle_inhibitor" ];
+      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "battery" "network" "clock" "idle_inhibitor" ];
 
       "hyprland/workspaces" = {
         format = "{icon}";
