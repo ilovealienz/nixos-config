@@ -136,8 +136,8 @@
       ];
 
       bindel = [
-        ", XF86AudioRaiseVolume, exec, ${osd} --output-volume raise"
-        ", XF86AudioLowerVolume, exec, ${osd} --output-volume lower"
+        ", XF86AudioRaiseVolume, exec, ${osd} --output-volume raise --max-volume 150"
+        ", XF86AudioLowerVolume, exec, ${osd} --output-volume lower --max-volume 150"
         ", XF86MonBrightnessUp, exec, ${osd} --brightness raise"
         ", XF86MonBrightnessDown, exec, ${osd} --brightness lower"
       ];
