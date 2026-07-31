@@ -5,7 +5,7 @@
     qbittorrent
     gimp
     ffmpeg
-    obs-studio
+    (obs-studio.override { browserSupport = false; })
     yt-dlp
     spotify
   ];

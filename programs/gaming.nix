@@ -6,7 +6,7 @@
 
   environment.systemPackages = with pkgs; [
     bottles
-    prismlauncher
+    (prismlauncher.override { jdks = [ jdk21 jdk17 ]; })
     protonplus
   ];
 }
