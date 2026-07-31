@@ -11,7 +11,7 @@
 
       modules-left = [ "hyprland/workspaces" ];
       modules-center = [ "hyprland/window" ];
-      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "battery" "network" "clock" "idle_inhibitor" ];
+      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "network" "clock" "battery" "idle_inhibitor" ];
 
       "hyprland/workspaces" = {
         format = "{icon}";
@@ -48,9 +48,9 @@
       };
       battery = {
         states = { warning = 30; critical = 15; };
-        format = "[BAT {capacity}%]";
-        format-charging = "chg {capacity}%";
-        format-plugged = "plug {capacity}%";
+        format = "{capacity}%";
+        format-charging = "{capacity}%+";
+        format-plugged = "{capacity}%p";
         tooltip-format = "{timeTo}";
       };
       clock = {

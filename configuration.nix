@@ -11,8 +11,11 @@
     ./programs/dev.nix
   ];
 
-  # Remove TTS
+  # Debloat
   services.speechd.enable = false;
+  documentation.nixos.enable = false;
+  documentation.doc.enable = false;
+  programs.command-not-found.enable = false;
 
   # Bootloader
   boot.loader.systemd-boot.enable = true;

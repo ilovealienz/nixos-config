@@ -8,5 +8,6 @@
     ./fuzzel.nix
     ./mako.nix
     ./gtk.nix
+    ./kitty.nix
   ];
 }
