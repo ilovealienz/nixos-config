@@ -31,24 +31,24 @@
       "hyprland/window" = { max-length = 60; separate-outputs = true; };
 
       tray = { spacing = 10; icon-size = 16; };
-      cpu = { format = "cpu {usage}%"; interval = 5; };
-      memory = { format = "mem {percentage}%"; interval = 5; };
+      cpu = { format = "[CPU: {usage}%]"; interval = 5; };
+      memory = { format = "[RAM: {percentage}%]"; interval = 5; };
       pulseaudio = {
-        format = "vol {volume}%";
+        format = "[VOL: {volume}%]";
         format-muted = "muted";
         on-click = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
         on-click-right = "pavucontrol";
       };
       network = {
-        format-wifi = "{essid}";
-        format-ethernet = "{ifname}";
+        format-wifi = "[{essid}]";
+        format-ethernet = "[{ifname}]";
         format-disconnected = "offline";
         on-click = "kitty --class kitty-float -e nmtui";
         on-click-right = "blueman-manager";
       };
       battery = {
         states = { warning = 30; critical = 15; };
-        format = "bat {capacity}%";
+        format = "[BAT {capacity}%]";
         format-charging = "chg {capacity}%";
         format-plugged = "plug {capacity}%";
         tooltip-format = "{timeTo}";
@@ -133,7 +133,7 @@
       #window { color: #87765d; }
 
       #tray, #cpu, #memory, #pulseaudio, #network, #battery, #clock {
-        padding: 0 9px;
+        padding: 0 3px;
         color: #d4b07b;
       }
 
