@@ -11,7 +11,7 @@
 
       modules-left = [ "hyprland/workspaces" ];
       modules-center = [ "hyprland/window" ];
-      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "network" "clock" "battery" "idle_inhibitor" ];
+      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "idle_inhibitor" ];
 
       "hyprland/workspaces" = {
         format = "{icon}";
@@ -58,6 +58,7 @@
         tooltip-format = "<tt>{calendar}</tt>";
         calendar = {
           mode = "month";
+          mode-mon-col = 3;
           weeks-pos = "right";
           format = {
             months    = "<span color='#e5a440'><b>{}</b></span>";

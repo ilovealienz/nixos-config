@@ -9,5 +9,6 @@
     ./mako.nix
     ./gtk.nix
     ./kitty.nix
+    ./weather.nix
   ];
 }

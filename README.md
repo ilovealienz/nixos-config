@@ -54,3 +54,18 @@ pick the host (pc/laptop), it clones, generates hardware config, and builds.
 - `nxpush` / `nxpull` — sync with github
 - `nxedit` — fzf picker for config files
 - `nxclean` — garbage-collect old generations (keeps 3)
+
+
+## weather widget
+
+Needs an OpenWeatherMap API key (kept out of the repo since this is public).
+
+Get one from https://openweathermap.org — **My API keys**.
+
+```
+mkdir -p ~/.config/weather
+echo "YOUR_API_KEY" > ~/.config/weather/key
+chmod 600 ~/.config/weather/key
+```
+
+Can take up to 2 hours before a newly created key becomes active.
