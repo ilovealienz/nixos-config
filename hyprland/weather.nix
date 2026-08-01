@@ -46,7 +46,7 @@
         *)   icon="󰼯"; class="unknown" ;;
       esac
 
-      printf '{"text":"%s %s°","tooltip":"%s\\nfeels like %s°\\nhumidity %s%%\\nwind %s m/s","class":"%s"}\n' \
+      printf '{"text":"%s %sc","tooltip":"%s\\nfeels like %sc\\nhumidity %s%%\\nwind %s m/s","class":"%s"}\n' \
         "$icon" "$temp" "$desc" "$feels" "$hum" "$wind" "$class"
     ''}";
   };

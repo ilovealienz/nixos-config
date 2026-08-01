@@ -83,6 +83,20 @@
         mfact = 0.5;                 # master (Spotify) takes left half of WS2
       };
 
+      group = {
+        "col.border_active" = "rgb(e5a440)";
+        "col.border_inactive" = "rgb(473f31)";
+        "groupbar:font_family" = "Inter";
+        "groupbar:font_size" = 11;
+        "groupbar:height" = 16;
+        "groupbar:gradients" = true;
+        "groupbar:gaps_in" = 0;
+        "groupbar:gaps_out" = 0;
+        "groupbar:col.active" = "rgb(e5a440)";
+        "groupbar:col.inactive" = "rgb(473f31)";
+        "groupbar:text_color" = "rgb(24221c)";
+      };
+
       # WS2 uses master layout so left/right is deterministic
       workspace = [
         "2, layoutname:master"
@@ -105,6 +119,10 @@
         "$mod, l, movefocus, r"
         "$mod, k, movefocus, u"
         "$mod, j, movefocus, d"
+
+	"$mod, G, togglegroup"
+        "$mod SHIFT, G, moveintoorcreategroup, r"
+        "$mod, Tab, changegroupactive, f"
 
         "$mod SHIFT, h, movewindow, l"
         "$mod SHIFT, l, movewindow, r"
