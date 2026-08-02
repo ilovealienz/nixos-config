@@ -5,8 +5,16 @@
     return-type = "json";
     interval = 300;
     exec = "${pkgs.writeShellScript "weather" ''
+      # ── settings ──────────────────────────────────
       LAT=53.8179442
       LON=-3.0509812
+      UNITS=metric          # metric | imperial | standard
+      DEGREE="°C"           # °C | °F | K  (match UNITS)
+      SEP="   "              # spacing between icon and temp
+      WIND_UNIT="m/s"       # m/s for metric, mph for imperial
+      CACHE_AGE=1800        # seconds before refetching
+      # ──────────────────────────────────────────────
+
       CACHE="$HOME/.cache/weather.json"
       KEYFILE="$HOME/.config/weather/key"
 
@@ -15,10 +23,9 @@
 
       mkdir -p "$(dirname "$CACHE")"
 
-      # only refetch if cache is missing or older than 30 min
-      if [ ! -f "$CACHE" ] || [ "$(( $(date +%s) - $(stat -c %Y "$CACHE") ))" -gt 1800 ]; then
+      if [ ! -f "$CACHE" ] || [ "$(( $(date +%s) - $(stat -c %Y "$CACHE") ))" -gt "$CACHE_AGE" ]; then
         ${pkgs.curl}/bin/curl -sf --max-time 10 \
-          "https://api.openweathermap.org/data/2.5/weather?lat=$LAT&lon=$LON&appid=$KEY&units=metric" \
+          "https://api.openweathermap.org/data/2.5/weather?lat=$LAT&lon=$LON&appid=$KEY&units=$UNITS" \
           -o "$CACHE.tmp" && mv "$CACHE.tmp" "$CACHE"
       fi
 
@@ -46,8 +53,10 @@
         *)   icon="󰼯"; class="unknown" ;;
       esac
 
-      printf '{"text":"%s %sc","tooltip":"%s\\nfeels like %sc\\nhumidity %s%%\\nwind %s m/s","class":"%s"}\n' \
-        "$icon" "$temp" "$desc" "$feels" "$hum" "$wind" "$class"
+      printf '{"text":"%s%s%s%s","tooltip":"%s\\nfeels like %s%s\\nhumidity %s%%\\nwind %s %s","class":"%s"}\n' \
+        "$icon" "$SEP" "$temp" "$DEGREE" \
+        "$desc" "$feels" "$DEGREE" "$hum" "$wind" "$WIND_UNIT" \
+        "$class"
     ''}";
   };
 
