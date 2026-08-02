@@ -25,6 +25,8 @@
     	 "3" = ""; # Play / MPV
     	 "4" = ""; # Terminal
     	 "5" = ""; # File manager
+         "6" = ""; # Torrents
+         "7" = "󰍺"; # Virtual Machines
         };
       };
 
