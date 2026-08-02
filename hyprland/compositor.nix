@@ -109,7 +109,7 @@
         "$mod, E, exec, thunar"
         "$mod, Q, killactive"
         "$mod SHIFT, E, exit"
-        "$mod ALT, L, exec, hyprlock"
+        "$mod SHIFT, X, exec, hyprlock"
         "$mod, F, fullscreen, 0"
         "$mod, V, togglefloating"
         "$mod, P, pseudo"
@@ -119,6 +119,11 @@
         "$mod, l, movefocus, r"
         "$mod, k, movefocus, u"
         "$mod, j, movefocus, d"
+
+        "$mod ALT, h, resizeactive, -40 0"
+        "$mod ALT, l, resizeactive, 40 0"
+        "$mod ALT, k, resizeactive, 0 -40"
+        "$mod ALT, j, resizeactive, 0 40"
 
 	"$mod, G, togglegroup"
         "$mod SHIFT, G, moveintoorcreategroup, r"
@@ -200,6 +205,13 @@
 
       # workspace 5 — files
       windowrule = workspace 5, match:class thunar
+
+      # workspace 6 — torrents
+      windowrule = workspace 6, match:class org.qbittorrent.qBittorrent
+
+      # workspace 7 — vms
+      windowrule = workspace 7, match:class .virt-manager-wrapped
+
     '';
   };
 
