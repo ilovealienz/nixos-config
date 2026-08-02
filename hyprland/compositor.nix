@@ -204,7 +204,7 @@
       windowrule = workspace 4, match:class kitty
 
       # workspace 5 — files
-      windowrule = workspace 5, match:class thunar
+      windowrule = workspace 5, match:class (?i)thunar
 
       # workspace 6 — torrents
       windowrule = workspace 6, match:class org.qbittorrent.qBittorrent
