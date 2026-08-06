@@ -4,15 +4,23 @@
     format = "{}";
     return-type = "json";
     interval = 300;
+    tooltip = true;
+    markup = "pango";
+    escape = false;
     exec = "${pkgs.writeShellScript "weather" ''
       # ── settings ──────────────────────────────────
       LAT=53.8179442
       LON=-3.0509812
       UNITS=metric          # metric | imperial | standard
       DEGREE="°C"           # °C | °F | K  (match UNITS)
-      SEP="   "              # spacing between icon and temp
+      SEP="   "             # spacing between icon and temp
       WIND_UNIT="m/s"       # m/s for metric, mph for imperial
       CACHE_AGE=1800        # seconds before refetching
+
+      # tooltip colours
+      C_HEAD="#e5a440"      # condition heading
+      C_LABEL="#87765d"     # muted labels
+      C_VALUE="#d4b07b"     # values
       # ──────────────────────────────────────────────
 
       CACHE="$HOME/.cache/weather.json"
@@ -20,7 +28,6 @@
 
       [ -f "$KEYFILE" ] || { echo '{"text":"","tooltip":"no api key"}'; exit 0; }
       KEY=$(cat "$KEYFILE")
-
       mkdir -p "$(dirname "$CACHE")"
 
       if [ ! -f "$CACHE" ] || [ "$(( $(date +%s) - $(stat -c %Y "$CACHE") ))" -gt "$CACHE_AGE" ]; then
@@ -33,11 +40,24 @@
 
       JQ=${pkgs.jq}/bin/jq
       code=$($JQ -r '.weather[0].icon' "$CACHE")
+      desc=$($JQ -r '.weather[0].description' "$CACHE")
       temp=$($JQ -r '.main.temp | round' "$CACHE")
       feels=$($JQ -r '.main.feels_like | round' "$CACHE")
-      desc=$($JQ -r '.weather[0].description' "$CACHE")
+      tmin=$($JQ -r '.main.temp_min | round' "$CACHE")
+      tmax=$($JQ -r '.main.temp_max | round' "$CACHE")
       hum=$($JQ -r '.main.humidity' "$CACHE")
+      press=$($JQ -r '.main.pressure' "$CACHE")
       wind=$($JQ -r '.wind.speed | round' "$CACHE")
+      wdeg=$($JQ -r '.wind.deg' "$CACHE")
+      clouds=$($JQ -r '.clouds.all' "$CACHE")
+      vis=$(( $($JQ -r '.visibility' "$CACHE") / 1000 ))
+      city=$($JQ -r '.name' "$CACHE")
+      sunrise=$(date -d "@$($JQ -r '.sys.sunrise' "$CACHE")" +%H:%M)
+      sunset=$(date -d "@$($JQ -r '.sys.sunset' "$CACHE")" +%H:%M)
+
+      # wind degrees → compass point
+      dirs=(N NNE NE ENE E ESE SE SSE S SSW SW WSW W WNW NW NNW N)
+      wdir=''${dirs[$(( (wdeg + 11) / 22 ))]}
 
       case "$code" in
         01d) icon="󰖙"; class="clear"   ;;
@@ -53,10 +73,22 @@
         *)   icon="󰼯"; class="unknown" ;;
       esac
 
-      printf '{"text":"%s%s%s%s","tooltip":"%s\\nfeels like %s%s\\nhumidity %s%%\\nwind %s %s","class":"%s"}\n' \
-        "$icon" "$SEP" "$temp" "$DEGREE" \
-        "$desc" "$feels" "$DEGREE" "$hum" "$wind" "$WIND_UNIT" \
-        "$class"
+      tip="<span size='large' color='$C_HEAD'><b>$icon  $desc</b></span>
+<span color='$C_LABEL'>$city  ·  $temp$DEGREE  (feels $feels$DEGREE)</span>
+
+<span color='$C_LABEL'>high / low </span><span color='$C_VALUE'>$tmax$DEGREE / $tmin$DEGREE</span>
+<span color='$C_LABEL'>humidity   </span><span color='$C_VALUE'>$hum%</span>
+<span color='$C_LABEL'>wind       </span><span color='$C_VALUE'>$wind $WIND_UNIT  $wdir</span>
+<span color='$C_LABEL'>pressure   </span><span color='$C_VALUE'>$press hPa</span>
+<span color='$C_LABEL'>cloud      </span><span color='$C_VALUE'>$clouds%</span>
+<span color='$C_LABEL'>visibility </span><span color='$C_VALUE'>$vis km</span>
+
+<span color='$C_LABEL'>󰖜 </span><span color='$C_VALUE'>$sunrise</span>   <span color='$C_LABEL'>󰖛 </span><span color='$C_VALUE'>$sunset</span>"
+
+      tipjson=$(printf '%s' "$tip" | $JQ -Rs .)
+
+      printf '{"text":"%s%s%s%s","tooltip":%s,"class":"%s"}\n' \
+        "$icon" "$SEP" "$temp" "$DEGREE" "$tipjson" "$class"
     ''}";
   };
 
