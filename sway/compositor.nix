@@ -68,9 +68,11 @@ let
         fi
         ;;
        history)
-        choice=$( { printf 'clear all\n'; ${pkgs.mako}/bin/makoctl history; } \
+        choice=$( { printf 'clear all\n'; \
+          ${pkgs.mako}/bin/makoctl history -j \
+          | ${pkgs.jq}/bin/jq -r '.[] | "\(.id) \(.app_name): \(.summary) — \(.body)"'; } \
           | ${pkgs.wmenu}/bin/wmenu -f 'Inter 13' -N 24221c -n d4b07b -S e5a440 -s 24221c -M e5a440 -m 24221c -l 10 -p "missed:" )
-	 [ "$choice" = "clear all" ] && pkill -f 'bin/mako$'
+        [ "$choice" = "clear all" ] && pkill -f 'bin/mako$'
         ;;
     esac
   '';
