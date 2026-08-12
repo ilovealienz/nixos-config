@@ -3,7 +3,7 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ./hyprland/system.nix
+    ./sway/system.nix
     ./programs/core-packages.nix
     ./programs/gaming.nix
     ./programs/media.nix

@@ -9,28 +9,32 @@
       height = 26;
       spacing = 0;
 
-      modules-left = [ "hyprland/workspaces" ];
-      modules-center = [ "hyprland/window" ];
-      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "idle_inhibitor" ];
+      modules-left = [ "sway/workspaces" ];
+      modules-center = [ "sway/window" ];
+      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "custom/dnd" "idle_inhibitor" ];
 
-      "hyprland/workspaces" = {
-        format = "{icon}";
-        on-click = "activate";
+      "sway/workspaces" = {
+        disable-scroll = true;
         all-outputs = true;
-        active-only = false;
-        persistent-workspaces = { "*" = 5; };
+        format = "{icon}";
+        # empty list = show on every output
+        persistent-workspaces = {
+          "1" = [];
+        };
         format-icons = {
-         "1" = "󰈹"; # Firefox
-    	 "2" = "󰭹"; # Spotify
-    	 "3" = ""; # Play / MPV
-    	 "4" = ""; # Terminal
-    	 "5" = ""; # File manager
-         "6" = ""; # Torrents
-         "7" = "󰍺"; # Virtual Machines
+         "1" = "";  # firefox
+         "2" = "󰭹";  # chat
+         "3" = "";  # play
+         "4" = "";  # terminal
+         "5" = "";  # folder
+         "6" = "";   # magnet
+         "7" = "󰍺";  # monitor
+         #urgent = "\Uf0026";
+         #default = "\Uf02fc";
         };
       };
 
-      "hyprland/window" = { max-length = 60; separate-outputs = true; };
+      "sway/window" = { max-length = 60; separate-outputs = true; };
 
       tray = { spacing = 10; icon-size = 16; };
       cpu = { format = "[CPU: {usage}%]"; interval = 5; };
@@ -76,6 +80,16 @@
           on-scroll-down  = "shift_down";
         };
       };
+
+      "custom/dnd" = {
+        return-type = "json";
+        interval = 5;
+        signal = 9;
+        exec = "dnd status";
+        on-click = "dnd history";
+        on-click-right = "dnd toggle";
+      };      
+
       idle_inhibitor = {
         format = "{icon}";
         format-icons = {
@@ -98,7 +112,6 @@
       window#waybar {
         background: #24221c;
         color: #d4b07b;
-
       }
 
       tooltip {
@@ -112,22 +125,17 @@
       #workspaces button {
         font-family: "MonaspiceAr Nerd Font", monospace;
         font-size: 15px;
+        min-width: 24px;
         padding: 0 7px;
         background: #24221c;
-        color: #87765d;                      /* empty: muted */
+        color: #d4b07b;                      /* has windows */
         border-bottom: 2px solid transparent;
       }
-      #workspaces button.occupied,
-      #workspaces button.persistent {
-        color: #d4b07b;                      /* has windows: sand */
-      }
-      #workspaces button.empty {
-        color: #87765d;
-      }
-      #workspaces button.active {
-        color: #e5a440;                      /* active: amber */
+      #workspaces button.focused {
+        color: #e5a440;                      /* focused: amber */
         border-bottom: 2px solid #e5a440;
       }
+
       #workspaces button.urgent {
         background: #e56b55;
         color: #24221c;
@@ -140,7 +148,7 @@
         color: #d4b07b;
       }
 
-      /* thin toggle sliver — outline = idle on, filled = idle paused */
+      /* thin toggle sliver — dim = idle on, amber = idle paused */
       #idle_inhibitor {
         min-width: 3px;
         margin: 0 0 0 4px;
@@ -151,8 +159,14 @@
         background: #e5a440;
       }
 
+      #custom-dnd {
+        padding: 0 8px;
+        color: #e5a440;
+      }
+      #custom-dnd.dnd {
+        color: #a04a3c;
+      }
+
     '';
-
-
   };
 }

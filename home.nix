@@ -7,7 +7,7 @@
     ./home/fastfetch.nix
     ./home/local-apps.nix
     ./home/mime.nix
-    ./hyprland/home.nix
+    ./sway/home.nix
   ];
 
   home.username = "pc";

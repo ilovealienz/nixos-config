@@ -8,5 +8,6 @@
     (obs-studio.override { browserSupport = false; })
     yt-dlp
     spotify
+    streamlink
   ];
 }
