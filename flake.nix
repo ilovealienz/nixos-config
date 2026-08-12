@@ -38,6 +38,11 @@
         hostname = "laptop";
         extraModules = [ ./hosts/laptop.nix ];
       };
+      
+      x1carbon = mkHost {
+        hostname = "x1carbon";
+        extraModules = [ ./hosts/x1carbon.nix ];
+      };
     };
   };
 }
