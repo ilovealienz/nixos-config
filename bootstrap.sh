@@ -18,10 +18,10 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "which machine is this?"
-select HOST in pc laptop; do
+select HOST in pc laptop x1carbon; do
   case "$HOST" in
-    pc|laptop) break ;;
-    *) echo "pick 1-2" ;;
+    pc|laptop|x1carbon) break ;;
+    *) echo "pick 1-3" ;;
   esac
 done
 echo "-> building as #$HOST"
