@@ -1,6 +1,6 @@
 # nixos-config
 
-personal nixos config — flakes + home-manager, single desktop (hyprland). modular so it's easy to add/remove stuff.
+personal nixos config — flakes + home-manager, single desktop (sway). modular so it's easy to add/remove stuff.
 
 ## structure
 
@@ -9,32 +9,38 @@ personal nixos config — flakes + home-manager, single desktop (hyprland). modu
 ├── flake.nix                  # inputs (nixpkgs, home-manager) + hosts (pc, laptop)
 ├── configuration.nix          # shared system config
 ├── home.nix                   # home-manager root
-├── hyprland/                  # the whole desktop, self-contained
-│   ├── system.nix              # compositor enable, ly login, portals, fonts, system pkgs
-│   ├── home.nix                # imports the home-level hyprland files below
-│   ├── compositor.nix          # hyprland keybinds, rules, hyprlock/hypridle, screenshot menu
-│   ├── monitors-pc.nix         # pc monitor layout + wallpaper (host-gated)
+├── root-theme.nix             # red-tinted gtk theme for root apps (gparted etc)
+├── sway/                      # the whole desktop, self-contained
+│   ├── system.nix              # sway enable, ly login, portals, fonts, system pkgs
+│   ├── home.nix                # imports the home-level sway files below
+│   ├── compositor.nix          # keybinds, rules, swayidle/swaylock, osd + screenshot + dnd scripts
+│   ├── monitors-pc.nix         # pc monitor layout + workspace pinning (host-gated)
+│   ├── monitors-laptop.nix     # laptop panel (host-gated)
 │   ├── waybar.nix              # status bar
+│   ├── weather.nix             # waybar weather module (openweathermap)
 │   ├── fuzzel.nix              # launcher
 │   ├── mako.nix                # notifications
+│   ├── kitty.nix               # terminal
 │   └── gtk.nix                 # gtk/qt theming, icons, cursor
 ├── home/                      # desktop-agnostic home config
-│   ├── shell.nix               # zsh, aliases, functions
+│   ├── shell.nix               # zsh, prompt, aliases, functions
 │   ├── packages.nix            # user packages + nh cleanup
-│   ├── autostart.nix           # spotify + signal autostart
+│   ├── autostart.nix           # spotify + signal autostart (per-app toggles)
 │   ├── fastfetch.nix           # fastfetch config
 │   ├── local-apps.nix          # uwuplsplay, stremio-cliuwu, zipline-upload
 │   └── mime.nix                # default apps by filetype
 ├── hosts/
-│   ├── pc.nix                  # pc: amd gpu, drive mounts
-│   └── laptop.nix              # laptop: intel gpu
+│   ├── pc.nix                  # pc: gpu, drive mounts, virt, gaming
+│   └── laptop.nix              # laptop: gpu
 ├── hardware/
 │   └── graphics.nix            # mesa (amd + intel, identical)
 ├── programs/                  # system packages by category
 │   ├── core-packages.nix       # essentials
 │   ├── gaming.nix              # steam, bottles, prism, gamemode
+│   ├── virt.nix                # libvirt + virt-manager (pc only)
 │   ├── media.nix               # mpv, obs, spotify, etc
 │   ├── dev.nix                 # rust, go, python
+│   ├── language.nix            # anki, mecab, fcitx5 japanese input
 │   └── social.nix              # signal, vesktop
 └── walls/                     # wallpapers
 ```
@@ -54,7 +60,6 @@ pick the host (pc/laptop), it clones, generates hardware config, and builds.
 - `nxpush` / `nxpull` — sync with github
 - `nxedit` — fzf picker for config files
 - `nxclean` — garbage-collect old generations (keeps 3)
-
 
 ## weather widget
 
