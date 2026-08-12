@@ -161,10 +161,10 @@
 
       #custom-dnd {
         padding: 0 8px;
-        color: #e5a440;
+        color: #d4b07b;
       }
       #custom-dnd.dnd {
-        color: #a04a3c;
+        color: #806b68;
       }
 
     '';
