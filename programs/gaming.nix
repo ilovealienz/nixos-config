@@ -8,5 +8,6 @@
     bottles
     (prismlauncher.override { jdks = [ jdk25 ]; })
     protonplus
+    dolphin-emu
   ];
 }
