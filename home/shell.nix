@@ -52,6 +52,7 @@
       nxclean() { if [ "$EUID" -eq 0 ]; then echo "Do not run nxclean as root/sudo"; return 1; fi; nh clean all -k 3; }
       nxsrun() { nix-search-tv print | fzf --ansi --preview 'nix-search-tv preview {}' --reverse --query "''${1:-}" | sed 's|nixpkgs/||' | xargs -I{} nix run nixpkgs#{}; }
       nxsearch() { nix-search-tv print | fzf --ansi --preview 'nix-search-tv preview {}' --reverse --query "''${1:-}" | sed 's|nixpkgs/||'; }
+      nxport() { [ -z "''${1:-}" ] && { echo "usage: nxport <port> [close]"; return 1; }; if [ "''${2:-}" = "close" ]; then while sudo iptables -C nixos-fw -p tcp --dport "$1" -j ACCEPT 2>/dev/null; do sudo iptables -D nixos-fw -p tcp --dport "$1" -j ACCEPT; done; while sudo iptables -C nixos-fw -p udp --dport "$1" -j ACCEPT 2>/dev/null; do sudo iptables -D nixos-fw -p udp --dport "$1" -j ACCEPT; done; echo "closed $1"; else sudo iptables -C nixos-fw -p tcp --dport "$1" -j ACCEPT 2>/dev/null || sudo iptables -I nixos-fw -p tcp --dport "$1" -j ACCEPT; sudo iptables -C nixos-fw -p udp --dport "$1" -j ACCEPT 2>/dev/null || sudo iptables -I nixos-fw -p udp --dport "$1" -j ACCEPT; echo "opened $1 (tcp+udp) — until next rebuild/reboot"; fi; }	
 
       [[ -f ~/.aliases ]] && source ~/.aliases
     '';

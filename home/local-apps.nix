@@ -21,12 +21,14 @@ in
     # || true — static binaries have no .interp, patchelf failing there is fine
     ${pkgs.patchelf}/bin/patchelf --set-interpreter ${glibcPath} "$HOME/.bin/uwuplsplay" || true
     chmod +x "$HOME/.bin/uwuplsplay"
+
     # stremio-cliuwu
     if [ ! -f "$HOME/.bin/stremio-cliuwu" ]; then
       ${pkgs.curl}/bin/curl -L \
-        "https://github.com/ilovealienz/stremio-cliuwu/releases/latest/download/stremio-cliuwu-linux" \
+        "https://github.com/ilovealienz/stremio-cliuwu/releases/latest/download/stremio-cliuwu-linux-amd64" \
         -o "$HOME/.bin/stremio-cliuwu"
     fi
+
     ${pkgs.patchelf}/bin/patchelf --set-interpreter ${glibcPath} "$HOME/.bin/stremio-cliuwu" || true
     chmod +x "$HOME/.bin/stremio-cliuwu"
     # zipline-upload
