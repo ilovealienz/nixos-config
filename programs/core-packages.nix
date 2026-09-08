@@ -28,6 +28,7 @@
     gparted
     wireguard-tools
     pokeget-rs
+    localsend
     (writeShellScriptBin "chromium-browser" ''
       if pgrep floorp > /dev/null; then
         floorp "$@" &

@@ -31,6 +31,12 @@
   # Networking
   networking.networkmanager.enable = true;
 
+  # Firewall
+    networking.firewall = {
+    allowedTCPPorts = [ 53317 25567 ];
+    allowedUDPPorts = [ 53317 25567 ];
+  };
+
   # Bluetooth
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
