@@ -25,13 +25,13 @@ in
   systemd.user.services = lib.optionalAttrs autostart.spotify {
     spotify-delayed = mkDelayed {
       description = "Spotify delayed autostart";
-      delay = 5;
+      delay = 3;
       exec = "${pkgs.spotify}/bin/spotify";
     };
   } // lib.optionalAttrs autostart.signal {
     signal-delayed = mkDelayed {
       description = "Signal delayed autostart";
-      delay = 3;
+      delay = 6;
       exec = "${pkgs.signal-desktop}/bin/signal-desktop";
     };
   };

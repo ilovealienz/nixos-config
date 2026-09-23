@@ -21,9 +21,8 @@
   '';
 
   environment.systemPackages = with pkgs; [
-    bottles
     (prismlauncher.override { jdks = [ jdk25 ]; })
-    protonplus
+    protonup-qt
     dolphin-emu
   ];
 }
