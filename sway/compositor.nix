@@ -133,6 +133,28 @@ $actions"
     esac
   '';
 
+  # ── cycle tabs in the current tabbed/stacked group, wrapping around ──
+  cycleGroup = pkgs.writeShellApplication {
+    name = "sway-cycle-group";
+    runtimeInputs = [ pkgs.jq pkgs.sway ];
+    excludeShellChecks = [ "SC2016" ];
+    text = ''
+      dir=''${1:-1}
+      id=$(swaymsg -t get_tree | jq -r --argjson d "$dir" '
+        [.. | objects
+          | select(.layout == "tabbed" or .layout == "stacked")
+          | select([.nodes[] | .. | objects | select(.focused == true)] | length > 0)
+        ] | last // empty
+        | .nodes as $n
+        | ($n | length) as $len
+        | ($n | map([.. | objects | .focused] | any) | index(true)) as $i
+        | $n[((($i + $d) % $len) + $len) % $len].id')
+      if [ -n "$id" ]; then
+        swaymsg -q "[con_id=$id] focus"
+      fi
+    '';
+  };
+
 in
 {
   home.packages = [ osd screenshot-menu screenshot-capture dnd ];
@@ -223,9 +245,6 @@ in
 
       keybindings = {
 
-	"${mod}+Tab" = "focus next";
-        "${mod}+Shift+Tab" = "focus prev";
-	
         # launching
         "${mod}+Shift+r" = "exec wmenu-run -f 'Inter 13' -N 24221c -n d4b07b -S e5a440 -s 24221c";
         "${mod}+r" = "exec fuzzel";
@@ -243,6 +262,8 @@ in
         # tabbed / stacked containers (replaces hyprland groups)
         "${mod}+g" = "layout toggle tabbed split";
         "${mod}+t" = "layout toggle split";
+        "${mod}+Tab" = "exec ${lib.getExe cycleGroup} 1";
+        "${mod}+Shift+Tab" = "exec ${lib.getExe cycleGroup} -1";
 
         # focus (vim keys)
         "${mod}+h" = "focus left";
