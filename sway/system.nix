@@ -23,7 +23,7 @@
       enable = true;
       settings.screencast = {
         chooser_type = "dmenu";
-        chooser_cmd = "${pkgs.fuzzel}/bin/fuzzel --dmenu";
+        chooser_cmd = "${pkgs.callPackage ./share-chooser.nix { }}/bin/share-chooser";
       };
     };
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
