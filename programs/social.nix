@@ -5,5 +5,6 @@
     signal-desktop
     vesktop
     telegram-desktop
+    ferdium
   ];
 }

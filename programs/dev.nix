@@ -5,5 +5,6 @@
     go
     python3
     cloudflared
+    whois
   ];
 }

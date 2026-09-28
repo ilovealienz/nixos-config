@@ -5,6 +5,7 @@ let c = osConfig.theme.colors; in
     enable = true;
     settings = {
       main = {
+        exit-on-keyboard-focus-loss = "no";
         font = "Inter:size=12";
         terminal = "kitty";
         layer = "overlay";

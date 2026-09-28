@@ -11,5 +11,6 @@
     ./gtk.nix
     ./kitty.nix
     ./weather.nix
+    ./attention.nix
   ];
 }

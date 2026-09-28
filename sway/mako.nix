@@ -16,7 +16,7 @@ let c = osConfig.theme.colors; in
       width = 350;
       height = 150;
       progress-color = "over #${c.accentDim}";
-      on-button-left = "exec makoctl dismiss --no-history -n $id";
+      on-button-left = "exec makoctl invoke -n $id default; makoctl dismiss --no-history -n $id";
 
       max-history = 10;
 
