@@ -295,6 +295,7 @@ in
 
         # window management
         "${mod}+q" = "kill";
+        "${mod}+Shift+c" = "reload";
         "${mod}+Shift+e" = "exec swaynag -t warning -m 'exit sway?' -B 'yes' 'swaymsg exit'";
         "${mod}+f" = "fullscreen toggle";
         "${mod}+v" = "floating toggle";

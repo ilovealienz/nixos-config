@@ -15,6 +15,7 @@ let
     muted    = "87765d";  # dim text, labels
 
     # accent: change this one line to recolour everything
+    # original amber: e5a440
     accent = "e5a440";
 
     # text on the selection highlight
