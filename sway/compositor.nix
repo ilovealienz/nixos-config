@@ -5,7 +5,7 @@ let
   # ── volume / brightness OSD via mako (replaces swayosd, ~119MB saved) ──
   osd = pkgs.writeShellScriptBin "osd" ''
     notify() {
-      ${pkgs.libnotify}/bin/notify-send \
+      ${pkgs.libnotify}/bin/notify-send -c osd \
         -h int:value:"$2" \
         -h string:x-canonical-private-synchronous:osd \
         -t 1500 "$1" "$2%"
@@ -21,7 +21,7 @@ let
       vol-mute)
         ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
         if ${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | ${pkgs.gnugrep}/bin/grep -q MUTED; then
-          ${pkgs.libnotify}/bin/notify-send -h string:x-canonical-private-synchronous:osd -t 1500 "volume" "muted"
+          ${pkgs.libnotify}/bin/notify-send -c osd -h string:x-canonical-private-synchronous:osd -t 1500 "volume" "muted"
         else
           notify "volume" "$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | ${pkgs.gawk}/bin/awk '{print int($2*100)}')"
         fi ;;
@@ -139,6 +139,46 @@ $actions"
     runtimeInputs = [ pkgs.jq pkgs.sway ];
     excludeShellChecks = [ "SC2016" ];
     text = ''
+      # ── group-aware move / group toggle ──
+      case "''${1:-}" in
+        up|down|group)
+          IFS=$'\t' read -r wid plo gplo tgt sibs < <(swaymsg -t get_tree | jq -r '
+            . as $r
+            | (first(paths(type == "object" and .focused == true and .type == "con")) // empty) as $p
+            | select($p[-2] == "nodes")
+            | ($r | getpath($p)) as $w
+            | ($r | getpath($p[:-2])) as $par
+            | (if ($p | length) >= 4 then ($r | getpath($p[:-4])).layout else "none" end) as $gplo
+            | ([$par.nodes[] | select(.layout == "tabbed" or .layout == "stacked")] | first) as $grp
+            | (if $grp then ([$grp.nodes[] | select((.nodes | length) == 0)] | first | .id // "-") else "-" end) as $tgt
+            | (if $grp then [$par.nodes[] | select(.id != $grp.id and (.nodes | length) == 0) | .id | tostring] else [] end) as $sibs
+            | [$w.id, $par.layout, $gplo, $tgt, (if ($sibs | length) > 0 then $sibs | join(",") else "-" end)] | @tsv') || exit 0
+
+          ingroup() { [[ $plo == tabbed || $plo == stacked ]]; }
+
+          case "$1" in
+            up|down)
+              if ingroup && [[ $gplo != splitv ]]; then
+                swaymsg -q "focus parent; splitv; focus child; move $1"
+              else
+                swaymsg -q "move $1"
+              fi ;;
+            group)
+              if ingroup; then
+                swaymsg -q 'layout toggle tabbed split'
+              elif [[ $tgt != - && $sibs != - ]]; then
+                cmds="[con_id=$tgt] mark --add __grp"
+                IFS=, read -ra ids <<< "$sibs"
+                for s in "''${ids[@]}"; do cmds+="; [con_id=$s] move container to mark __grp"; done
+                swaymsg -q "$cmds; unmark __grp; [con_id=$wid] focus"
+              else
+                swaymsg -q 'layout toggle tabbed split'
+              fi ;;
+          esac
+          exit 0 ;;
+      esac
+
+      # ── Super+Tab: cycle tabs in the current group, wrapping ──
       dir=''${1:-1}
       id=$(swaymsg -t get_tree | jq -r --argjson d "$dir" '
         [.. | objects
@@ -260,7 +300,7 @@ in
         "${mod}+s" = "split toggle";
 
         # tabbed / stacked containers (replaces hyprland groups)
-        "${mod}+g" = "layout toggle tabbed split";
+        "${mod}+g" = "exec ${lib.getExe cycleGroup} group";
         "${mod}+t" = "layout toggle split";
         "${mod}+Tab" = "exec ${lib.getExe cycleGroup} 1";
         "${mod}+Shift+Tab" = "exec ${lib.getExe cycleGroup} -1";
@@ -274,8 +314,8 @@ in
         # move
         "${mod}+Shift+h" = "move left";
         "${mod}+Shift+l" = "move right";
-        "${mod}+Shift+k" = "move up";
-        "${mod}+Shift+j" = "move down";
+        "${mod}+Shift+k" = "exec ${lib.getExe cycleGroup} up";
+        "${mod}+Shift+j" = "exec ${lib.getExe cycleGroup} down";
 
         # resize
         "${mod}+Alt+h" = "resize shrink width 40px";

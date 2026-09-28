@@ -9,7 +9,7 @@ let
   mkDelayed = { description, delay, exec }: {
     Unit = {
       Description = description;
-      After = "graphical-session.target";
+      After = "sway-session.target";
     };
     Service = {
       Type = "simple";
@@ -17,7 +17,7 @@ let
       ExecStart = exec;
     };
     Install = {
-      WantedBy = [ "graphical-session.target" ];
+      WantedBy = [ "sway-session.target" ];
     };
   };
 in
@@ -25,13 +25,13 @@ in
   systemd.user.services = lib.optionalAttrs autostart.spotify {
     spotify-delayed = mkDelayed {
       description = "Spotify delayed autostart";
-      delay = 3;
+      delay = 5;
       exec = "${pkgs.spotify}/bin/spotify";
     };
   } // lib.optionalAttrs autostart.signal {
     signal-delayed = mkDelayed {
       description = "Signal delayed autostart";
-      delay = 6;
+      delay = 9;
       exec = "${pkgs.signal-desktop}/bin/signal-desktop";
     };
   };
