@@ -1,4 +1,5 @@
-{ ... }:
+{ osConfig, ... }:
+let c = osConfig.theme.colors; in
 {
   programs.kitty = {
     enable = true;
@@ -8,26 +9,26 @@
     };
     settings = {
       # DesertNight by sainnhe
-      foreground = "#d4b07b";
-      background = "#24221c";
+      foreground = "#${c.fg}";
+      background = "#${c.bg}";
 
-      color0  = "#473f31";  color8  = "#473f31";
-      color1  = "#e56b55";  color9  = "#e56b55";
-      color2  = "#99b05f";  color10 = "#99b05f";
-      color3  = "#e18245";  color11 = "#e5a440";
-      color4  = "#949fb4";  color12 = "#949fb4";
-      color5  = "#d261a5";  color13 = "#d261a5";
-      color6  = "#bfab36";  color14 = "#bfab36";
-      color7  = "#87765d";  color15 = "#87765d";
+      color0  = "#${c.surface}";  color8  = "#${c.surface}";
+      color1  = "#${c.red}";  color9  = "#${c.red}";
+      color2  = "#${c.green}";  color10 = "#${c.green}";
+      color3  = "#${c.orange}";  color11 = "#${c.accent}";
+      color4  = "#${c.blue}";  color12 = "#${c.blue}";
+      color5  = "#${c.magenta}";  color13 = "#${c.magenta}";
+      color6  = "#${c.yellow}";  color14 = "#${c.yellow}";
+      color7  = "#${c.muted}";  color15 = "#${c.muted}";
 
-      active_tab_foreground   = "#eeeeee";
-      active_tab_background   = "#2b2922";
-      inactive_tab_foreground = "#d4b07b";
-      inactive_tab_background = "#1d1b16";
+      active_tab_foreground   = "#${c.fgBright}";
+      active_tab_background   = "#${c.bgAlt}";
+      inactive_tab_foreground = "#${c.fg}";
+      inactive_tab_background = "#${c.bgDark}";
 
-      cursor = "#d4b07b";
-      selection_background = "#473f31";
-      selection_foreground = "#24221c";
+      cursor = "#${c.fg}";
+      selection_background = "#${c.surface}";
+      selection_foreground = "#${c.bg}";
     };
   };
 }

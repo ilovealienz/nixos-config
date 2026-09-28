@@ -1,4 +1,5 @@
-{ pkgs, ... }:
+{ pkgs, osConfig, ... }:
+let c = osConfig.theme.colors; in
 {
   # ── GTK theme (dark) + compact headerbar CSS ──
   gtk = {
@@ -13,44 +14,51 @@
     };
     gtk3.extraCss = ''
       /* ── Desert Night palette (recolours adw-gtk3 like Stylix did) ── */
-      @define-color window_bg_color #24221c;
-      @define-color window_fg_color #d4b07b;
-      @define-color view_bg_color #2f2c24;
-      @define-color view_fg_color #d4b07b;
-      @define-color headerbar_bg_color #24221c;
-      @define-color headerbar_fg_color #d4b07b;
-      @define-color headerbar_border_color #473f31;
-      @define-color headerbar_backdrop_color #2f2c24;
-      @define-color popover_bg_color #2f2c24;
-      @define-color popover_fg_color #d4b07b;
-      @define-color card_bg_color #2f2c24;
-      @define-color card_fg_color #d4b07b;
-      @define-color dialog_bg_color #24221c;
-      @define-color dialog_fg_color #d4b07b;
-      @define-color sidebar_bg_color #2f2c24;
-      @define-color sidebar_fg_color #d4b07b;
-      @define-color sidebar_border_color #473f31;
-      @define-color sidebar_backdrop_color #24221c;
-      @define-color accent_color #e5a440;
-      @define-color accent_bg_color #e5a440;
-      @define-color accent_fg_color #24221c;
-      @define-color destructive_color #e56b55;
-      @define-color destructive_bg_color #e56b55;
-      @define-color success_color #99b05f;
-      @define-color warning_color #e18245;
-      @define-color error_color #e56b55;
+      @define-color window_bg_color #${c.bg};
+      @define-color window_fg_color #${c.fg};
+      @define-color view_bg_color #${c.bgAlt};
+      @define-color view_fg_color #${c.fg};
+      @define-color headerbar_bg_color #${c.bg};
+      @define-color headerbar_fg_color #${c.fg};
+      @define-color headerbar_border_color #${c.surface};
+      @define-color headerbar_backdrop_color #${c.bgAlt};
+      @define-color popover_bg_color #${c.bgAlt};
+      @define-color popover_fg_color #${c.fg};
+      @define-color card_bg_color #${c.bgAlt};
+      @define-color card_fg_color #${c.fg};
+      @define-color dialog_bg_color #${c.bg};
+      @define-color dialog_fg_color #${c.fg};
+      @define-color sidebar_bg_color #${c.bgAlt};
+      @define-color sidebar_fg_color #${c.fg};
+      @define-color sidebar_border_color #${c.surface};
+      @define-color sidebar_backdrop_color #${c.bg};
+      @define-color accent_color #${c.accent};
+      @define-color accent_bg_color #${c.accent};
+      @define-color accent_fg_color #${c.bg};
+      @define-color destructive_color #${c.red};
+      @define-color destructive_bg_color #${c.red};
+      @define-color success_color #${c.green};
+      @define-color warning_color #${c.orange};
+      @define-color error_color #${c.red};
       /* legacy gtk3 names */
-      @define-color theme_bg_color #24221c;
-      @define-color theme_fg_color #d4b07b;
-      @define-color theme_base_color #2f2c24;
-      @define-color theme_text_color #d4b07b;
-      @define-color theme_selected_bg_color #e5a440;
-      @define-color theme_selected_fg_color #24221c;
-      @define-color insensitive_bg_color #2f2c24;
-      @define-color insensitive_fg_color #87765d;
-      @define-color borders #473f31;
-      @define-color menu_color #2f2c24;
-      @define-color popup_bg_color #2f2c24;
+      @define-color theme_bg_color #${c.bg};
+      @define-color theme_fg_color #${c.fg};
+      @define-color theme_base_color #${c.bgAlt};
+      @define-color theme_text_color #${c.fg};
+      @define-color theme_selected_bg_color #${c.selectionBg};
+      @define-color theme_selected_fg_color #${c.selectionFg};
+      @define-color insensitive_bg_color #${c.bgAlt};
+      @define-color insensitive_fg_color #${c.muted};
+      @define-color borders #${c.surface};
+      @define-color menu_color #${c.bgAlt};
+      @define-color popup_bg_color #${c.bgAlt};
+      /* ── selected files/rows: readable highlight (Thunar etc.) ── */
+      .view:selected, .view:selected:focus, .view row:selected,
+      treeview.view:selected, iconview:selected,
+      .view:selected:backdrop, .view row:selected:backdrop {
+          color: #${c.selectionFg};
+          background-color: #${c.selectionBg};
+      }
       headerbar {
           min-height: 10px;
           padding: 0;
@@ -94,44 +102,44 @@
     };
     gtk4.extraCss = ''
       /* ── Desert Night palette (recolours adw-gtk3 like Stylix did) ── */
-      @define-color window_bg_color #24221c;
-      @define-color window_fg_color #d4b07b;
-      @define-color view_bg_color #2f2c24;
-      @define-color view_fg_color #d4b07b;
-      @define-color headerbar_bg_color #24221c;
-      @define-color headerbar_fg_color #d4b07b;
-      @define-color headerbar_border_color #473f31;
-      @define-color headerbar_backdrop_color #2f2c24;
-      @define-color popover_bg_color #2f2c24;
-      @define-color popover_fg_color #d4b07b;
-      @define-color card_bg_color #2f2c24;
-      @define-color card_fg_color #d4b07b;
-      @define-color dialog_bg_color #24221c;
-      @define-color dialog_fg_color #d4b07b;
-      @define-color sidebar_bg_color #2f2c24;
-      @define-color sidebar_fg_color #d4b07b;
-      @define-color sidebar_border_color #473f31;
-      @define-color sidebar_backdrop_color #24221c;
-      @define-color accent_color #e5a440;
-      @define-color accent_bg_color #e5a440;
-      @define-color accent_fg_color #24221c;
-      @define-color destructive_color #e56b55;
-      @define-color destructive_bg_color #e56b55;
-      @define-color success_color #99b05f;
-      @define-color warning_color #e18245;
-      @define-color error_color #e56b55;
+      @define-color window_bg_color #${c.bg};
+      @define-color window_fg_color #${c.fg};
+      @define-color view_bg_color #${c.bgAlt};
+      @define-color view_fg_color #${c.fg};
+      @define-color headerbar_bg_color #${c.bg};
+      @define-color headerbar_fg_color #${c.fg};
+      @define-color headerbar_border_color #${c.surface};
+      @define-color headerbar_backdrop_color #${c.bgAlt};
+      @define-color popover_bg_color #${c.bgAlt};
+      @define-color popover_fg_color #${c.fg};
+      @define-color card_bg_color #${c.bgAlt};
+      @define-color card_fg_color #${c.fg};
+      @define-color dialog_bg_color #${c.bg};
+      @define-color dialog_fg_color #${c.fg};
+      @define-color sidebar_bg_color #${c.bgAlt};
+      @define-color sidebar_fg_color #${c.fg};
+      @define-color sidebar_border_color #${c.surface};
+      @define-color sidebar_backdrop_color #${c.bg};
+      @define-color accent_color #${c.accent};
+      @define-color accent_bg_color #${c.accent};
+      @define-color accent_fg_color #${c.bg};
+      @define-color destructive_color #${c.red};
+      @define-color destructive_bg_color #${c.red};
+      @define-color success_color #${c.green};
+      @define-color warning_color #${c.orange};
+      @define-color error_color #${c.red};
       /* legacy gtk3 names */
-      @define-color theme_bg_color #24221c;
-      @define-color theme_fg_color #d4b07b;
-      @define-color theme_base_color #2f2c24;
-      @define-color theme_text_color #d4b07b;
-      @define-color theme_selected_bg_color #e5a440;
-      @define-color theme_selected_fg_color #24221c;
-      @define-color insensitive_bg_color #2f2c24;
-      @define-color insensitive_fg_color #87765d;
-      @define-color borders #473f31;
-      @define-color menu_color #2f2c24;
-      @define-color popup_bg_color #2f2c24;
+      @define-color theme_bg_color #${c.bg};
+      @define-color theme_fg_color #${c.fg};
+      @define-color theme_base_color #${c.bgAlt};
+      @define-color theme_text_color #${c.fg};
+      @define-color theme_selected_bg_color #${c.accent};
+      @define-color theme_selected_fg_color #${c.bg};
+      @define-color insensitive_bg_color #${c.bgAlt};
+      @define-color insensitive_fg_color #${c.muted};
+      @define-color borders #${c.surface};
+      @define-color menu_color #${c.bgAlt};
+      @define-color popup_bg_color #${c.bgAlt};
       headerbar {
           min-height: 10px;
           padding: 0px;

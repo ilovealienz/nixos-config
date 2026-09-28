@@ -1,4 +1,5 @@
-{ ... }:
+{ osConfig, ... }:
+let c = osConfig.theme.colors; in
 {
   programs.fuzzel = {
     enable = true;
@@ -16,13 +17,13 @@
         inner-pad = 8;
       };
       colors = {
-        background = "24221cee";
-        text = "d4b07bff";
-        match = "e5a440ff";
-        selection = "473f31ff";
-        selection-text = "ede0c8ff";
-        selection-match = "e5a440ff";
-        border = "e5a440ff";
+        background = "${c.bg}ee";
+        text = "${c.fg}ff";
+        match = "${c.accent}ff";
+        selection = "${c.surface}ff";
+        selection-text = "${c.fgBright}ff";
+        selection-match = "${c.accent}ff";
+        border = "${c.accent}ff";
       };
       border = {
         width = 2;

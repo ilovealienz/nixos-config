@@ -1,4 +1,5 @@
-{ pkgs, ... }:
+{ pkgs, osConfig, ... }:
+let c = osConfig.theme.colors; in
 {
   programs.waybar = {
     enable = true;
@@ -67,11 +68,11 @@
           mode-mon-col = 3;
           weeks-pos = "right";
           format = {
-            months    = "<span color='#e5a440'><b>{}</b></span>";
-            days      = "<span color='#d4b07b'>{}</span>";
-            weeks     = "<span color='#87765d'>W{}</span>";
-            weekdays  = "<span color='#e18245'><b>{}</b></span>";
-            today     = "<span color='#e56b55'><b><u>{}</u></b></span>";
+            months    = "<span color='#${c.accent}'><b>{}</b></span>";
+            days      = "<span color='#${c.fg}'>{}</span>";
+            weeks     = "<span color='#${c.muted}'>W{}</span>";
+            weekdays  = "<span color='#${c.orange}'><b>{}</b></span>";
+            today     = "<span color='#${c.red}'><b><u>{}</u></b></span>";
           };
         };
         actions = {
@@ -110,16 +111,16 @@
       }
 
       window#waybar {
-        background: #24221c;
-        color: #d4b07b;
+        background: #${c.bg};
+        color: #${c.fg};
       }
 
       tooltip {
-        background-color: #24221c;
-        border: 0px solid #e5a440;
+        background-color: #${c.bg};
+        border: 0px solid #${c.accent};
       }
       tooltip label {
-        color: #d4b07b;
+        color: #${c.fg};
       }
 
       #workspaces button {
@@ -127,25 +128,25 @@
         font-size: 15px;
         min-width: 24px;
         padding: 0 7px;
-        background: #24221c;
-        color: #d4b07b;                      /* has windows */
+        background: #${c.bg};
+        color: #${c.fg};                      /* has windows */
         border-bottom: 2px solid transparent;
       }
       #workspaces button.focused {
-        color: #e5a440;                      /* focused: amber */
-        border-bottom: 2px solid #e5a440;
+        color: #${c.accent};                      /* focused: amber */
+        border-bottom: 2px solid #${c.accent};
       }
 
       #workspaces button.urgent {
-        background: #e56b55;
-        color: #24221c;
+        background: #${c.red};
+        color: #${c.bg};
       }
 
-      #window { color: #87765d; }
+      #window { color: #${c.muted}; }
 
       #tray, #cpu, #memory, #pulseaudio, #network, #battery, #clock {
         padding: 0 3px;
-        color: #d4b07b;
+        color: #${c.fg};
       }
 
       /* thin toggle sliver — dim = idle on, amber = idle paused */
@@ -153,18 +154,18 @@
         min-width: 3px;
         margin: 0 0 0 4px;
         padding: 0;
-        background: #473f31;
+        background: #${c.surface};
       }
       #idle_inhibitor.activated {
-        background: #e5a440;
+        background: #${c.accent};
       }
 
       #custom-dnd {
         padding: 0 8px;
-        color: #d4b07b;
+        color: #${c.fg};
       }
       #custom-dnd.dnd {
-        color: #806b68;
+        color: #${c.muted};
       }
 
     '';

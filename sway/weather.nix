@@ -1,4 +1,5 @@
-{ pkgs, ... }:
+{ pkgs, osConfig, ... }:
+let c = osConfig.theme.colors; in
 {
   programs.waybar.settings.mainBar."custom/weather" = {
     format = "{}";
@@ -18,9 +19,9 @@
       CACHE_AGE=1800        # seconds before refetching
 
       # tooltip colours
-      C_HEAD="#e5a440"      # condition heading
-      C_LABEL="#87765d"     # muted labels
-      C_VALUE="#d4b07b"     # values
+      C_HEAD="#${c.accent}"      # condition heading
+      C_LABEL="#${c.muted}"     # muted labels
+      C_VALUE="#${c.fg}"     # values
       # ──────────────────────────────────────────────
 
       CACHE="$HOME/.cache/weather.json"
@@ -93,10 +94,10 @@
   };
 
   programs.waybar.style = ''
-    #custom-weather { padding: 0 9px; color: #d4b07b; }
-    #custom-weather.clear  { color: #e5a440; }
-    #custom-weather.rainy  { color: #949fb4; }
-    #custom-weather.stormy { color: #e56b55; }
-    #custom-weather.snowy  { color: #bfab36; }
+    #custom-weather { padding: 0 9px; color: #${c.fg}; }
+    #custom-weather.clear  { color: #${c.accent}; }
+    #custom-weather.rainy  { color: #${c.blue}; }
+    #custom-weather.stormy { color: #${c.red}; }
+    #custom-weather.snowy  { color: #${c.yellow}; }
   '';
 }

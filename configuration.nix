@@ -11,6 +11,7 @@
     ./programs/dev.nix
     ./programs/language.nix
     ./root-theme.nix
+    ./theme.nix
   ];
 
   # Debloat

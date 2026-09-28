@@ -1,11 +1,12 @@
-{ ... }:
+{ osConfig, ... }:
+let c = osConfig.theme.colors; in
 {
   services.mako = {
     enable = true;
     settings = {
-      background-color = "#24221c";
-      text-color = "#d4b07b";
-      border-color = "#e5a440";
+      background-color = "#${c.bg}";
+      text-color = "#${c.fg}";
+      border-color = "#${c.accent}";
       border-size = 2;
       border-radius = 0;
       font = "Inter 11";
@@ -14,14 +15,14 @@
       default-timeout = 5000;
       width = 350;
       height = 150;
-      progress-color = "over #523e20";
+      progress-color = "over #${c.accentDim}";
       on-button-left = "exec makoctl dismiss --no-history -n $id";
 
       max-history = 10;
 
       "urgency=high" = {
-        border-color = "#e56b55";
-        text-color = "#e56b55";
+        border-color = "#${c.red}";
+        text-color = "#${c.red}";
       };
 
       "mode=dnd" = {

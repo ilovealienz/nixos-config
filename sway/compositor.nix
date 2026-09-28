@@ -1,4 +1,5 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, osConfig, ... }:
+let c = osConfig.theme.colors; in
 let
   mod = "Mod4";
 
@@ -63,7 +64,7 @@ let
 
     [ -s "$file" ] || exit 0            # cancelled, nothing captured
 
-    MENU="${pkgs.wmenu}/bin/wmenu -f 'Inter 14' -N 24221c -n d4b07b -S e5a440 -s 24221c -M e5a440 -m 24221c -l 6 -p 'shot:'"
+    MENU="${pkgs.wmenu}/bin/wmenu -f 'Inter 14' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg} -M ${c.accent} -m ${c.bg} -l 6 -p 'shot:'"
 
     actions='upload (zipline)
 upload advanced
@@ -127,7 +128,7 @@ $actions"
         choice=$( { printf 'clear all\n'; \
           ${pkgs.mako}/bin/makoctl history -j \
           | ${pkgs.jq}/bin/jq -r '.[] | "\(.id) \(.app_name): \(.summary) — \(.body)"'; } \
-          | ${pkgs.wmenu}/bin/wmenu -f 'Inter 13' -N 24221c -n d4b07b -S e5a440 -s 24221c -M e5a440 -m 24221c -l 10 -p "missed:" )
+          | ${pkgs.wmenu}/bin/wmenu -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg} -M ${c.accent} -m ${c.bg} -l 10 -p "missed:" )
         [ "$choice" = "clear all" ] && pkill -f 'bin/mako$'
         ;;
     esac
@@ -205,7 +206,7 @@ in
     config = {
       modifier = mod;
       terminal = "kitty";
-      menu = "wmenu-run -f 'Inter 13' -N 24221c -n d4b07b -S e5a440 -s 24221c";
+      menu = "wmenu-run -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg}";
 
       # mod + drag to move, mod + right-drag to resize
       floating.modifier = mod;
@@ -240,20 +241,20 @@ in
       # ── desert night colours ──
       colors = {
         focused = {
-          border = "#e5a440"; background = "#e5a440"; text = "#24221c";
-          indicator = "#e5a440"; childBorder = "#e5a440";
+          border = "#${c.accent}"; background = "#${c.accent}"; text = "#${c.bg}";
+          indicator = "#${c.accent}"; childBorder = "#${c.accent}";
         };
         focusedInactive = {
-          border = "#473f31"; background = "#473f31"; text = "#d4b07b";
-          indicator = "#473f31"; childBorder = "#473f31";
+          border = "#${c.surface}"; background = "#${c.surface}"; text = "#${c.fg}";
+          indicator = "#${c.surface}"; childBorder = "#${c.surface}";
         };
         unfocused = {
-          border = "#473f31"; background = "#24221c"; text = "#87765d";
-          indicator = "#473f31"; childBorder = "#473f31";
+          border = "#${c.surface}"; background = "#${c.bg}"; text = "#${c.muted}";
+          indicator = "#${c.surface}"; childBorder = "#${c.surface}";
         };
         urgent = {
-          border = "#e56b55"; background = "#e56b55"; text = "#24221c";
-          indicator = "#e56b55"; childBorder = "#e56b55";
+          border = "#${c.red}"; background = "#${c.red}"; text = "#${c.bg}";
+          indicator = "#${c.red}"; childBorder = "#${c.red}";
         };
       };
 
@@ -286,7 +287,7 @@ in
       keybindings = {
 
         # launching
-        "${mod}+Shift+r" = "exec wmenu-run -f 'Inter 13' -N 24221c -n d4b07b -S e5a440 -s 24221c";
+        "${mod}+Shift+r" = "exec wmenu-run -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg}";
         "${mod}+r" = "exec fuzzel";
         "${mod}+Shift+x" = "exec swaylock";
 	"${mod}+Return" = "exec kitty; workspace number 4";
@@ -400,15 +401,15 @@ in
   programs.swaylock = {
     enable = true;
     settings = {
-      color = "24221c";
+      color = "${c.bg}";
       indicator-radius = 100;
       indicator-thickness = 10;
-      ring-color = "e5a440";
-      inside-color = "473f31";
-      text-color = "d4b07b";
-      key-hl-color = "99b05f";
-      line-color = "24221c";
-      separator-color = "24221c";
+      ring-color = "${c.accent}";
+      inside-color = "${c.surface}";
+      text-color = "${c.fg}";
+      key-hl-color = "${c.green}";
+      line-color = "${c.bg}";
+      separator-color = "${c.bg}";
       show-failed-attempts = true;
     };
   };
