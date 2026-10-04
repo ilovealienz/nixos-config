@@ -35,11 +35,16 @@ done)
 
 labels=$(printf '%s\n' "$avail" | cut -d'|' -f1)
 
+# a full url fills the row and leaves no space for the options, so show
+# the host and a truncated path instead
+prompt=$(printf '%s' "$url" | sed -E 's|^[a-z]+://||' | cut -c1-44)
+[ "${#url}" -gt 48 ] && prompt="$prompt…"
+
 if [ "$(printf '%s\n' "$labels" | wc -l)" -eq 1 ]; then
     choice=$labels
 else
     choice=$(printf '%s' "$labels" | wmenu -i \
-        -p "$url" \
+        -p "$prompt" \
         -N 24221c -n d4b07b -S e5a440 -s 24221c \
         -f 'Inter 13') || exit 0
 fi
