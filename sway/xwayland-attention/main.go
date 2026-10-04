@@ -1,10 +1,16 @@
-// xwayland-attention marks XWayland windows urgent in sway when they ask
-// for attention, and shows how many times they asked in the title.
+// xwayland-attention shows how many times XWayland windows asked for
+// attention in their title, and can optionally mark them urgent in sway.
 //
 // Wine (and other X11 apps) request attention by sending a _NET_WM_STATE
 // client message that adds _NET_WM_STATE_DEMANDS_ATTENTION. Sway ignores
 // that, so this listens for it on the XWayland root window and instead:
 //   - sets its title to "(N) <title>", counting requests like Discord does
+//   - if the urgent toggle is on, also runs sway's `urgent enable`
+//     (red border, red workspace in waybar). The toggle is a flag file:
+//     $XDG_STATE_HOME/xwayland-attention/urgent (exists = on).
+//
+// An optional first argument is appended to every title it sets, so it
+// matches your own title_format rule (e.g. " [XWayland]").
 //
 // Focusing the window resets the count and restores the normal title.
 // Requests from the window you're already looking at are ignored.
@@ -20,6 +26,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/jezek/xgb"
@@ -77,6 +84,23 @@ type state struct {
 	focused uint32         // X11 id of the focused window (0 if not X11)
 }
 
+// suffix is appended after %title in every title_format we set.
+var suffix = ""
+
+// urgentFlag is the file whose existence turns urgency on.
+func urgentFlag() string {
+	dir := os.Getenv("XDG_STATE_HOME")
+	if dir == "" {
+		dir = os.Getenv("HOME") + "/.local/state"
+	}
+	return dir + "/xwayland-attention/urgent"
+}
+
+func urgentOn() bool {
+	_, err := os.Stat(urgentFlag())
+	return err == nil
+}
+
 // run sends a sway command and waits for its reply. Caller holds s.mu.
 func (s *state) run(cmd string) {
 	ipcSend(s.cmd, ipcRunCommand, cmd)
@@ -91,7 +115,11 @@ func (s *state) attention(wid uint32) {
 		return
 	}
 	s.counts[wid]++
-	s.run(fmt.Sprintf(`[id=%d] title_format "(%d) %%title"`, wid, s.counts[wid]))
+	cmd := fmt.Sprintf(`[id=%d] title_format "(%d) %%title%s"`, wid, s.counts[wid], suffix)
+	if urgentOn() {
+		cmd += ", urgent enable"
+	}
+	s.run(cmd)
 	s.mu.Unlock()
 }
 
@@ -101,7 +129,7 @@ func (s *state) focus(wid uint32) {
 	s.focused = wid
 	if _, had := s.counts[wid]; had {
 		delete(s.counts, wid)
-		s.run(fmt.Sprintf(`[id=%d] title_format "%%title"`, wid))
+		s.run(fmt.Sprintf(`[id=%d] title_format "%%title%s"`, wid, suffix))
 	}
 	s.mu.Unlock()
 }
@@ -157,6 +185,9 @@ func atom(conn *xgb.Conn, name string) xproto.Atom {
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		suffix = strings.ReplaceAll(os.Args[1], `"`, `\"`)
+	}
 	s := &state{counts: map[uint32]int{}, cmd: ipcDial()}
 
 	conn, err := xgb.NewConn()

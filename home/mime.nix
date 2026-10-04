@@ -3,7 +3,8 @@ let
   video   = "mpv.desktop";
   audio   = "mpv.desktop";
   image   = "feh.desktop";
-  browser = "floorp.desktop";
+  browser = "urlopen.desktop";
+  pdf     = "floorp.desktop";
   editor  = "codium.desktop";
   files   = "thunar.desktop";
   archive = "xarchiver.desktop";
@@ -38,7 +39,7 @@ let
     "image/tiff" = image;
     "image/svg+xml" = image;
 
-    "application/pdf" = browser;
+    "application/pdf" = pdf;
 
     "text/plain" = editor;
     "text/markdown" = editor;

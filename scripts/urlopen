@@ -1,0 +1,72 @@
+#!/bin/sh
+# Browser chooser. Shows a horizontal wmenu with the default first, so
+# Enter takes it and right-arrow picks another.
+#
+# Entries whose command isn't installed are dropped from the menu.
+
+set -u
+
+url=${1:-}
+
+# label|command  — first installed entry is the default
+ENTRIES='brave|brave
+floorp|floorp
+chromium|chromium
+brave private|brave --incognito
+floorp private|floorp --private-window
+mpv|mpv
+copy|@copy
+qr|@qr'
+
+if [ -z "$url" ]; then
+    exec brave
+fi
+
+# keep only entries whose binary exists
+avail=$(printf '%s\n' "$ENTRIES" | while IFS='|' read -r label cmd; do
+    case "$cmd" in
+        @*) printf '%s|%s\n' "$label" "$cmd" ;;
+        *)  bin=${cmd%% *}
+            command -v "$bin" >/dev/null 2>&1 && printf '%s|%s\n' "$label" "$cmd" ;;
+    esac
+done)
+
+[ -n "$avail" ] || { notify-send -u critical "urlopen" "nothing available"; exit 1; }
+
+labels=$(printf '%s\n' "$avail" | cut -d'|' -f1)
+
+if [ "$(printf '%s\n' "$labels" | wc -l)" -eq 1 ]; then
+    choice=$labels
+else
+    choice=$(printf '%s' "$labels" | wmenu -i \
+        -p "$url" \
+        -N 24221c -n d4b07b -S e5a440 -s 24221c \
+        -f 'Inter 13') || exit 0
+fi
+
+[ -n "$choice" ] || exit 0
+
+cmd=$(printf '%s\n' "$avail" | awk -F'|' -v l="$choice" '$1==l {print $2; exit}')
+[ -n "$cmd" ] || exit 0
+
+case "$cmd" in
+    @copy)
+        printf '%s' "$url" | wl-copy
+        notify-send "urlopen" "copied"
+        exit 0
+        ;;
+    @qr)
+        # qrencode writes to stdout; imv reads from stdin with -
+        if command -v qrencode >/dev/null 2>&1; then
+            qrencode -o - -s 8 -m 2 "$url" | imv - 2>/dev/null &
+        else
+            notify-send -u critical "urlopen" "qrencode not installed"
+        fi
+        exit 0
+        ;;
+esac
+
+# launch detached so the browser survives the caller exiting; otherwise it
+# is killed with the process group and reports an unclean shutdown
+# shellcheck disable=SC2086
+setsid -f $cmd "$url" >/dev/null 2>&1

@@ -12,5 +12,6 @@
     ./kitty.nix
     ./weather.nix
     ./attention.nix
+    ./extract.nix
   ];
 }
