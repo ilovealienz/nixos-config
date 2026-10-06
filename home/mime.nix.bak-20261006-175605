@@ -80,16 +80,14 @@ EOF
     } > "$file"
   '';
 
-  # Block the recent-files store outright. A symlink to /dev/null does
-  # not work: GTK writes a temp file and renames it over the path, which
-  # replaces the link. A directory cannot be renamed over, so the write
-  # fails and nothing is recorded.
+  # Stop anything recording recent files; the GTK settings keys only
+  # cover GTK3, so the store itself is pointed at /dev/null
   home.activation.noRecentFiles = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     f="$HOME/.local/share/recently-used.xbel"
     mkdir -p "$(dirname "$f")"
-    if [ ! -d "$f" ]; then
+    if [ ! -L "$f" ]; then
       rm -f "$f"
-      mkdir "$f"
+      ln -s /dev/null "$f"
     fi
   '';
 }
