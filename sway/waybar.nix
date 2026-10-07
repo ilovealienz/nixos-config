@@ -12,7 +12,7 @@ let c = osConfig.theme.colors; in
 
       modules-left = [ "sway/workspaces" ];
       modules-center = [ "sway/window" ];
-      modules-right = [ "tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "custom/dnd" "idle_inhibitor" ];
+      modules-right = [ "custom/rec" "tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "custom/dnd" "idle_inhibitor" ];
 
       "sway/workspaces" = {
         disable-scroll = true;
@@ -89,6 +89,14 @@ let c = osConfig.theme.colors; in
         exec = "dnd status";
         on-click = "dnd history";
         on-click-right = "dnd toggle";
+      };
+
+      "custom/rec" = {
+        return-type = "json";
+        interval = 1;
+        signal = 8;
+        exec = "screenrec status";
+        on-click = "screenrec";
       };      
 
       idle_inhibitor = {
@@ -166,6 +174,12 @@ let c = osConfig.theme.colors; in
       }
       #custom-dnd.dnd {
         color: #${c.muted};
+      }
+
+      #custom-rec {
+        padding: 0 8px;
+        color: #${c.bg};
+        background: #${c.red};
       }
 
     '';

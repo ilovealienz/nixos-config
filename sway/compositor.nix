@@ -111,6 +111,112 @@ $actions"
     esac
   '';
 
+  # ── screen recording: select region → record → act ───────────────
+  # Toggle: first run starts, second run (or clicking the bar module)
+  # stops. Records desktop audio only, via the default sink's monitor.
+  # wl-screenrec encodes on the GPU (VAAPI) and falls back to a software
+  # encoder when that fails, e.g. no VAAPI driver.
+  # Recording process name, used for pgrep/pkill:
+  #   wl-screenrec (current) and wf-recorder (older versions of this script)
+  screenrec = pkgs.writeShellScriptBin "screenrec" ''
+    state="''${XDG_RUNTIME_DIR:-/tmp}/screenrec.state"
+    running() { ${pkgs.procps}/bin/pgrep -x 'wl-screenrec|wf-recorder' >/dev/null; }
+    sig() { ${pkgs.procps}/bin/pkill "$1" -x 'wl-screenrec|wf-recorder'; }
+    bar() { ${pkgs.procps}/bin/pkill -RTMIN+8 waybar; }
+
+    # ── waybar module ──
+    if [ "''${1:-}" = status ]; then
+      if running && [ -f "$state" ]; then
+        s=$(( $(date +%s) - $(stat -c %Y "$state") ))
+        printf '{"text":"● REC %02d:%02d","class":"recording","tooltip":"click to stop"}\n' \
+          $((s / 60)) $((s % 60))
+      else
+        printf '{"text":""}\n'
+      fi
+      exit 0
+    fi
+
+    # recorder running with no state file is left over from a failed
+    # stop; clear it so this run starts a new recording
+    if running && [ ! -f "$state" ]; then
+      sig -KILL
+      sleep 0.2
+    fi
+
+    # ── stop ──
+    if running; then
+      # SIGINT so the recorder finishes writing the file
+      sig -INT
+      i=0
+      while running && [ "$i" -lt 50 ]; do i=$((i + 1)); sleep 0.1; done
+      if running; then
+        sig -KILL
+        ${pkgs.libnotify}/bin/notify-send -u critical "recording" "recorder did not stop, killed it"
+      fi
+
+      file=$(cat "$state" 2>/dev/null)
+      rm -f "$state"
+      bar
+
+      if [ -z "$file" ] || [ ! -s "$file" ]; then
+        ${pkgs.libnotify}/bin/notify-send -u critical "recording" "no file produced"
+        exit 1
+      fi
+
+      size=$(du -h "$file" | cut -f1)
+      MENU="${pkgs.wmenu}/bin/wmenu -f 'Inter 14' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg} -M ${c.accent} -m ${c.bg} -l 5 -p 'rec ($size):'"
+      choice=$(printf 'upload (zipline)\ncopy path\nopen\nsave only\ndelete' | eval "$MENU")
+
+      case "$choice" in
+        "upload (zipline)") "$HOME/.bin/zipline-upload" "$file" ;;
+        "copy path")        printf '%s' "$file" | ${pkgs.wl-clipboard}/bin/wl-copy ;;
+        open)               ${pkgs.xdg-utils}/bin/xdg-open "$file" >/dev/null 2>&1 & ;;
+        "save only")        ${pkgs.libnotify}/bin/notify-send -c osd "recording" "saved to $file" ;;
+        delete)             rm -f "$file" ;;
+        *)                  : ;;
+      esac
+      exit 0
+    fi
+
+    # ── start ──
+    vids=$(${pkgs.xdg-user-dirs}/bin/xdg-user-dir VIDEOS 2>/dev/null || echo "$HOME/Videos")
+    dir="$vids/Recordings/$(date +%Y-%m)"
+    mkdir -p "$dir"
+    file="$dir/$(date +%Y-%m-%d_%H-%M-%S).mp4"
+
+    # -o: click a monitor to record all of it, or drag a region
+    geom=$(${pkgs.slurp}/bin/slurp -d -o 2>/dev/null) || exit 0
+    [ -n "$geom" ] || exit 0
+
+    # monitor of the default sink = desktop audio without the mic
+    sink=$(${pkgs.pulseaudio}/bin/pactl get-default-sink 2>/dev/null)
+    if [ -z "$sink" ]; then
+      ${pkgs.libnotify}/bin/notify-send -u critical "recording" "no audio output found"
+      exit 1
+    fi
+
+    set -- -g "$geom" --audio --audio-device "$sink.monitor" -f "$file"
+    printf '%s' "$file" > "$state"
+
+    start() {
+      ${pkgs.util-linux}/bin/setsid -f ${pkgs.wl-screenrec}/bin/wl-screenrec "$@" >/dev/null 2>&1
+      sleep 0.7
+      running
+    }
+
+    if ! start "$@"; then
+      # GPU encoding failed, try the CPU encoder
+      rm -f "$file"
+      if ! start --no-hw "$@"; then
+        rm -f "$state" "$file"
+        ${pkgs.libnotify}/bin/notify-send -u critical "recording" "wl-screenrec failed to start"
+        exit 1
+      fi
+      ${pkgs.libnotify}/bin/notify-send -c osd "recording" "using software encoding"
+    fi
+    bar
+  '';
+
   dnd = pkgs.writeShellScriptBin "dnd" ''
     case "$1" in
       toggle)
@@ -198,7 +304,7 @@ $actions"
 
 in
 {
-  home.packages = [ osd screenshot-menu screenshot-capture dnd ];
+  home.packages = [ osd screenshot-menu screenshot-capture screenrec dnd ];
 
   wayland.windowManager.sway = {
     enable = true;
@@ -353,6 +459,7 @@ in
         # screenshots
         "${mod}+Shift+s" = "exec ${pkgs.grim}/bin/grim -g \"$(${pkgs.slurp}/bin/slurp)\" - | ${pkgs.wl-clipboard}/bin/wl-copy";
         "Print" = "exec screenshot-menu";
+        "Shift+Print" = "exec screenrec";
 
         # media / volume / brightness
         "XF86AudioRaiseVolume" = "exec osd vol-up";
