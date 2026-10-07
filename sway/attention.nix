@@ -4,7 +4,7 @@
 # e.g. "(3) the rock - IMVU", reset when you focus the window.
 # Super+U toggles also marking them urgent (red border + red workspace).
 # Event-driven: it sleeps until an X11 window sends a request (~2 MB RAM).
-# Source: ./xwayland-attention/main.go
+# Source: ../pkgs/xwayland-attention/main.go
 { pkgs, ... }:
 let
   # added after the title in every title we set; keep it the same as the
@@ -14,7 +14,7 @@ let
   attention = pkgs.buildGoModule {
     pname = "xwayland-attention";
     version = "1.2";
-    src = ./xwayland-attention;
+    src = ../pkgs/xwayland-attention;
     vendorHash = "sha256-YNTxMr9aznzTl0a17XpfDd7Xa4NLbnH8TSwCoTY4IoE=";
     ldflags = [ "-s" "-w" ];
   };

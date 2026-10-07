@@ -1,14 +1,14 @@
 # Right-click "Extract…" for archives in Thunar.
 # A fuzzel menu picks where it goes, zenity shows progress. Never
 # overwrites (name-2 instead), and a cancel or failure leaves nothing.
-# Script: ./extract/extract.py, Thunar menu entry: ./extract/uca_merge.py
+# Script: ../scripts/extract/extract.py, Thunar menu entry: ../scripts/extract/uca_merge.py
 { pkgs, lib, ... }:
 let
   extract = pkgs.runCommand "extract" {
     nativeBuildInputs = [ pkgs.makeWrapper ];
     meta.mainProgram = "extract";
   } ''
-    install -Dm644 ${./extract/extract.py} $out/libexec/extract.py
+    install -Dm644 ${../scripts/extract/extract.py} $out/libexec/extract.py
     makeWrapper ${pkgs.python3}/bin/python3 $out/bin/extract \
       --add-flags $out/libexec/extract.py \
       --prefix PATH : ${lib.makeBinPath (with pkgs; [
@@ -74,7 +74,7 @@ in
   home.packages = [ extract ];
 
   home.activation.thunarCustomActions = lib.hm.dag.entryAfter [ "writeBoundary" "linkGeneration" ] ''
-    run ${pkgs.python3}/bin/python3 ${./extract/uca_merge.py} \
+    run ${pkgs.python3}/bin/python3 ${../scripts/extract/uca_merge.py} \
       ${pkgs.writeText "thunar-actions.json" (builtins.toJSON ucaActions)}
   '';
 }
