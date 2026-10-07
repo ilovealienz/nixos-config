@@ -35,7 +35,7 @@ in
     tealdeer
     unzip
     fastfetch
-    brave
+    (brave.override { commandLineArgs = "--ozone-platform=x11"; })
     floorp-bin
     vscodium
     neovim
