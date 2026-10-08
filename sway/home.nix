@@ -12,6 +12,7 @@
     ./kitty.nix
     ./weather.nix
     ./attention.nix
+    ./app-group.nix
     ./extract.nix
   ];
 }

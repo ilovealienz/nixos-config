@@ -217,6 +217,42 @@ $actions"
     bar
   '';
 
+  # ── Super+f: Proton games revert fullscreen while tiled, so float
+  # them first; pressing again returns them to tiling ──
+  fsToggle = pkgs.writeShellApplication {
+    name = "fullscreen-toggle";
+    runtimeInputs = [ pkgs.jq pkgs.sway ];
+    text = ''
+      read -r id fs class border width < <(swaymsg -t get_tree | jq -r '
+        first(.. | objects | select(.focused == true))
+        | "\(.id) \(.fullscreen_mode) \(.window_properties.class // "-") \(.border) \(.current_border_width)"')
+
+      case "$class" in
+        steam_app_*|steam_proton) ;;
+        *) swaymsg -q fullscreen toggle; exit 0 ;;
+      esac
+
+      if [ "$fs" != 0 ]; then
+        # one step at a time: Wine ignores size changes that arrive while
+        # it is still handling the fullscreen state change
+        swaymsg -q "[con_id=$id] fullscreen disable"
+        sleep 0.2
+        swaymsg -q "[con_id=$id] floating disable"
+        sleep 0.2
+        # resend the tile size in case Wine missed it: a border change
+        # makes sway configure the window again
+        [ "$border" = none ] && other=pixel || other=none
+        case "$border" in normal|pixel) restore="$border $width" ;; *) restore=$border ;; esac
+        swaymsg -q "[con_id=$id] border $other"
+        swaymsg -q "[con_id=$id] border $restore"
+      else
+        swaymsg -q "[con_id=$id] floating enable"
+        sleep 0.2   # let the game settle at its own size first
+        swaymsg -q "[con_id=$id] fullscreen enable"
+      fi
+    '';
+  };
+
   dnd = pkgs.writeShellScriptBin "dnd" ''
     case "$1" in
       toggle)
@@ -403,12 +439,13 @@ in
         "${mod}+q" = "kill";
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+e" = "exec swaynag -t warning -m 'exit sway?' -B 'yes' 'swaymsg exit'";
-        "${mod}+f" = "fullscreen toggle";
+        "${mod}+f" = "exec ${lib.getExe fsToggle}";
         "${mod}+v" = "floating toggle";
         "${mod}+s" = "split toggle";
 
         # tabbed / stacked containers (replaces hyprland groups)
         "${mod}+g" = "exec ${lib.getExe cycleGroup} group";
+        "${mod}+Shift+g" = "layout toggle stacking tabbed";
         "${mod}+t" = "layout toggle split";
         "${mod}+Tab" = "exec ${lib.getExe cycleGroup} 1";
         "${mod}+Shift+Tab" = "exec ${lib.getExe cycleGroup} -1";
