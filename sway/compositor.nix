@@ -1,4 +1,4 @@
-{ pkgs, lib, osConfig, ... }:
+{ config, pkgs, lib, osConfig, ... }:
 let c = osConfig.theme.colors; in
 let
   mod = "Mod4";
@@ -253,6 +253,37 @@ $actions"
     '';
   };
 
+  # ── Super+Shift+Tab: list every window in fuzzel, urgent first and the
+  # focused one last. Enter goes to it, Shift+Enter opens an action menu
+  # (bring here, float, scratchpad, close, force kill).
+  # Source: ../pkgs/window-picker/main.go
+  # fuzzel 1.14 has no --override, so the picker gets its own config: your
+  # fuzzel settings with a monospace font (so the columns line up) and
+  # Shift+Enter moved from execute-input to custom-1.
+  pickerFuzzel = pkgs.writeText "window-picker-fuzzel.ini"
+    (lib.generators.toINI { } (config.programs.fuzzel.settings // {
+      main = config.programs.fuzzel.settings.main // {
+        font = "MonaspiceAr Nerd Font:size=11";
+      };
+      key-bindings = {
+        execute-input = "Control+Shift+Return";
+        custom-1 = "Shift+Return";
+      };
+    }));
+
+  windowPicker = pkgs.buildGoModule {
+    pname = "window-picker";
+    version = "2.3";
+    src = ../pkgs/window-picker;
+    vendorHash = null;   # standard library only
+    ldflags = [
+      "-s" "-w"
+      "-X main.fuzzel=${pkgs.fuzzel}/bin/fuzzel"
+      "-X main.config=${pickerFuzzel}"
+    ];
+    meta.mainProgram = "window-picker";
+  };
+
   dnd = pkgs.writeShellScriptBin "dnd" ''
     case "$1" in
       toggle)
@@ -448,7 +479,7 @@ in
         "${mod}+Shift+g" = "layout toggle stacking tabbed";
         "${mod}+t" = "layout toggle split";
         "${mod}+Tab" = "exec ${lib.getExe cycleGroup} 1";
-        "${mod}+Shift+Tab" = "exec ${lib.getExe cycleGroup} -1";
+        "${mod}+Shift+Tab" = "exec ${lib.getExe windowPicker}";
 
         # focus (vim keys)
         "${mod}+h" = "focus left";
@@ -513,6 +544,9 @@ in
     extraConfig = ''
       # don't let sway steal these from fullscreen apps
       for_window [shell="xwayland"] title_format "%title [XWayland]"
+      # no idle lock while a window is fullscreen
+      for_window [app_id=".*"] inhibit_idle fullscreen
+      for_window [class=".*"] inhibit_idle fullscreen
     '';
   };
 
