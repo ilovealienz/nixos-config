@@ -8,8 +8,8 @@ let
   # Enter puts the emoji into the focused window, Shift+Enter only copies
   # it. It's pasted rather than typed: wtype types emoji as the wrong
   # characters in Electron apps and XWayland windows, but a Ctrl+V
-  # keypress works everywhere. Uses the window picker's fuzzel config,
-  # where Shift+Enter is custom-1 ──
+  # keypress works everywhere (sent with xdotool to XWayland windows).
+  # Uses the window picker's fuzzel config, where Shift+Enter is custom-1 ──
   # Emoji list built from Unicode's data file, so bemoji never downloads
   # (a failed download leaves an empty list it never retries)
   emojiDb = pkgs.runCommand "bemoji-emoji-list" { } ''
@@ -21,7 +21,7 @@ let
 
   emojiPicker = pkgs.writeShellApplication {
     name = "emoji-picker";
-    runtimeInputs = with pkgs; [ bemoji fuzzel wl-clipboard wtype libnotify jq sway coreutils gnugrep gnused ];
+    runtimeInputs = with pkgs; [ bemoji fuzzel wl-clipboard wtype xdotool libnotify jq sway coreutils gnugrep gnused ];
     text = ''
       export BEMOJI_DB_LOCATION=${emojiDb}
       # grep . drops the blank line bemoji adds before the recent list
@@ -43,16 +43,25 @@ let
         exit 0
       fi
 
-      app=$(swaymsg -t get_tree | jq -r '
+      shell=- app=-
+      read -r shell app < <(swaymsg -t get_tree | jq -r '
         first(.. | objects | select(.focused == true))
-        | .app_id // .window_properties.class // ""')
-      sleep 0.1   # let keyboard focus return from fuzzel
-      case "$app" in
-        # terminals paste with Ctrl+Shift+V
-        kitty|kitty-float|foot|footclient|Alacritty|org.wezfurlong.wezterm|com.mitchellh.ghostty)
-          wtype -M ctrl -M shift -k v -m shift -m ctrl ;;
-        *) wtype -M ctrl -k v -m ctrl ;;
-      esac
+        | "\(.shell // "-") \(.app_id // .window_properties.class // "-")"') || true
+      # let keyboard focus return from fuzzel; XWayland takes a moment
+      # longer to hand X focus back to the window
+      sleep 0.15
+      if [ "$shell" = xwayland ]; then
+        # X11 windows (Proton, Bottles/Wine, Brave): send the key through
+        # the X server; wtype's keys don't reliably reach XWayland
+        xdotool key --clearmodifiers ctrl+v
+      else
+        case "$app" in
+          # terminals paste with Ctrl+Shift+V
+          kitty|kitty-float|foot|footclient|Alacritty|org.wezfurlong.wezterm|com.mitchellh.ghostty)
+            wtype -M ctrl -M shift -k v -m shift -m ctrl ;;
+          *) wtype -M ctrl -k v -m ctrl ;;
+        esac
+      fi
     '';
   };
 
