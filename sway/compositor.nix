@@ -4,6 +4,58 @@ let
   mod = "Mod4";
 
   # ── volume / brightness OSD via mako (replaces swayosd, ~119MB saved) ──
+  # ── Super+;: emoji picker (bemoji in fuzzel), recent emoji first.
+  # Enter puts the emoji into the focused window, Shift+Enter only copies
+  # it. It's pasted rather than typed: wtype types emoji as the wrong
+  # characters in Electron apps and XWayland windows, but a Ctrl+V
+  # keypress works everywhere. Uses the window picker's fuzzel config,
+  # where Shift+Enter is custom-1 ──
+  # Emoji list built from Unicode's data file, so bemoji never downloads
+  # (a failed download leaves an empty list it never retries)
+  emojiDb = pkgs.runCommand "bemoji-emoji-list" { } ''
+    mkdir -p $out
+    sed -ne 's/^.*; fully-qualified.*# \(\S*\) \S* \(.*$\)/\1 \2/gp' \
+      ${pkgs.unicode-emoji}/share/unicode/emoji/emoji-test.txt > $out/emojis.txt
+    [ -s $out/emojis.txt ]   # fail the build rather than ship an empty list
+  '';
+
+  emojiPicker = pkgs.writeShellApplication {
+    name = "emoji-picker";
+    runtimeInputs = with pkgs; [ bemoji fuzzel wl-clipboard wtype libnotify jq sway coreutils gnugrep gnused ];
+    text = ''
+      export BEMOJI_DB_LOCATION=${emojiDb}
+      # grep . drops the blank line bemoji adds before the recent list
+      export BEMOJI_PICKER_CMD="grep . | fuzzel --dmenu --config ${pickerFuzzel} --prompt 'emoji: ' --width 50 --placeholder 'enter: type · shift+enter: copy'"
+      # bemoji copies on fuzzel's custom-1 (Shift+Enter); make that print
+      # the emoji with a "copy:" prefix instead, so this script handles it
+      export BEMOJI_CLIP_CMD="sed s/^/copy:/"
+      export BEMOJI_TYPE_CMD=true   # bemoji's own typing (Alt+2): no-op
+
+      out=$(bemoji -e -n) || exit 0   # -e: print it, -n: no newline
+      [ -n "$out" ] || exit 0
+      emoji=''${out#copy:}
+      printf '%s' "$emoji" | wl-copy
+
+      if [ "$out" != "$emoji" ]; then   # Shift+Enter
+        # osd category: not kept in mako's history
+        notify-send -c osd -h string:x-canonical-private-synchronous:osd \
+          -t 1500 "copied" "$emoji"
+        exit 0
+      fi
+
+      app=$(swaymsg -t get_tree | jq -r '
+        first(.. | objects | select(.focused == true))
+        | .app_id // .window_properties.class // ""')
+      sleep 0.1   # let keyboard focus return from fuzzel
+      case "$app" in
+        # terminals paste with Ctrl+Shift+V
+        kitty|kitty-float|foot|footclient|Alacritty|org.wezfurlong.wezterm|com.mitchellh.ghostty)
+          wtype -M ctrl -M shift -k v -m shift -m ctrl ;;
+        *) wtype -M ctrl -k v -m ctrl ;;
+      esac
+    '';
+  };
+
   osd = pkgs.writeShellScriptBin "osd" ''
     notify() {
       ${pkgs.libnotify}/bin/notify-send -c osd \
@@ -34,6 +86,148 @@ let
         notify "brightness" "$(${pkgs.brightnessctl}/bin/brightnessctl -m | ${pkgs.coreutils}/bin/cut -d, -f4 | ${pkgs.gnused}/bin/sed 's/%//')" ;;
     esac
   '';
+
+  # ── Super+a: audio menu. The current output and mic get their own
+  # section at the top. Enter on another output or mic makes it the
+  # default (playing audio moves with it); Enter on the current mic
+  # toggles its mute; Shift+Enter opens hide / rename / reset name.
+  # Reopens after each change. Settings in ~/.config/uwuaudio, both written
+  # by the menu: hidden (one device name per line) and names
+  # ("device.name = Nickname").
+  # Uses the window picker's fuzzel config for Shift+Enter (custom-1) ──
+  audioMenu = pkgs.writeShellApplication {
+    name = "audio-menu";
+    runtimeInputs = [ pkgs.pulseaudio pkgs.jq pkgs.fuzzel pkgs.coreutils pkgs.gnugrep pkgs.gawk ];
+    text = ''
+      cfg="''${XDG_CONFIG_HOME:-$HOME/.config}/uwuaudio"
+      hidden="$cfg/hidden" names="$cfg/names"
+      mkdir -p "$cfg"; touch "$hidden"
+
+      # nickname from the names file, else the device's own description
+      # names file: "device.name = Nickname", split at the first "="
+      nickname() {
+        [ -f "$names" ] || return 0
+        awk -v k="$1" '{ i = index($0, "="); n = substr($0, 1, i - 1); v = substr($0, i + 1)
+          gsub(/^ +| +$/, "", n); gsub(/^ +| +$/, "", v)
+          if (i && n == k) { print v; exit } }' "$names"
+      }
+      drop_nickname() {
+        awk -v k="$1" '{ i = index($0, "="); n = substr($0, 1, i - 1)
+          gsub(/^ +| +$/, "", n); if (!i || n != k) print }' "$names" > "$names.tmp"
+        mv "$names.tmp" "$names"
+      }
+      label() {
+        local n
+        n=$(nickname "$1")
+        printf '%s' "''${n:-$2}"
+      }
+      # fuzzel's output is a row number only if a row was picked
+      valid() { [[ $1 =~ ^[0-9]+$ ]] && (( $1 < $2 )); }
+      menu() {
+        fuzzel --dmenu --index --config ${pickerFuzzel} --width 60 \
+          --font 'MonaspiceAr Nerd Font:size=11' "$@"
+      }
+
+      while :; do
+        sink=$(pactl get-default-sink)
+        source=$(pactl get-default-source)
+        sinks=$(pactl -f json list sinks)
+        sources=$(pactl -f json list sources \
+          | jq 'map(select(.name | endswith(".monitor") | not))')
+        desc() { jq -r --arg n "$2" '.[] | select(.name == $n) | .description // .name' <<< "$1"; }
+        muted=$(jq -r --arg n "$source" '.[] | select(.name == $n) | .mute' <<< "$sources")
+
+        lines=() acts=()
+        lines+=("── current ─────────────────────────────") acts+=("-")
+        d=$(desc "$sinks" "$sink")
+        lines+=("   output  $(label "$sink" "''${d:-$sink}")") acts+=("cursink $sink")
+        tag=""; [ "$muted" = true ] && tag="   [muted]"
+        d=$(desc "$sources" "$source")
+        lines+=("   mic     $(label "$source" "''${d:-$source}")$tag") acts+=("mute $source")
+
+        lines+=("── outputs ─────────────────────────────") acts+=("-")
+        while IFS=$'\t' read -r name d; do
+          grep -Fxq -- "$name" "$hidden" && continue
+          lines+=("   $(label "$name" "$d")") acts+=("sink $name")
+        done < <(jq -r --arg n "$sink" '.[] | select(.name != $n) | [.name, .description // .name] | @tsv' <<< "$sinks")
+
+        lines+=("── mics ────────────────────────────────") acts+=("-")
+        while IFS=$'\t' read -r name d; do
+          grep -Fxq -- "$name" "$hidden" && continue
+          lines+=("   $(label "$name" "$d")") acts+=("source $name")
+        done < <(jq -r --arg n "$source" '.[] | select(.name != $n) | [.name, .description // .name] | @tsv' <<< "$sources")
+
+        count=$(grep -c . "$hidden" || true)
+        if [ "$count" -gt 0 ]; then
+          lines+=("   show hidden ($count)") acts+=("hidden -")
+        fi
+
+        rc=0
+        i=$(printf '%s\n' "''${lines[@]}" | menu --prompt 'audio: ' \
+              --placeholder 'enter: switch · shift+enter: hide/rename · current mic: mute') || rc=$?
+        [ -n "$i" ] || exit 0
+        valid "$i" "''${#acts[@]}" || continue   # nothing matched the search
+
+        read -r kind name <<< "''${acts[$i]}"
+        if [ "$rc" = 10 ]; then   # Shift+Enter: device options
+          case "$kind" in sink|source|mute|cursink) ;; *) continue ;; esac
+          opts=("rename")
+          case "$kind" in sink|source) opts=("hide" "rename") ;; esac   # current devices can't be hidden
+          [ -n "$(nickname "$name")" ] && opts+=("reset name")
+          j=$(printf '%s\n' "''${opts[@]}" | menu --prompt 'device: ') || continue
+          valid "$j" "''${#opts[@]}" || continue
+          case "''${opts[$j]}" in
+            hide)
+              [ -s "$hidden" ] && [ -n "$(tail -c1 "$hidden")" ] && echo >> "$hidden"
+              echo "$name" >> "$hidden" ;;
+            rename)
+              # no entries: whatever is typed is printed on Enter
+              new=$(fuzzel --dmenu --width 60 --font 'MonaspiceAr Nerd Font:size=11' \
+                      --prompt 'new name: ' --placeholder 'type a name, enter to save' \
+                      < /dev/null) || continue
+              [ -n "$new" ] || continue
+              touch "$names"
+              drop_nickname "$name"
+              printf '%s = %s\n' "$name" "$new" >> "$names" ;;
+            "reset name") drop_nickname "$name" ;;
+          esac
+          continue
+        fi
+        case "$kind" in
+          sink)
+            # move what was playing on the old default, so calls and videos
+            # switch too; streams routed elsewhere on purpose stay put
+            old=$(jq -r --arg n "$sink" '.[] | select(.name == $n) | .index' <<< "$sinks")
+            pactl set-default-sink "$name"
+            pactl list short sink-inputs | while read -r id on _; do
+              if [ "$on" = "$old" ]; then pactl move-sink-input "$id" "$name" || true; fi
+            done ;;
+          source)
+            # same for recording: only streams on the old default mic, so a
+            # screen recorder capturing desktop audio isn't moved to a mic
+            old=$(jq -r --arg n "$source" '.[] | select(.name == $n) | .index' <<< "$sources")
+            pactl set-default-source "$name"
+            pactl list short source-outputs | while read -r id on _; do
+              if [ "$on" = "$old" ]; then pactl move-source-output "$id" "$name" || true; fi
+            done ;;
+          mute) pactl set-source-mute "$name" toggle ;;
+          hidden)
+            # Enter on a hidden device shows it again
+            all=$(jq -s 'add' <<< "$sinks$sources")
+            mapfile -t hnames < <(grep . "$hidden")
+            hl=()
+            for n in "''${hnames[@]}"; do
+              d=$(desc "$all" "$n"); hl+=("   $(label "$n" "''${d:-$n}")")
+            done
+            j=$(printf '%s\n' "''${hl[@]}" | menu --prompt 'hidden: ' \
+                  --placeholder 'enter: show it again') || continue
+            valid "$j" "''${#hnames[@]}" || continue
+            grep -Fxv -- "''${hnames[$j]}" "$hidden" > "$hidden.tmp" || true
+            mv "$hidden.tmp" "$hidden" ;;
+        esac
+      done
+    '';
+  };
 
   # ── screenshot: freeze → select → annotate → act ──────────────────
   # helper that runs INSIDE the freeze; separate script so we don't
@@ -253,9 +447,9 @@ $actions"
     '';
   };
 
-  # ── Super+Shift+Tab: list every window in fuzzel, urgent first and the
-  # focused one last. Enter goes to it, Shift+Enter opens an action menu
-  # (bring here, float, scratchpad, close, force kill).
+  # ── Super+Shift+Tab: list every window in fuzzel, grouped by workspace.
+  # Enter goes to it (or to the workspace, on a header), Shift+Enter opens
+  # an action menu (bring here, float, scratchpad, close, force kill).
   # Source: ../pkgs/window-picker/main.go
   # fuzzel 1.14 has no --override, so the picker gets its own config: your
   # fuzzel settings with a monospace font (so the columns line up) and
@@ -273,7 +467,7 @@ $actions"
 
   windowPicker = pkgs.buildGoModule {
     pname = "window-picker";
-    version = "2.3";
+    version = "2.6";
     src = ../pkgs/window-picker;
     vendorHash = null;   # standard library only
     ldflags = [
@@ -462,6 +656,7 @@ in
         # launching
         "${mod}+Shift+r" = "exec wmenu-run -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg}";
         "${mod}+r" = "exec fuzzel";
+        "${mod}+semicolon" = "exec ${lib.getExe emojiPicker}";
         "${mod}+Shift+x" = "exec swaylock";
 	"${mod}+Return" = "exec kitty; workspace number 4";
         "${mod}+e" = "exec thunar; workspace number 5";
@@ -527,6 +722,7 @@ in
         # screenshots
         "${mod}+Shift+s" = "exec ${pkgs.grim}/bin/grim -g \"$(${pkgs.slurp}/bin/slurp)\" - | ${pkgs.wl-clipboard}/bin/wl-copy";
         "Print" = "exec screenshot-menu";
+        "${mod}+a" = "exec ${lib.getExe audioMenu}";
         "Shift+Print" = "exec screenrec";
 
         # media / volume / brightness
@@ -545,8 +741,7 @@ in
       # don't let sway steal these from fullscreen apps
       for_window [shell="xwayland"] title_format "%title [XWayland]"
       # no idle lock while a window is fullscreen
-      for_window [app_id=".*"] inhibit_idle fullscreen
-      for_window [class=".*"] inhibit_idle fullscreen
+      for_window [all] inhibit_idle fullscreen
     '';
   };
 

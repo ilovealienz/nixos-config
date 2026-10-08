@@ -1,9 +1,9 @@
-// window-picker lists every sway window in fuzzel: tiled, floating,
-// scratchpad, on every workspace. Urgent windows come first and the
-// focused window last.
+// window-picker lists every sway window in fuzzel, grouped under a
+// header per workspace: tiled, floating and scratchpad windows.
 //
 //	Enter        focus the window (sway leaves fullscreen or shows the
-//	             scratchpad if that's needed to show it)
+//	             scratchpad if that's needed to show it); on a header,
+//	             go to that workspace
 //	Shift+Enter  open an action menu for the window
 //
 // Floating windows end with "[floating]", urgent ones with "!!!".
@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -71,6 +72,7 @@ type node struct {
 	PID      int    `json:"pid"`
 	Focused  bool   `json:"focused"`
 	Urgent   bool   `json:"urgent"`
+	Shell    string `json:"shell"` // set only on windows
 	AppID    string `json:"app_id"`
 	WinProps struct {
 		Class string `json:"class"`
@@ -86,45 +88,75 @@ type window struct {
 	focused, urgent, floating bool
 }
 
-// windows returns every window, urgent first and the focused one last.
-func windows(c net.Conn) []window {
+// workspaceGroup is one workspace and its windows, in tree order.
+type workspaceGroup struct {
+	name    string
+	windows []window
+}
+
+// workspaces returns every workspace that has windows, in sway's order
+// (numbered first), with the scratchpad last.
+func workspaces(c net.Conn) []workspaceGroup {
 	var root node
 	if err := json.Unmarshal(ipc(c, ipcGetTree, ""), &root); err != nil {
 		log.Fatalf("parse tree: %v", err)
 	}
-	var urgent, normal, focused []window
-	var walk func(n *node, ws string, floating bool)
-	walk = func(n *node, ws string, floating bool) {
-		if n.Type == "workspace" {
-			ws = n.Name
-			if ws == "__i3_scratch" {
-				ws = "scratch"
-			}
-		}
-		if n.PID != 0 && (n.Type == "con" || n.Type == "floating_con") {
+	var groups []workspaceGroup
+	var scratch *workspaceGroup
+	var walk func(n *node, g *workspaceGroup, floating bool)
+	walk = func(n *node, g *workspaceGroup, floating bool) {
+		if n.Shell != "" && (n.Type == "con" || n.Type == "floating_con") {
 			app := n.AppID
 			if app == "" {
 				app = n.WinProps.Class
 			}
-			w := window{n.ID, n.PID, ws, app, n.Name, n.Focused, n.Urgent, floating}
-			switch {
-			case w.urgent:
-				urgent = append(urgent, w)
-			case w.focused:
-				focused = append(focused, w)
-			default:
-				normal = append(normal, w)
-			}
+			g.windows = append(g.windows, window{n.ID, n.PID, g.name, app, n.Name, n.Focused, n.Urgent, floating})
 		}
 		for i := range n.Nodes {
-			walk(&n.Nodes[i], ws, floating)
+			walk(&n.Nodes[i], g, floating)
 		}
 		for i := range n.FloatingNodes {
-			walk(&n.FloatingNodes[i], ws, true)
+			walk(&n.FloatingNodes[i], g, true)
 		}
 	}
-	walk(&root, "", false)
-	return append(append(urgent, normal...), focused...)
+	for i := range root.Nodes { // outputs
+		for j := range root.Nodes[i].Nodes { // workspaces
+			ws := &root.Nodes[i].Nodes[j]
+			g := workspaceGroup{name: ws.Name}
+			if ws.Name == "__i3_scratch" {
+				g.name = "scratch"
+			}
+			walk(ws, &g, false)
+			if len(g.windows) == 0 {
+				continue
+			}
+			if g.name == "scratch" {
+				scratch = &g
+			} else {
+				groups = append(groups, g)
+			}
+		}
+	}
+	sort.SliceStable(groups, func(a, b int) bool { return wsLess(groups[a].name, groups[b].name) })
+	if scratch != nil {
+		groups = append(groups, *scratch)
+	}
+	return groups
+}
+
+// wsLess orders numbered workspaces numerically, then named ones by name.
+func wsLess(a, b string) bool {
+	na, ea := strconv.Atoi(a)
+	nb, eb := strconv.Atoi(b)
+	switch {
+	case ea == nil && eb == nil:
+		return na < nb
+	case ea == nil:
+		return true
+	case eb == nil:
+		return false
+	}
+	return a < b
 }
 
 func (w window) row() string {
@@ -135,7 +167,7 @@ func (w window) row() string {
 	if r := []rune(app); len(r) > 16 {
 		app = string(r[:16])
 	}
-	title := w.title
+	title := strings.NewReplacer("\n", " ", "\r", " ").Replace(w.title)
 	if title == "" {
 		title = "(no title)"
 	}
@@ -146,7 +178,7 @@ func (w window) row() string {
 	if w.urgent {
 		tags = append(tags, "!!!")
 	}
-	row := fmt.Sprintf("%-7s %-16s %s", w.ws, app, title)
+	row := fmt.Sprintf("   %-16s %s", app, title)
 	if len(tags) > 0 {
 		row += "   " + strings.Join(tags, " ")
 	}
@@ -197,7 +229,23 @@ var actions = []action{
 	{"toggle floating", true, func(c net.Conn, w window) { run(c, "[con_id=%d] floating toggle", w.id) }},
 	{"send to scratchpad", true, func(c net.Conn, w window) { run(c, "[con_id=%d] move scratchpad", w.id) }},
 	{"close", true, func(c net.Conn, w window) { run(c, "[con_id=%d] kill", w.id) }},
-	{"force kill", true, func(c net.Conn, w window) { _ = syscall.Kill(w.pid, syscall.SIGKILL) }},
+	{"force kill", true, func(c net.Conn, w window) {
+		// the list may be stale: only kill if the window is still there
+		// with the same pid, so a reused pid is never hit
+		for _, g := range workspaces(c) {
+			for _, now := range g.windows {
+				if now.id != w.id {
+					continue
+				}
+				if now.pid > 1 && now.pid == w.pid {
+					_ = syscall.Kill(now.pid, syscall.SIGKILL)
+				} else { // pid unknown: ask the app to close instead
+					run(c, "[con_id=%d] kill", now.id)
+				}
+				return
+			}
+		}
+	}},
 }
 
 func main() {
@@ -211,19 +259,41 @@ func main() {
 	}
 
 	for {
-		ws := windows(c)
-		if len(ws) == 0 {
+		// one line per header and window; entries[i] is nil for a header
+		var lines []string
+		var entries []*window
+		var headers []string
+		var firstScratch int64
+		for _, g := range workspaces(c) {
+			lines = append(lines, "── "+g.name+" "+strings.Repeat("─", max(2, 40-len(g.name))))
+			entries = append(entries, nil)
+			headers = append(headers, g.name)
+			if g.name == "scratch" {
+				firstScratch = g.windows[0].id
+			}
+			for i := range g.windows {
+				lines = append(lines, g.windows[i].row())
+				entries = append(entries, &g.windows[i])
+				headers = append(headers, g.name)
+			}
+		}
+		if len(lines) == 0 {
 			return
 		}
-		rows := make([]string, len(ws))
-		for i, w := range ws {
-			rows[i] = w.row()
-		}
-		i, rc := pick(rows, "window: ", "enter: go to it · shift+enter: more")
+		i, rc := pick(lines, "window: ", "enter: go to it · shift+enter: more")
 		if i < 0 {
 			return // Escape
 		}
-		w := ws[i]
+		if entries[i] == nil { // header: go to the workspace
+			if headers[i] == "scratch" {
+				// focus shows it; "scratchpad show" would toggle instead
+				run(c, "[con_id=%d] focus", firstScratch)
+			} else {
+				run(c, "workspace %q", headers[i])
+			}
+			return
+		}
+		w := *entries[i]
 		if rc != 10 { // plain Enter
 			actions[0].do(c, w)
 			return
