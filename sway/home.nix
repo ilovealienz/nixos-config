@@ -13,6 +13,7 @@
     ./weather.nix
     ./attention.nix
     ./app-group.nix
+    ./shortcuts.nix
     ./extract.nix
   ];
 }
