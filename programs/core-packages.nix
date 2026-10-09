@@ -35,6 +35,7 @@ in
     tealdeer
     unzip
     fastfetch
+    alsa-utils
     (brave.override { commandLineArgs = "--ozone-platform=x11"; })
     floorp-bin
     vscodium
