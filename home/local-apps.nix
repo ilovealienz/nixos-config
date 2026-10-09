@@ -8,44 +8,68 @@ let
     pkgs.libGL
     pkgs.gcc.cc.lib
   ];
+
+  # Downloads missing release binaries into ~/.bin and patches them.
+  # Runs as a user service once the network is up, instead of during
+  # home-manager activation, where a rebuild restarting NetworkManager
+  # left no DNS. A failed download only warns; the next login or
+  # rebuild tries again.
+  fetchApps = pkgs.writeShellApplication {
+    name = "local-apps-fetch";
+    runtimeInputs = [ pkgs.curl pkgs.patchelf pkgs.coreutils pkgs.networkmanager ];
+    text = ''
+      mkdir -p "$HOME/.bin"
+
+      # only wait for the network if something actually needs downloading
+      for f in uwuplsplay stremio-cliuwu zipline-upload; do
+        if [ ! -f "$HOME/.bin/$f" ]; then
+          nm-online -q -t 60 || echo "offline, skipping downloads" >&2
+          break
+        fi
+      done
+
+      # temp file first, so a failed download never ends up in ~/.bin
+      fetch() {
+        local dest="$HOME/.bin/$1" url=$2
+        [ -f "$dest" ] && return 0
+        if curl -fsSL --retry 2 --connect-timeout 10 "$url" -o "$dest.part"; then
+          mv "$dest.part" "$dest"
+        else
+          rm -f "$dest.part"
+          echo "couldn't download $1" >&2
+        fi
+      }
+      # patchelf fails on static binaries (no .interp), that's fine
+      fix() {
+        local f="$HOME/.bin/$1"; shift
+        [ -f "$f" ] || return 0
+        patchelf --set-interpreter ${glibcPath} "$@" "$f" || true
+        chmod +x "$f"
+      }
+
+      fetch uwuplsplay "https://github.com/ilovealienz/uwuplsplay/releases/latest/download/uwuplsplay-linux"
+      fetch stremio-cliuwu "https://github.com/ilovealienz/stremio-cliuwu/releases/latest/download/stremio-cliuwu-linux-amd64"
+      fetch zipline-upload "https://github.com/ilovealienz/my-zipline-uploader/releases/latest/download/zipline-upload"
+      fix uwuplsplay
+      fix stremio-cliuwu
+      fix zipline-upload --set-rpath ${rpath}
+    '';
+  };
 in
 {
+  systemd.user.services.local-apps = {
+    Unit.Description = "Download local app binaries into ~/.bin";
+    Service = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = lib.getExe fetchApps;
+    };
+    # runs at login, and again on any rebuild that changes this script
+    Install.WantedBy = [ "default.target" ];
+  };
+
+  # uwuplsplay mime/protocol registration (local only, no network needed)
   home.activation.localApps = lib.hm.dag.entryAfter ["writeBoundary"] ''
-    mkdir -p "$HOME/.bin"
-
-    # Download a release binary if it's missing. A failed download (no
-    # network yet, or NetworkManager restarting during a rebuild) only
-    # warns, so it can't fail the rebuild; the next rebuild tries again.
-    # Downloads go to a temp file first, so an error page or a partial
-    # file never ends up in ~/.bin.
-    la_fetch() {
-      local dest="$HOME/.bin/$1" url=$2
-      [ -f "$dest" ] && return 0
-      if ${pkgs.curl}/bin/curl -fsSL --retry 3 --retry-connrefused \
-           --connect-timeout 10 "$url" -o "$dest.part"; then
-        mv "$dest.part" "$dest"
-      else
-        rm -f "$dest.part"
-        echo "localApps: couldn't download $1, will retry on the next rebuild" >&2
-        return 1
-      fi
-    }
-    # patchelf fails on static binaries (no .interp), that's fine
-    la_fix() {
-      local f="$HOME/.bin/$1"; shift
-      [ -f "$f" ] || return 0
-      ${pkgs.patchelf}/bin/patchelf --set-interpreter ${glibcPath} "$@" "$f" || true
-      chmod +x "$f"
-    }
-
-    la_fetch uwuplsplay "https://github.com/ilovealienz/uwuplsplay/releases/latest/download/uwuplsplay-linux" || true
-    la_fetch stremio-cliuwu "https://github.com/ilovealienz/stremio-cliuwu/releases/latest/download/stremio-cliuwu-linux-amd64" || true
-    la_fetch zipline-upload "https://github.com/ilovealienz/my-zipline-uploader/releases/latest/download/zipline-upload" || true
-    la_fix uwuplsplay
-    la_fix stremio-cliuwu
-    la_fix zipline-upload --set-rpath ${rpath}
-
-    # uwuplsplay mime/protocol registration
     mkdir -p "$HOME/.local/share/applications" "$HOME/.local/share/mime/packages"
     cat > "$HOME/.local/share/applications/uwuplsplay.desktop" << EOF
 [Desktop Entry]
