@@ -112,6 +112,9 @@
     enable = true;
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
     config.common.default = "*";
+    # xdg-open sends links through the portal, so apps in sandboxes (Steam)
+    # open them in the normal browser instead of starting one inside the sandbox
+    xdgOpenUsePortal = true;
   };
 
   # Flatpak
