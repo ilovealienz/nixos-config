@@ -48,6 +48,7 @@ let
       (k [ "Super" "G" ] "Group with neighbours" "or turn a group back into a split")
       (k [ "Super" "Tab" ] "Next tab in the group" "wraps around")
       (k [ "Super" "Shift" "G" ] "Tabbed / stacked" "")
+      (k [ "Super" "Shift" "Drag" ] "Move the whole group" "drag any window of it; the rest follow when you drop it")
     ]; }
     { name = "Workspaces & monitors"; items = [
       (k [ "Super" "1-9" ] "Go to workspace" "")
