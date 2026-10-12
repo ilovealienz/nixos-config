@@ -852,6 +852,12 @@ in
         resumeCommand = "${pkgs.sway}/bin/swaymsg 'output * power on'";
       }
     ];
+    # lock before suspending (lid close), and on `loginctl lock-session`;
+    # swayidle runs with -w, so sleep waits until the lock is up
+    events = {
+      before-sleep = "${pkgs.swaylock}/bin/swaylock -f";
+      lock = "${pkgs.swaylock}/bin/swaylock -f";
+    };
   };
 
     services.wlsunset = {

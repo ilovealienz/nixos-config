@@ -162,6 +162,14 @@
 
   # Flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  # identical files in /nix/store are stored once (hard links)
+  nix.settings.auto-optimise-store = true;
+
+  # firmware updates: fwupdmgr refresh && fwupdmgr update
+  services.fwupd.enable = true;
+
+  # compressed swap in RAM
+  zramSwap.enable = true;
 
   system.stateVersion = "26.05";
 }
