@@ -11,9 +11,7 @@
     ./gtk.nix
     ./kitty.nix
     ./weather.nix
-    ./attention.nix
-    ./app-group.nix
-    ./group-drag.nix
+    ./sway-helpers.nix
     ./shortcuts.nix
     ./extract.nix
   ];

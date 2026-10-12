@@ -1,0 +1,12 @@
+[package]
+name = "sway-helpers"
+version = "1.0.0"
+edition = "2021"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+# unwind (not abort) so a panicking feature can be restarted on its own
+panic = "unwind"
+strip = true
