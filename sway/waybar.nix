@@ -181,6 +181,9 @@ let c = osConfig.theme.colors; in
         color: #${c.bg};
         background: #${c.red};
       }
+      #custom-rec.busy {
+        background: #${c.orange};
+      }
 
     '';
   };

@@ -322,14 +322,27 @@ $actions"
   # Recording process name, used for pgrep/pkill:
   #   wl-screenrec (current) and wf-recorder (older versions of this script)
   screenrec = pkgs.writeShellScriptBin "screenrec" ''
-    state="''${XDG_RUNTIME_DIR:-/tmp}/screenrec.state"
+    run="''${XDG_RUNTIME_DIR:-/tmp}"
+    state="$run/screenrec.state"   # path of the file being recorded
+    busy="$run/screenrec.busy"     # "saving" or "uploading" while finishing
+    lock="$run/screenrec.lock"
     running() { ${pkgs.procps}/bin/pgrep -x 'wl-screenrec|wf-recorder' >/dev/null; }
     sig() { ${pkgs.procps}/bin/pkill "$1" -x 'wl-screenrec|wf-recorder'; }
     bar() { ${pkgs.procps}/bin/pkill -RTMIN+8 waybar; }
+    # 9>&-: nothing started from here may keep the lock (fd 9) open after
+    # this script exits; wl-copy, for one, stays running in the background
+    notify() { ${pkgs.libnotify}/bin/notify-send "$@" 9>&-; }
 
     # ── waybar module ──
     if [ "''${1:-}" = status ]; then
-      if running && [ -f "$state" ]; then
+      # a busy file with nobody holding the lock is left over from a run
+      # that was killed; ignore it
+      if [ -f "$busy" ] && ! ${pkgs.util-linux}/bin/flock -n -s "$lock" true 2>/dev/null; then
+        case "$(cat "$busy" 2>/dev/null)" in
+          uploading) printf '{"text":"⬆ uploading","class":"busy","tooltip":"uploading the recording"}\n' ;;
+          *)         printf '{"text":"● saving","class":"busy","tooltip":"finishing the recording file"}\n' ;;
+        esac
+      elif running && [ -f "$state" ]; then
         s=$(( $(date +%s) - $(stat -c %Y "$state") ))
         printf '{"text":"● REC %02d:%02d","class":"recording","tooltip":"click to stop"}\n' \
           $((s / 60)) $((s % 60))
@@ -338,6 +351,23 @@ $actions"
       fi
       exit 0
     fi
+
+    # run in our own session: waybar kills what its clicks started when it
+    # restarts (a sway reload does that), which would cut off a save or upload
+    if [ -z "''${SCREENREC_DETACHED:-}" ]; then
+      SCREENREC_DETACHED=1 exec ${pkgs.util-linux}/bin/setsid -f "$0" "$@"
+    fi
+
+    # one screenrec at a time: a click while a recording is being saved,
+    # picked from the menu or uploaded only shows a notification, instead
+    # of starting a region selection on top of it
+    # (-w 0.5: the bar's once-a-second status check holds it for a moment)
+    exec 9>"$lock"
+    if ! ${pkgs.util-linux}/bin/flock -w 0.5 9; then
+      notify -c osd "recording" "still finishing the last recording, wait a moment"
+      exit 0
+    fi
+    trap 'rm -f "$busy"; bar' EXIT
 
     # recorder running with no state file is left over from a failed
     # stop; clear it so this run starts a new recording
@@ -348,21 +378,23 @@ $actions"
 
     # ── stop ──
     if running; then
-      # SIGINT so the recorder finishes writing the file
+      echo saving > "$busy"; bar
+      # SIGINT so the recorder finishes writing the file; a long recording
+      # can take a while, and killing it early leaves a broken file
       sig -INT
       i=0
-      while running && [ "$i" -lt 50 ]; do i=$((i + 1)); sleep 0.1; done
+      while running && [ "$i" -lt 600 ]; do i=$((i + 1)); sleep 0.1; done
       if running; then
         sig -KILL
-        ${pkgs.libnotify}/bin/notify-send -u critical "recording" "recorder did not stop, killed it"
+        notify -u critical "recording" "recorder did not stop after a minute, killed it"
       fi
 
       file=$(cat "$state" 2>/dev/null)
-      rm -f "$state"
+      rm -f "$state" "$busy"
       bar
 
       if [ -z "$file" ] || [ ! -s "$file" ]; then
-        ${pkgs.libnotify}/bin/notify-send -u critical "recording" "no file produced"
+        notify -u critical "recording" "no file produced"
         exit 1
       fi
 
@@ -371,12 +403,16 @@ $actions"
       choice=$(printf 'upload (zipline)\ncopy path\nopen\nsave only\ndelete' | eval "$MENU")
 
       case "$choice" in
-        "upload (zipline)") "$HOME/.bin/zipline-upload" "$file" ;;
-        "copy path")        printf '%s' "$file" | ${pkgs.wl-clipboard}/bin/wl-copy ;;
-        open)               ${pkgs.xdg-utils}/bin/xdg-open "$file" >/dev/null 2>&1 & ;;
-        "save only")        ${pkgs.libnotify}/bin/notify-send -c osd "recording" "saved to $file" ;;
-        delete)             rm -f "$file" ;;
-        *)                  : ;;
+        "upload (zipline)")
+          echo uploading > "$busy"; bar
+          if ! "$HOME/.bin/zipline-upload" "$file" 9>&-; then
+            notify -u critical "recording" "upload failed, the file is still at $file"
+          fi ;;
+        "copy path") printf '%s' "$file" | ${pkgs.wl-clipboard}/bin/wl-copy 9>&- ;;
+        open)        ${pkgs.xdg-utils}/bin/xdg-open "$file" >/dev/null 2>&1 9>&- & ;;
+        "save only") notify -c osd "recording" "saved to $file" ;;
+        delete)      rm -f "$file" ;;
+        *)           : ;;
       esac
       exit 0
     fi
@@ -394,7 +430,7 @@ $actions"
     # monitor of the default sink = desktop audio without the mic
     sink=$(${pkgs.pulseaudio}/bin/pactl get-default-sink 2>/dev/null)
     if [ -z "$sink" ]; then
-      ${pkgs.libnotify}/bin/notify-send -u critical "recording" "no audio output found"
+      notify -u critical "recording" "no audio output found"
       exit 1
     fi
 
@@ -402,7 +438,9 @@ $actions"
     printf '%s' "$file" > "$state"
 
     start() {
-      ${pkgs.util-linux}/bin/setsid -f ${pkgs.wl-screenrec}/bin/wl-screenrec "$@" >/dev/null 2>&1
+      # 9>&-: the recorder must not keep holding the lock, or stopping
+      # would be refused for the whole recording
+      ${pkgs.util-linux}/bin/setsid -f ${pkgs.wl-screenrec}/bin/wl-screenrec "$@" >/dev/null 2>&1 9>&-
       sleep 0.7
       running
     }
@@ -412,12 +450,11 @@ $actions"
       rm -f "$file"
       if ! start --no-hw "$@"; then
         rm -f "$state" "$file"
-        ${pkgs.libnotify}/bin/notify-send -u critical "recording" "wl-screenrec failed to start"
+        notify -u critical "recording" "wl-screenrec failed to start"
         exit 1
       fi
-      ${pkgs.libnotify}/bin/notify-send -c osd "recording" "using software encoding"
+      notify -c osd "recording" "using software encoding"
     fi
-    bar
   '';
 
   # ── Super+f: Proton games revert fullscreen while tiled, so float
