@@ -59,6 +59,7 @@ let c = osConfig.theme.colors; in
         format-charging = "{capacity}%+";
         format-plugged = "{capacity}%p";
         tooltip-format = "{timeTo}";
+        on-click = "power-menu";   # sway/power.nix
       };
       clock = {
         format = "{:%a %d %b  %H:%M}";

@@ -13,6 +13,7 @@
     ./weather.nix
     ./sway-helpers.nix
     ./shortcuts.nix
+    ./power.nix
     ./extract.nix
   ];
 }

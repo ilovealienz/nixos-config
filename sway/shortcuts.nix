@@ -24,6 +24,7 @@ let
       (k [ "Super" "Shift" "R" ] "Run a command" "wmenu-run")
       (k [ "Super" ";" ] "Emoji picker" "Enter types it, Shift+Enter copies it")
       (k [ "Super" "A" ] "Audio menu" "outputs, mics, mute, hide, rename")
+      (k [ "Super" "Shift" "P" ] "Power menu" "profile, battery limit; or click the battery")
       (k [ "Super" "/" ] "This list" "")
       (k [ "Super" "Shift" "X" ] "Lock screen" "")
     ]; }
@@ -96,8 +97,8 @@ let
     { name = "nx commands"; note = "zsh"; style = "cmd"; items = [
       (k [ "nxrebuild" ] "Rebuild and switch" "")
       (k [ "nxupdate" ] "Update flake inputs, then rebuild" "")
-      (k [ "nxpull" ] "Pull the config from GitHub, then rebuild" "")
-      (k [ "nxpush" ] "Commit everything as \"update\" and push" "")
+      (k [ "nxpull" ] "Pull the config from GitHub, then rebuild" "drops an unpushed local flake.lock first")
+      (k [ "nxpush" ] "Commit and push" "nxpush \"message\" (default: update); never commits hardware-configuration.nix")
       (k [ "nxedit" ] "Pick a config file" "Enter edit · Ctrl+R rebuild · Ctrl+A git add")
       (k [ "nxshortcuts" ] "This list" "")
       (k [ "nxsearch" ] "Search nixpkgs" "")
