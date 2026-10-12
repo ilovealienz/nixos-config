@@ -2,10 +2,15 @@
 let
   # While a game runs, GameMode asks power-profiles-daemon to hold the
   # performance profile; when the hold ends, power-profiles-daemon goes
-  # back to the profile you picked (and re-applies it, which also undoes
-  # GameMode's own CPU governor change). The hold ends when the game does,
-  # if GameMode stops, or if you pick a profile yourself meanwhile.
+  # back to the profile you picked. The hold ends when the game does, if
+  # GameMode stops, or if you pick a profile yourself meanwhile.
+  # GameMode doesn't change the CPU governor or platform profile itself:
+  # that needs the gamemode group, which you're not in, so
+  # power-profiles-daemon stays in charge of the CPU.
+  # Games use GameMode through Steam's launch options: gamemoderun %command%
   gamemodeHold = pkgs.writeShellScript "gamemode-power-hold" ''
+    # gamemoded's service has only pkexec on its PATH
+    export PATH=${pkgs.lib.makeBinPath (with pkgs; [ coreutils gnugrep gawk util-linux bash power-profiles-daemon ])}
     pidfile="''${XDG_RUNTIME_DIR:-/tmp}/gamemode-power-hold.pid"
     release() {
       pid=$(cat "$pidfile" 2>/dev/null) || return 0
@@ -47,6 +52,9 @@ in
       start = "${gamemodeHold} start";
       end = "${gamemodeHold} end";
     };
+    # nothing provides org.freedesktop.ScreenSaver on sway; fullscreen
+    # windows keep the screen awake through sway's inhibit_idle instead
+    settings.general.inhibit_screensaver = 0;
   };
 
   services.sunshine = {

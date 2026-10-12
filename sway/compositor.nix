@@ -783,10 +783,13 @@ in
         "${mod}+Shift+j" = "exec ${lib.getExe cycleGroup} down";
 
         # resize
-        "${mod}+Alt+h" = "resize shrink width 40px";
-        "${mod}+Alt+l" = "resize grow width 40px";
-        "${mod}+Alt+k" = "resize shrink height 40px";
-        "${mod}+Alt+j" = "resize grow height 40px";
+        # move the window's edge the way the key points: the edge facing a
+        # neighbour, or the other edge if there's none that side (sway
+        # refuses the first command then, and the second runs)
+        "${mod}+Alt+h" = "exec ${pkgs.sway}/bin/swaymsg -q resize shrink right 40px || ${pkgs.sway}/bin/swaymsg -q resize grow left 40px";
+        "${mod}+Alt+l" = "exec ${pkgs.sway}/bin/swaymsg -q resize grow right 40px || ${pkgs.sway}/bin/swaymsg -q resize shrink left 40px";
+        "${mod}+Alt+k" = "exec ${pkgs.sway}/bin/swaymsg -q resize shrink down 40px || ${pkgs.sway}/bin/swaymsg -q resize grow up 40px";
+        "${mod}+Alt+j" = "exec ${pkgs.sway}/bin/swaymsg -q resize grow down 40px || ${pkgs.sway}/bin/swaymsg -q resize shrink up 40px";
 
         # workspaces
         "${mod}+1" = "workspace number 1";

@@ -15,7 +15,8 @@ let
       (k [ "Super" "U" ] "Urgent marking" "red border when IMVU, Steam chats… want attention")
       (k [ "Shift" "Print" ] "Screen recording" "or click the red dot in waybar to stop")
       (k [ "Right-click DND" ] "Do not disturb" "the DND icon in waybar; left-click shows history")
-      (k [ "Click idle icon" ] "Stay awake" "waybar idle inhibitor: no lock or screen-off")
+      (k [ "Click idle sliver" ] "Stay awake" "amber: no lock or screen-off")
+      (k [ "Right-click idle sliver" ] "Game mode" "green: stay awake, GameMode on")
     ]; }
     { name = "Launch"; items = [
       (k [ "Super" "Return" ] "Kitty" "jumps to workspace 4 while placement is on")
@@ -42,8 +43,8 @@ let
       (k [ "Super" "H/J/K/L" ] "Focus left / down / up / right" "")
       (k [ "Super" "Shift" "H/L" ] "Move window left / right" "")
       (k [ "Super" "Shift" "J/K" ] "Move window down / up" "steps out of a tab group")
-      (k [ "Super" "Alt" "H/L" ] "Narrower / wider" "40px")
-      (k [ "Super" "Alt" "K/J" ] "Shorter / taller" "40px")
+      (k [ "Super" "Alt" "H/L" ] "Move the window edge left / right" "40px")
+      (k [ "Super" "Alt" "K/J" ] "Move the window edge up / down" "40px")
     ]; }
     { name = "Tab groups"; items = [
       (k [ "Super" "G" ] "Group with neighbours" "or turn a group back into a split")
