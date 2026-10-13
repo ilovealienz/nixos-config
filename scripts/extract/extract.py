@@ -537,7 +537,7 @@ def run(archive):
         return 1
 
     notify(f"done → {result}")
-    after = fuzzel(["open in thunar", "open terminal here", "copy path", "done"],
+    after = fuzzel(["done", "open in thunar", "open terminal here", "copy path"],
                    "› ", lines=4)
     folder = result if result.is_dir() else result.parent
     if after == "open in thunar":

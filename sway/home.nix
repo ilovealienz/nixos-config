@@ -13,6 +13,8 @@
     ./weather.nix
     ./sway-helpers.nix
     ./shortcuts.nix
+    ./popout.nix
+    ./session.nix
     ./awake.nix
     ./power.nix
     ./extract.nix

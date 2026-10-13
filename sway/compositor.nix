@@ -757,7 +757,7 @@ in
         # window management
         "${mod}+q" = "kill";
         "${mod}+Shift+c" = "reload";
-        "${mod}+Shift+e" = "exec swaynag -t warning -m 'exit sway?' -B 'yes' 'swaymsg exit'";
+        "${mod}+Shift+e" = "exec session-menu";   # sway/session.nix
         "${mod}+f" = "exec ${lib.getExe fsToggle}";
         "${mod}+v" = "floating toggle";
         "${mod}+s" = "split toggle";
