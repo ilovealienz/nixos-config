@@ -267,7 +267,7 @@ let
 
     [ -s "$file" ] || exit 0            # cancelled, nothing captured
 
-    MENU="${pkgs.wmenu}/bin/wmenu -f 'Inter 14' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg} -M ${c.accent} -m ${c.bg} -l 6 -p 'shot:'"
+    MENU="${pkgs.wmenu}/bin/wmenu -f 'Inter 14' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.onAccent} -M ${c.accent} -m ${c.onAccent} -l 6 -p 'shot:'"
 
     actions='upload (zipline)
 upload advanced
@@ -399,7 +399,7 @@ $actions"
       fi
 
       size=$(du -h "$file" | cut -f1)
-      MENU="${pkgs.wmenu}/bin/wmenu -f 'Inter 14' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg} -M ${c.accent} -m ${c.bg} -l 5 -p 'rec ($size):'"
+      MENU="${pkgs.wmenu}/bin/wmenu -f 'Inter 14' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.onAccent} -M ${c.accent} -m ${c.onAccent} -l 5 -p 'rec ($size):'"
       choice=$(printf 'upload (zipline)\ncopy path\nopen\nsave only\ndelete' | eval "$MENU")
 
       case "$choice" in
@@ -541,7 +541,7 @@ $actions"
         choice=$( { printf 'clear all\n'; \
           ${pkgs.mako}/bin/makoctl history -j \
           | ${pkgs.jq}/bin/jq -r '.[] | "\(.id) \(.app_name): \(.summary) — \(.body)"'; } \
-          | ${pkgs.wmenu}/bin/wmenu -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg} -M ${c.accent} -m ${c.bg} -l 10 -p "missed:" )
+          | ${pkgs.wmenu}/bin/wmenu -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.onAccent} -M ${c.accent} -m ${c.onAccent} -l 10 -p "missed:" )
         [ "$choice" = "clear all" ] && pkill -f 'bin/mako$'
         ;;
     esac
@@ -679,7 +679,7 @@ in
     config = {
       modifier = mod;
       terminal = "kitty";
-      menu = "wmenu-run -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg}";
+      menu = "wmenu-run -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.onAccent}";
 
       # mod + drag to move, mod + right-drag to resize
       floating.modifier = mod;
@@ -714,7 +714,7 @@ in
       # ── desert night colours ──
       colors = {
         focused = {
-          border = "#${c.accent}"; background = "#${c.accent}"; text = "#${c.bg}";
+          border = "#${c.accent}"; background = "#${c.accent}"; text = "#${c.onAccent}";
           indicator = "#${c.accent}"; childBorder = "#${c.accent}";
         };
         focusedInactive = {
@@ -726,7 +726,7 @@ in
           indicator = "#${c.surface}"; childBorder = "#${c.surface}";
         };
         urgent = {
-          border = "#${c.red}"; background = "#${c.red}"; text = "#${c.bg}";
+          border = "#${c.red}"; background = "#${c.red}"; text = "#${c.onAccent}";
           indicator = "#${c.red}"; childBorder = "#${c.red}";
         };
       };
@@ -747,7 +747,7 @@ in
       keybindings = {
 
         # launching
-        "${mod}+Shift+r" = "exec wmenu-run -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.bg}";
+        "${mod}+Shift+r" = "exec wmenu-run -f 'Inter 13' -N ${c.bg} -n ${c.fg} -S ${c.accent} -s ${c.onAccent}";
         "${mod}+r" = "exec fuzzel";
         "${mod}+semicolon" = "exec ${lib.getExe emojiPicker}";
         "${mod}+Shift+x" = "exec swaylock";

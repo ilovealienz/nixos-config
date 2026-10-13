@@ -153,7 +153,7 @@ let c = osConfig.theme.colors; in
 
       #workspaces button.urgent {
         background: #${c.red};
-        color: #${c.bg};
+        color: #${c.onAccent};
       }
 
       #window { color: #${c.muted}; }
@@ -188,7 +188,7 @@ let c = osConfig.theme.colors; in
 
       #custom-rec {
         padding: 0 8px;
-        color: #${c.bg};
+        color: #${c.onAccent};
         background: #${c.red};
       }
       #custom-rec.busy {

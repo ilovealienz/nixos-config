@@ -47,8 +47,22 @@
       # staged, because a flake only sees files git knows about
       nxrebuild() {
         rm -f ~/.gtkrc-2.0.backup
+        nxtheme || return
         sudo git -C /etc/nixos add -f hardware-configuration.nix &&
           sudo nixos-rebuild switch --flake "/etc/nixos#$(hostname)"
+      }
+      # your colours (theme-edit's ~/.config/theme/colors.json) go to
+      # /etc/nixos/local-theme.json, staged but never committed, like
+      # hardware-configuration.nix; no file there: theme.nix's defaults
+      nxtheme() {
+        local src=~/.config/theme/colors.json dst=/etc/nixos/local-theme.json
+        if [ -f "$src" ]; then
+          cmp -s "$src" "$dst" || sudo install -m 644 "$src" "$dst" || return
+          sudo git -C /etc/nixos add -f local-theme.json
+        elif [ -e "$dst" ]; then
+          sudo git -C /etc/nixos rm -q --cached --ignore-unmatch local-theme.json
+          sudo rm -f "$dst"
+        fi
       }
       # pull and rebuild. flake.lock comes from the repo: one changed here
       # (an nxupdate that wasn't pushed) is dropped first
@@ -106,7 +120,7 @@
       # earlier unpushed commits). Every host is checked first.
       nxpush() {
         local g=(sudo -E git -C /etc/nixos)
-        local skip=(-- . ':(exclude)hardware-configuration.nix')
+        local skip=(-- . ':(exclude)hardware-configuration.nix' ':(exclude)local-theme.json')
         local check=1
         if [ "''${1:-}" = --no-check ]; then check=0; shift; fi
         "''${g[@]}" add -A || return
@@ -125,7 +139,7 @@
         fi
         GIT_SSH_COMMAND='ssh -i /home/pc/.ssh/id_ed25519' "''${g[@]}" push
       }
-      nxedit() { local out key f; while out=$(cd /etc/nixos && fd -e nix | awk -F/ '{ if (NF==1) printf "0\t\033[1;38;2;163;190;140m%s\033[0m\n",$0; else { d=$0; sub("/[^/]*$","",d); n=$0; sub(".*/","",n); printf "1\t\033[38;2;129;161;193m%s/\033[0m\033[38;2;216;222;233m%s\033[0m\n",d,n } }' | sort | cut -f2- | fzf --ansi --reverse --expect=ctrl-r,ctrl-a --prompt='➜ ' --header 'enter edit · ^r rebuild · ^a git add' --preview 'bat --color=always --style=numbers /etc/nixos/{}' --preview-window 'right,55%,border-left' --color='gutter:-1,hl:#88c0d0,fg+:#eceff4,bg+:#3b4252,hl+:#8fbcbb,pointer:#bf616a,marker:#a3be8c,header:#81a1c1,border:#4c566a,prompt:#81a1c1'); do key=$(head -1 <<< "$out"); f=$(sed -n 2p <<< "$out"); [[ -z "$f" ]] && continue; case "$key" in ctrl-r) rm -f ~/.gtkrc-2.0.backup; sudo git -C /etc/nixos add -f hardware-configuration.nix && sudo nixos-rebuild switch --flake /etc/nixos#$(hostname) ;; ctrl-a) sudo git -C /etc/nixos add -f "$f" && echo "staged $f" ;; *) ''${EDITOR:-nvim} "/etc/nixos/$f" ;; esac; done; }
+      nxedit() { local out key f; while out=$(cd /etc/nixos && fd -e nix | awk -F/ '{ if (NF==1) printf "0\t\033[1;32m%s\033[0m\n",$0; else { d=$0; sub("/[^/]*$","",d); n=$0; sub(".*/","",n); printf "1\t\033[34m%s/\033[0m\033[39m%s\033[0m\n",d,n } }' | sort | cut -f2- | fzf --ansi --reverse --expect=ctrl-r,ctrl-a --prompt='➜ ' --header 'enter edit · ^r rebuild · ^a git add' --preview 'bat --color=always --theme=ansi --style=numbers /etc/nixos/{}' --preview-window 'right,55%,border-left' --color='gutter:-1,hl:yellow,fg+:-1:bold,bg+:-1,hl+:yellow:bold,pointer:red,marker:green,header:blue,border:8,prompt:blue'); do key=$(head -1 <<< "$out"); f=$(sed -n 2p <<< "$out"); [[ -z "$f" ]] && continue; case "$key" in ctrl-r) nxrebuild ;; ctrl-a) sudo git -C /etc/nixos add -f "$f" && echo "staged $f" ;; *) ''${EDITOR:-nvim} "/etc/nixos/$f" ;; esac; done; }
       nxrun() { nix run nixpkgs#"$1" -- "''${@:2}"; }
       nxaudio() { [ $# -eq 0 ] && set -- -c 0; alsamixer "$@" && sudo alsactl store && echo "mixer saved"; }
       ldrun() { $NIX_LD --library-path "$NIX_LD_LIBRARY_PATH" "$@"; }

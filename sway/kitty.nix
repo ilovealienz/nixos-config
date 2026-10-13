@@ -1,5 +1,8 @@
 { osConfig, ... }:
-let c = osConfig.theme.colors; in
+let
+  c = osConfig.theme.colors;
+  dark = osConfig.theme.variant == "dark";
+in
 {
   programs.kitty = {
     enable = true;
@@ -12,7 +15,8 @@ let c = osConfig.theme.colors; in
       foreground = "#${c.fg}";
       background = "#${c.bg}";
 
-      color0  = "#${c.surface}";  color8  = "#${c.surface}";
+      # black: on a light background it's the dark text
+      color0  = "#${if dark then c.surface else c.fgBright}";  color8  = "#${if dark then c.surface else c.muted}";
       color1  = "#${c.red}";  color9  = "#${c.red}";
       color2  = "#${c.green}";  color10 = "#${c.green}";
       color3  = "#${c.orange}";  color11 = "#${c.accent}";
@@ -27,8 +31,9 @@ let c = osConfig.theme.colors; in
       inactive_tab_background = "#${c.bgDark}";
 
       cursor = "#${c.fg}";
-      selection_background = "#${c.surface}";
-      selection_foreground = "#${c.bg}";
+      # the same as selected rows in GTK apps
+      selection_background = "#${c.selectionBg}";
+      selection_foreground = "#${c.selectionFg}";
     };
   };
 }

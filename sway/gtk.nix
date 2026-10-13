@@ -1,15 +1,19 @@
 { pkgs, osConfig, ... }:
-let c = osConfig.theme.colors; in
+let
+  c = osConfig.theme.colors;
+  dark = osConfig.theme.variant == "dark";
+  icons = if dark then "Gruvbox-Plus-Dark" else "Gruvbox-Plus-Light";
+in
 {
-  # ── GTK theme (dark) + compact headerbar CSS ──
+  # ── GTK theme (dark or light, from theme.nix) + compact headerbar CSS ──
   gtk = {
     enable = true;
     theme = {
-      name = "adw-gtk3-dark";
+      name = if dark then "adw-gtk3-dark" else "adw-gtk3";
       package = pkgs.adw-gtk3;
     };
     iconTheme = {
-      name = "Gruvbox-Plus-Dark";
+      name = icons;
       package = pkgs.gruvbox-plus-icons;
     };
     gtk3.extraCss = ''
@@ -34,7 +38,7 @@ let c = osConfig.theme.colors; in
       @define-color sidebar_backdrop_color #${c.bg};
       @define-color accent_color #${c.accent};
       @define-color accent_bg_color #${c.accent};
-      @define-color accent_fg_color #${c.bg};
+      @define-color accent_fg_color #${c.onAccent};
       @define-color destructive_color #${c.red};
       @define-color destructive_bg_color #${c.red};
       @define-color success_color #${c.green};
@@ -98,7 +102,7 @@ let c = osConfig.theme.colors; in
     gtk3.extraConfig = {
       gtk-recent-files-max-age = 0;
       gtk-recent-files-enabled = 0;
-      gtk-application-prefer-dark-theme = 1;
+      gtk-application-prefer-dark-theme = if dark then 1 else 0;
     };
     gtk4.extraCss = ''
       /* ── Desert Night palette (recolours adw-gtk3 like Stylix did) ── */
@@ -122,7 +126,7 @@ let c = osConfig.theme.colors; in
       @define-color sidebar_backdrop_color #${c.bg};
       @define-color accent_color #${c.accent};
       @define-color accent_bg_color #${c.accent};
-      @define-color accent_fg_color #${c.bg};
+      @define-color accent_fg_color #${c.onAccent};
       @define-color destructive_color #${c.red};
       @define-color destructive_bg_color #${c.red};
       @define-color success_color #${c.green};
@@ -134,7 +138,7 @@ let c = osConfig.theme.colors; in
       @define-color theme_base_color #${c.bgAlt};
       @define-color theme_text_color #${c.fg};
       @define-color theme_selected_bg_color #${c.accent};
-      @define-color theme_selected_fg_color #${c.bg};
+      @define-color theme_selected_fg_color #${c.onAccent};
       @define-color insensitive_bg_color #${c.bgAlt};
       @define-color insensitive_fg_color #${c.muted};
       @define-color borders #${c.surface};
@@ -188,14 +192,14 @@ let c = osConfig.theme.colors; in
     gtk4.extraConfig = {
       gtk-recent-files-max-age = 0;
       gtk-recent-files-enabled = 0;
-      gtk-application-prefer-dark-theme = 1;
+      gtk-application-prefer-dark-theme = if dark then 1 else 0;
     };
   };
 
-  # ── libadwaita / GNOME apps: prefer dark ──
+  # ── libadwaita / GNOME apps, and Brave/Electron through the portal ──
   dconf.settings."org/gnome/desktop/interface" = {
-    color-scheme = "prefer-dark";
-    icon-theme = "Gruvbox-Plus-Dark";
+    color-scheme = if dark then "prefer-dark" else "prefer-light";
+    icon-theme = icons;
     cursor-theme = "Bibata-Modern-Classic";
   };
 
@@ -208,10 +212,10 @@ let c = osConfig.theme.colors; in
     x11.enable = true;
   };
 
-  # ── Qt apps: dark ──
+  # ── Qt apps ──
   qt = {
     enable = true;
     platformTheme.name = "adwaita";
-    style.name = "adwaita-dark";
+    style.name = if dark then "adwaita-dark" else "adwaita";
   };
 }
