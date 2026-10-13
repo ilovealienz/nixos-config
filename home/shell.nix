@@ -64,12 +64,45 @@
         fi
         nxrebuild
       }
-      # nxpush [message]: commit everything except hardware-configuration.nix
-      # and .gitignore'd files, then push (also earlier unpushed commits)
+      # evaluate every host the way a rebuild would, without building
+      nxcheck() {
+        local flake=/etc/nixos hosts h err fail=0 untracked
+        untracked=$(git -C "$flake" ls-files --others --exclude-standard)
+        if [ -n "$untracked" ]; then
+          echo "nxcheck: not seen until staged (git add):"
+          print -r -- "$untracked" | sed 's/^/  /'
+        fi
+        hosts=($(nix eval --raw "$flake#nixosConfigurations" \
+          --apply 'c: builtins.concatStringsSep " " (builtins.attrNames c)' 2>/dev/null))
+        if [ ''${#hosts} -eq 0 ]; then
+          echo "nxcheck: the flake itself doesn't evaluate:"
+          nix eval "$flake#nixosConfigurations" --apply builtins.attrNames 2>&1 | tail -20
+          return 1
+        fi
+        for h in $hosts; do
+          if err=$(nix eval --raw "$flake#nixosConfigurations.$h.config.system.build.toplevel.drvPath" 2>&1 >/dev/null); then
+            echo "✓ $h"
+          else
+            echo "✗ $h"
+            print -r -- "$err" | grep -v "^warning: Git tree" | tail -20 | sed 's/^/  /'
+            fail=1
+          fi
+        done
+        return $fail
+      }
+      # nxpush [--no-check] [message]: commit everything except
+      # hardware-configuration.nix and .gitignore'd files, then push (also
+      # earlier unpushed commits). Every host is checked first.
       nxpush() {
         local g=(sudo -E git -C /etc/nixos)
         local skip=(-- . ':(exclude)hardware-configuration.nix')
+        local check=1
+        if [ "''${1:-}" = --no-check ]; then check=0; shift; fi
         "''${g[@]}" add -A || return
+        if [ $check = 1 ] && ! nxcheck; then
+          echo "nxpush: not pushed (nxpush --no-check to push anyway)"
+          return 1
+        fi
         if ! "''${g[@]}" diff --cached --quiet "''${skip[@]}"; then
           "''${g[@]}" commit -q -m "''${1:-update}" "''${skip[@]}" || return
         fi
