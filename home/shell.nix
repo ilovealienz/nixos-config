@@ -66,7 +66,7 @@
       }
       # evaluate every host the way a rebuild would, without building
       nxcheck() {
-        local flake=/etc/nixos hosts h err fail=0 untracked
+        local flake=/etc/nixos hosts h fail=0 untracked tmp
         untracked=$(git -C "$flake" ls-files --others --exclude-standard)
         if [ -n "$untracked" ]; then
           echo "nxcheck: not seen until staged (git add):"
@@ -79,15 +79,26 @@
           nix eval "$flake#nixosConfigurations" --apply builtins.attrNames 2>&1 | tail -20
           return 1
         fi
+        # all hosts at once: about as long as the slowest one. In a subshell
+        # so the background jobs don't show up in the terminal's job list
+        tmp=$(mktemp -d)
+        (
+          for h in $hosts; do
+            { nix eval --raw "$flake#nixosConfigurations.$h.config.system.build.toplevel.drvPath" \
+                >/dev/null 2>"$tmp/$h.err"; echo $? >"$tmp/$h.rc"; } &
+          done
+          wait
+        )
         for h in $hosts; do
-          if err=$(nix eval --raw "$flake#nixosConfigurations.$h.config.system.build.toplevel.drvPath" 2>&1 >/dev/null); then
+          if [ "$(cat "$tmp/$h.rc")" = 0 ]; then
             echo "✓ $h"
           else
             echo "✗ $h"
-            print -r -- "$err" | grep -v "^warning: Git tree" | tail -20 | sed 's/^/  /'
+            grep -v "^warning: Git tree" "$tmp/$h.err" | tail -20 | sed 's/^/  /'
             fail=1
           fi
         done
+        rm -rf "$tmp"
         return $fail
       }
       # nxpush [--no-check] [message]: commit everything except
@@ -99,6 +110,12 @@
         local check=1
         if [ "''${1:-}" = --no-check ]; then check=0; shift; fi
         "''${g[@]}" add -A || return
+        # nothing new and nothing unpushed: no need to check
+        if "''${g[@]}" diff --cached --quiet "''${skip[@]}" &&
+           [ "$("''${g[@]}" rev-list --count '@{u}..HEAD' 2>/dev/null)" = 0 ]; then
+          echo "nxpush: nothing to push"
+          return 0
+        fi
         if [ $check = 1 ] && ! nxcheck; then
           echo "nxpush: not pushed (nxpush --no-check to push anyway)"
           return 1
