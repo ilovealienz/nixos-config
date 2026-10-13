@@ -33,7 +33,7 @@ let
       (k [ "Super" "Q" ] "Close window" "")
       (k [ "Super" "F" ] "Fullscreen" "floats Proton and Wine games first so they stay fullscreen")
       (k [ "Super" "V" ] "Float / tile" "")
-      (k [ "Super" "Shift" "V" ] "Popout window" "small, bottom-right, on every workspace; again: back to the corner, then back to tiling")
+      (k [ "Super" "Alt" "V" ] "Popout window" "small, bottom-right, on every workspace; again: back to the corner, then back to tiling")
       (k [ "Super" "Shift" "Tab" ] "Window picker" "every window, grouped by workspace")
       (k [ "Super" "S" ] "Split direction" "next window opens beside or below")
       (k [ "Super" "T" ] "Toggle split layout" "")

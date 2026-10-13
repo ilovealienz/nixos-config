@@ -1,4 +1,4 @@
-# Super+Shift+V: pop the focused window out into a small window in the
+# Super+Alt+V: pop the focused window out into a small window in the
 # bottom-right corner that stays on top and follows you to every workspace
 # on that monitor (a video, a call). Press it again on the popout to put it
 # back in the tiling; if it's drifted out of the corner, the press puts
@@ -15,22 +15,25 @@ let
     text = ''
       tree=$(swaymsg -t get_tree)
       # a window the picture-in-picture rule just marked, else the focused
-      # one, with the workspace it's on
-      read -r id type sticky marked x y w h wx wy ww wh < <(jq -r '
+      # one, and the workspace you're on (where it goes: Brave's picture-in-
+      # picture is assigned to Brave's workspace, which can be on another
+      # monitor)
+      read -r id type sticky marked x y w h wx wy ww wh wsname < <(jq -r '
         def wins: .. | objects | select(.type? == "workspace") as $ws
-          | $ws | .. | objects | {c: ., ws: $ws.rect};
-        (first(wins | select(.c.marks? // [] | index("_popout_new")))
-          // first(wins | select(.c.focused? == true)))
+          | $ws | .. | objects | {c: ., ws: $ws};
+        (first(wins | select(.c.focused? == true)) | .ws) as $f
+        | (first(wins | select(.c.marks? // [] | index("_popout_new")))
+            // first(wins | select(.c.focused? == true)))
         | [.c.id, .c.type, .c.sticky, (.c.marks // [] | index("_popout_new") != null),
            .c.rect.x, .c.rect.y, .c.rect.width, .c.rect.height,
-           .ws.x, .ws.y, .ws.width, .ws.height]
+           $f.rect.x, $f.rect.y, $f.rect.width, $f.rect.height, $f.name]
         | @tsv' <<<"$tree")
       [ -n "''${id:-}" ] || exit 0
       [ "$type" = workspace ] && exit 0
       m=16
       corner() { echo "move position $((ww - $1 - m)) px $((wh - $2 - m)) px"; }
       if [ "$marked" = true ]; then
-        swaymsg -q "[con_id=$id] unmark _popout_new"
+        swaymsg -q "[con_id=$id] unmark _popout_new, move container to workspace \"$wsname\""
       elif [ "$type" = floating_con ] && [ "$sticky" = true ]; then
         # already popped out: back to the tiling if it's in the corner,
         # else back to the corner (an X11 window that resizes itself, like
@@ -53,7 +56,7 @@ in
 {
   home.packages = [ popout ];
   wayland.windowManager.sway.config = {
-    keybindings."Mod4+Shift+v" = "exec ${lib.getExe popout}";
+    keybindings."Mod4+Alt+v" = "exec ${lib.getExe popout}";
     # Brave/Chromium's picture-in-picture window (Firefox's is titled
     # Picture-in-Picture)
     window.commands = [{
