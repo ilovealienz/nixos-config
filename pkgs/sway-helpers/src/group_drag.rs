@@ -114,8 +114,9 @@ fn apply(sway: &mut Sway, f: &Follow) {
     let Some(&p) = now.parent.get(&f.win) else { return };
     let mut cmds: Vec<String> = Vec::new();
     if !now.is_group(p) {
-        // wrap the dropped window in a new tabbed container
-        cmds.push(format!("[con_id={}] splitv", f.win));
+        // wrap the dropped window in a new tabbed container (made from
+        // splith: sway remembers it, so untabbing goes side by side)
+        cmds.push(format!("[con_id={}] splith", f.win));
         cmds.push(format!("[con_id={}] layout tabbed", f.win));
     }
     // rebuild the old order around the dropped window: the ones that were

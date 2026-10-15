@@ -2,6 +2,7 @@
 //!
 //!   group-drag  Super+Shift+drag moves a whole tab group
 //!   app-group   related apps join one tabbed group when they open
+//!   group-end   a tab group left with one window ends 10s later
 //!   attention   XWayland attention requests are counted in the title
 //!
 //! Each runs in its own thread with its own sway connections. If one
@@ -12,11 +13,13 @@
 //! Standard library only.
 //!
 //! Usage: sway-helpers [--group NAME=APP,APP...]... [--title-suffix TEXT]
-//!                     [--no-group-drag] [--no-app-group] [--no-attention]
+//!                     [--no-group-drag] [--no-app-group] [--no-group-end]
+//!                     [--no-attention]
 
 mod app_group;
 mod attention;
 mod group_drag;
+mod group_end;
 mod ipc;
 mod json;
 mod x11;
@@ -98,7 +101,8 @@ fn supervise(name: &'static str, cfg: Arc<Config>, feature: fn(&Config)) {
 fn usage(msg: &str) -> ! {
     eprintln!("sway-helpers: {msg}");
     eprintln!("usage: sway-helpers [--group NAME=APP,APP...]... [--title-suffix TEXT]");
-    eprintln!("                    [--no-group-drag] [--no-app-group] [--no-attention]");
+    eprintln!("                    [--no-group-drag] [--no-app-group] [--no-group-end]");
+    eprintln!("                    [--no-attention]");
     exit(2)
 }
 
@@ -110,7 +114,7 @@ fn main() {
     }
 
     let mut cfg = Config { groups: Vec::new(), title_suffix: String::new() };
-    let (mut drag, mut group, mut attention) = (true, true, true);
+    let (mut drag, mut group, mut end, mut attention) = (true, true, true, true);
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -132,6 +136,7 @@ fn main() {
             }
             "--no-group-drag" => drag = false,
             "--no-app-group" => group = false,
+            "--no-group-end" => end = false,
             "--no-attention" => attention = false,
             other => usage(&format!("unknown argument {other:?}")),
         }
@@ -139,7 +144,7 @@ fn main() {
     if cfg.groups.is_empty() {
         group = false;
     }
-    if !(drag || group || attention) {
+    if !(drag || group || end || attention) {
         usage("nothing to do");
     }
 
@@ -149,6 +154,9 @@ fn main() {
     }
     if group {
         supervise("app-group", cfg.clone(), app_group::run);
+    }
+    if end {
+        supervise("group-end", cfg.clone(), group_end::run);
     }
     if attention {
         supervise("attention", cfg.clone(), attention::run);

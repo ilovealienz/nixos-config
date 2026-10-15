@@ -630,7 +630,9 @@ $actions"
               fi ;;
             group)
               if ingroup; then
-                swaymsg -q 'layout toggle tabbed split'
+                # ungroup: always side by side (a toggle would bring back
+                # whatever split the group was made from)
+                swaymsg -q 'layout splith'
               elif [[ $tgt != - && $sibs != - ]]; then
                 cmds="[con_id=$tgt] mark --add __grp"
                 IFS=, read -ra ids <<< "$sibs"

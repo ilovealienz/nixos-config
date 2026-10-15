@@ -134,8 +134,9 @@ pub fn run(cfg: &Config) {
         let mark = format!("__app_group_{g}");
         let mut c = String::new();
         if !grouped {
-            // wrap the existing window in its own tabbed container
-            c += &format!("[con_id={t}] splitv; [con_id={t}] layout tabbed; ");
+            // wrap the existing window in its own tabbed container (made from
+            // splith: sway remembers it, so untabbing goes side by side)
+            c += &format!("[con_id={t}] splith; [con_id={t}] layout tabbed; ");
         }
         c += &format!("[con_id={t}] mark --add {mark}; ");
         c += &format!("[con_id={}] move container to mark {mark}; ", w.id);

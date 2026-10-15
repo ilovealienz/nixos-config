@@ -7,6 +7,10 @@
 #               the same order. Super+drag still moves a single window.
 #   app-group   related apps join one tabbed group when they open; after
 #               that they're left alone. Super+Alt+g pauses/resumes it.
+#   group-end   a tab group down to one window (the others closed, moved
+#               out or floated) is kept for 10 seconds, so a window can be
+#               put back; then it becomes a plain window again, so new
+#               windows open beside it rather than as tabs.
 #   attention   XWayland apps (Wine/IMVU, Steam chats...) ask for attention
 #               in a way sway ignores; the count is shown in the title,
 #               e.g. "(3) the rock - IMVU", reset when you focus the window.
@@ -29,7 +33,7 @@ let
 
   swayHelpers = pkgs.rustPlatform.buildRustPackage {
     pname = "sway-helpers";
-    version = "1.0.0";
+    version = "1.1.0";
     src = ../pkgs/sway-helpers;
     cargoLock.lockFile = ../pkgs/sway-helpers/Cargo.lock;   # no dependencies
   };
@@ -62,7 +66,7 @@ in
 {
   systemd.user.services.sway-helpers = {
     Unit = {
-      Description = "Tab group dragging, app grouping and XWayland attention for sway";
+      Description = "Tab group dragging, app grouping, ending groups of one and XWayland attention for sway";
       After = [ "sway-session.target" ];
       PartOf = [ "sway-session.target" ];
     };
