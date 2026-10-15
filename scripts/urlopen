@@ -10,10 +10,10 @@ url=${1:-}
 
 # label|command  — first installed entry is the default
 ENTRIES='brave|brave
-floorp|floorp
+librewolf|librewolf
 chromium|chromium
 brave private|brave --incognito
-floorp private|floorp --private-window
+librewolf private|librewolf --private-window
 mpv|mpv
 copy|@copy
 qr|@qr'

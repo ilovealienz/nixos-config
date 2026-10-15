@@ -555,7 +555,7 @@ $actions"
   # Check app ids with: swaymsg -t get_tree | grep -E 'app_id|class'
   # (app_id for wayland apps, class for xwayland)
   placementRules = {
-    "1" = [ { app_id = "firefox"; } { app_id = "brave-browser"; } { class = "Brave-browser"; } { app_id = "floorp"; } ];
+    "1" = [ { app_id = "firefox"; } { app_id = "brave-browser"; } { class = "Brave-browser"; } { app_id = "librewolf"; } { app_id = "LibreWolf"; } ];
     "2" = [ { app_id = "spotify"; } { app_id = "signal"; } { app_id = "vesktop"; } ];
     "3" = [ { app_id = "mpv"; } ];
     "4" = [ { app_id = "kitty"; } ];

@@ -183,7 +183,8 @@ let c = osConfig.theme.colors; in
         color: #${c.fg};
       }
       #custom-dnd.dnd {
-        color: #${c.muted};
+        color: #${c.red};
+        background: alpha(#${c.red}, 0.15);
       }
 
       #custom-rec {

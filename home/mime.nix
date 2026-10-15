@@ -4,7 +4,7 @@ let
   audio   = "mpv.desktop";
   image   = "feh.desktop";
   browser = "urlopen.desktop";
-  pdf     = "floorp.desktop";
+  pdf     = "librewolf.desktop";
   editor  = "codium.desktop";
   files   = "thunar.desktop";
   archive = "xarchiver.desktop";

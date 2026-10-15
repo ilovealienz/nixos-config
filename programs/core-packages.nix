@@ -37,7 +37,7 @@ in
     fastfetch
     alsa-utils
     (brave.override { commandLineArgs = "--ozone-platform=x11"; })
-    floorp-bin
+    librewolf-bin
     vscodium
     neovim
     mission-center

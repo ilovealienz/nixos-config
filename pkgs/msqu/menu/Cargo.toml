@@ -1,0 +1,12 @@
+[package]
+name = "msqu-ui"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+libc = "0.2"
+
+[profile.release]
+opt-level = "s"
+strip = true

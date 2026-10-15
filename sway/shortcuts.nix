@@ -15,6 +15,8 @@ let
       (k [ "Super" "U" ] "Urgent marking" "red border when IMVU, Steam chats… want attention")
       (k [ "Shift" "Print" ] "Screen recording" "or click the red dot in waybar to stop")
       (k [ "Right-click DND" ] "Do not disturb" "the DND icon in waybar; left-click shows history")
+      (k [ "Super" "Shift" "A" ] "msqu: quick utils" "timer, stopwatch, alarm, repeat, drink reminder")
+      (k [ "Click an msqu block" ] "Pause / resume" "right-click stops or cancels it")
       (k [ "Click idle sliver" ] "Stay awake" "amber: no lock or screen-off")
       (k [ "Right-click idle sliver" ] "Game mode" "green: stay awake, GameMode on")
     ]; }
@@ -59,7 +61,7 @@ let
       (k [ "Super" "Shift" ",/." ] "Move workspace to left / right monitor" "")
     ]; }
     { name = "App placement"; note = "while Super+Alt+P is on"; items = [
-      (k [ "1" ] "Firefox, Brave, Floorp" "")
+      (k [ "1" ] "Firefox, Brave, LibreWolf" "")
       (k [ "2" ] "Spotify, Signal, Vesktop" "")
       (k [ "3" ] "mpv" "")
       (k [ "4" ] "kitty" "")

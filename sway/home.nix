@@ -13,6 +13,7 @@
     ./weather.nix
     ./sway-helpers.nix
     ./shortcuts.nix
+    ./msqu.nix
     ./theme-edit.nix
     ./popout.nix
     ./session.nix
