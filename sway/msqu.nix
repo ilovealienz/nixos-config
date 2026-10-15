@@ -152,8 +152,6 @@ let
     then map (i: { name = "${n}-${toString i}"; tool = n; arg = " ${toString i}"; }) (lib.range 1 tools.${n}.slots)
     else [{ name = n; tool = n; arg = ""; }]) barTools;
 
-  # text on a solid block: onAccent once the light theme is in, else bg
-  onColour = c.onAccent or c.bg;
   colours = [ "accent" "red" "orange" "yellow" "green" "blue" "magenta" ];
 in
 {
@@ -190,22 +188,26 @@ in
     on-click-middle = "${run b.tool} middle-click${b.arg}";
   }) blocks);
 
-  # blocks: solid in their colour, or coloured text on a faint tint;
-  # same-width digits so the bar doesn't shift as they count
+  # blocks: coloured text on a faint tint of the same colour; paused, both
+  # dimmer, with a red line along the bottom. Same-width digits so the bar
+  # doesn't shift as they count.
   programs.waybar.style = lib.mkAfter (''
     .msqu {
       padding: 0 8px;
       margin-right: 4px;
       font-feature-settings: "tnum";
     }
+    .msqu.paused {
+      box-shadow: inset 0 -2px #${c.red};
+    }
   '' + lib.concatMapStrings (n: ''
     .msqu.${n} {
-      color: #${onColour};
-      background: #${c.${n}};
-    }
-    .msqu.${n}.faint {
       color: #${c.${n}};
       background: alpha(#${c.${n}}, 0.15);
+    }
+    .msqu.${n}.paused {
+      color: alpha(#${c.${n}}, 0.6);
+      background: alpha(#${c.${n}}, 0.07);
     }
   '') colours);
 }

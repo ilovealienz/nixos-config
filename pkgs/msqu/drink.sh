@@ -1,5 +1,5 @@
 # msqu drink: a reminder to drink water every so often, until stopped,
-# with repeat's bell. On the bar in magenta (faint while paused), showing
+# with repeat's bell. On the bar in magenta, showing
 # the minutes to the next one. Skipped while the screen is locked, so you
 # don't come back to a pile of them; the next one still comes on time.
 #

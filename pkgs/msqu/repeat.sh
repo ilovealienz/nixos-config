@@ -1,6 +1,6 @@
 # msqu repeat: a reminder that goes off every so often until you stop it,
 # and can bring a window to the front each time (keeping a game from
-# going AFK, say). Counts down on the bar in blue; faint while paused.
+# going AFK, say). Counts down on the bar in blue.
 #
 #   msqu repeat start SECONDS WINDOW [LABEL]
 #                         WINDOW: app_id=ID, class=CLASS or - for none

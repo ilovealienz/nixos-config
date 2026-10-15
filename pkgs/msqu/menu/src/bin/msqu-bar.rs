@@ -8,8 +8,8 @@
 //! Usage: msqu-bar TOOL [SLOT]
 //!   SLOT: which one, for a tool that runs several at once (timer 1, 2, 3)
 //!
-//! The colours are waybar's CSS (sway/msqu.nix): each block has the
-//! classes "msqu", its colour, and "faint" while paused.
+//! The look is waybar's CSS (sway/msqu.nix): each block has the classes
+//! "msqu", its colour, and "paused" while paused.
 
 use msqu_ui::model::{self, Running, clock_text, hms};
 use std::ffi::CString;
@@ -44,11 +44,11 @@ fn pango(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
-fn block(text: &str, colour: &str, tooltip: &str, faint: bool) -> String {
+fn block(text: &str, colour: &str, tooltip: &str, paused: bool) -> String {
     format!(
         "{{\"text\":{},\"class\":[\"msqu\",\"{colour}\"{}],\"tooltip\":{}}}",
         json(&pango(text)),
-        if faint { ",\"faint\"" } else { "" },
+        if paused { ",\"paused\"" } else { "" },
         json(&pango(tooltip))
     )
 }
@@ -171,15 +171,15 @@ mod tests {
         let t = model::read_running("timer", "pause 75 300 tea & <b>").unwrap();
         assert_eq!(
             render("timer", Some(&t)),
-            r#"{"text":"󰏤 1:15","class":["msqu","yellow","faint"],"tooltip":"tea &amp; &lt;b&gt;: 1:15 of 5:00\nclick to resume, right-click to cancel"}"#
+            r#"{"text":"󰏤 1:15","class":["msqu","yellow","paused"],"tooltip":"tea &amp; &lt;b&gt;: 1:15 of 5:00\nclick to resume, right-click to cancel"}"#
         );
         assert_eq!(render("timer", None), r#"{"text":""}"#);
         let d = model::read_running("drink", "pause 61 2700").unwrap();
-        assert!(render("drink", Some(&d)).starts_with(r#"{"text":"󰆫 2m","class":["msqu","magenta","faint"]"#));
+        assert!(render("drink", Some(&d)).starts_with(r#"{"text":"󰆫 2m","class":["msqu","magenta","paused"]"#));
         let r = model::read_running("repeat", "pause 60 900 app_id=org.vinegarhq.Sober roblox \"afk\"").unwrap();
         assert!(render("repeat", Some(&r)).contains(r#""tooltip":"roblox \"afk\": every 15:00, brings up org.vinegarhq.Sober\nnext in 1:00"#));
         let s = model::read_running("stopwatch", "pause 3725").unwrap();
-        assert!(render("stopwatch", Some(&s)).starts_with(r#"{"text":"󰁫 1:02:05","class":["msqu","green","faint"]"#));
+        assert!(render("stopwatch", Some(&s)).starts_with(r#"{"text":"󰁫 1:02:05","class":["msqu","green","paused"]"#));
         assert_eq!(wait_ms("stopwatch", Some(&s)), -1);
         assert_eq!(wait_ms("timer", None), -1);
     }

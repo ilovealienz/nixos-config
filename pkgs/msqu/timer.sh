@@ -1,4 +1,4 @@
-# msqu timer: countdowns on the bar (yellow; faint while paused), up to
+# msqu timer: countdowns on the bar (yellow), up to
 # MSQU_SLOTS at once, each its own block. When one ends, a notification
 # shows and the alarm sound plays until it's closed.
 #
