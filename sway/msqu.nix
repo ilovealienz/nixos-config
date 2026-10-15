@@ -6,13 +6,15 @@
 #
 # The menu: what's running (enter pauses or resumes, ctrl+x stops),
 # something new, presets and recent ones (ctrl+x removes one; "clear all"
-# at the end empties the list). Typing a time starts it straight
-# away: "25 tea" a timer, "7pm" (or "a 7:30 gym") an alarm, "d 45" the
-# drink reminder; "r 15" goes on to pick a window for a repeat.
+# at the end empties the list). Typing a time starts it straight away:
+# "25 tea" a timer, "7pm" (or "a 7:30 gym") an alarm, "d 45" the drink
+# reminder; "r 15" goes on to pick a window for a repeat. A sum ("1024x8",
+# "4+4", "(3+4)*2^3") shows its answer; enter copies it.
 #
 # timer: how long ("5" is minutes; "1:30", "90s", "1h 30m") and a label.
 # Up to 3 at once, each its own block. Counts down on the bar in yellow:
-# click to pause or resume, right-click to cancel. When it ends, a
+# click to pause or resume, right-click to cancel, middle-click for more
+# time (fuzzel: +5m, -1m, or type +3, 90s, 1:30). When it ends, a
 # notification shows and the alarm sound (alarmSound below) plays until
 # it's closed.
 #
@@ -25,13 +27,13 @@
 # when; right-click to cancel, or enter on it in the menu to change it.
 #
 # repeat: goes off every so often until stopped, and can bring a window to
-# the front each time (the Roblox anti-AFK preset below). Blue on the bar,
-# same clicks as the timer.
+# the front each time (the Roblox anti-AFK preset below). Blue on the bar:
+# click to pause or resume, right-click to stop.
 #
 # drink: a reminder to drink water every so often (45 minutes to start
 # with), with repeat's bell, until stopped; skipped while the screen is
-# locked. Magenta on the
-# bar, showing the minutes to the next one; same clicks.
+# locked. Magenta on the bar, showing the minutes to the next one: click
+# to pause or resume, right-click to stop.
 #
 # Adding a tool: write ../pkgs/msqu/NAME.sh (lib.sh says what it needs),
 # add it to `tools` below, and teach menu/src its state file (model.rs),
@@ -54,7 +56,7 @@ let
 
   tools = {
     timer = {
-      deps = with pkgs; [ systemd libnotify pipewire ];
+      deps = with pkgs; [ systemd libnotify pipewire fuzzel ];
       bar = true;
       slots = 3;
       env.MSQU_ALARM = "${alarmSound}";
@@ -129,7 +131,8 @@ let
   };
   menu = pkgs.writeShellApplication {
     name = "msqu-menu";
-    runtimeInputs = [ msquUi ] ++ lib.attrValues toolPkgs;
+    # wl-copy and notify-send: the calculator's answer to the clipboard
+    runtimeInputs = [ msquUi pkgs.wl-clipboard pkgs.libnotify ] ++ lib.attrValues toolPkgs;
     text = ''exec msqu-ui --config ${menuConfig} "$@"'';
   };
 

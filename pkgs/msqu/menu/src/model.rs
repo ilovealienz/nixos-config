@@ -291,6 +291,140 @@ pub fn rough(s: i64) -> String {
     }
 }
 
+/// a sum typed into the menu: "1024x8", "4+4", "(3+4)*2^3", "10/3",
+/// "17%5" (remainder). x, × and * multiply; / and ÷ divide; ^ is a power.
+/// None if it isn't one (a plain number, a time, words) or has no answer.
+pub fn calc(s: &str) -> Option<f64> {
+    let toks = calc_tokens(s)?;
+    // a sum: some operator after the start (not just "-5" or "(5)")
+    if !toks.iter().skip(1).any(|t| matches!(t, Tok::Op(_))) {
+        return None;
+    }
+    let mut p = Calc { toks, at: 0 };
+    let v = p.expr()?;
+    (p.at == p.toks.len() && v.is_finite()).then_some(v)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Tok {
+    Num(f64),
+    Op(char),
+    Open,
+    Close,
+}
+
+fn calc_tokens(s: &str) -> Option<Vec<Tok>> {
+    let mut out = Vec::new();
+    let cs: Vec<char> = s.chars().collect();
+    let mut i = 0;
+    while i < cs.len() {
+        let c = cs[i];
+        match c {
+            ' ' => {}
+            '0'..='9' | '.' => {
+                // commas group thousands: 1,000
+                let start = i;
+                while i + 1 < cs.len() && (cs[i + 1].is_ascii_digit() || cs[i + 1] == '.' || cs[i + 1] == ',') {
+                    i += 1;
+                }
+                let n: String = cs[start..=i].iter().filter(|&&c| c != ',').collect();
+                out.push(Tok::Num(n.parse().ok()?));
+            }
+            '+' | '-' | '^' | '%' => out.push(Tok::Op(c)),
+            '*' | 'x' | 'X' | '×' => out.push(Tok::Op('*')),
+            '/' | '÷' => out.push(Tok::Op('/')),
+            '(' => out.push(Tok::Open),
+            ')' => out.push(Tok::Close),
+            _ => return None,
+        }
+        i += 1;
+    }
+    Some(out)
+}
+
+struct Calc {
+    toks: Vec<Tok>,
+    at: usize,
+}
+
+impl Calc {
+    fn peek(&self) -> Option<Tok> {
+        self.toks.get(self.at).copied()
+    }
+    fn op(&mut self, ops: &[char]) -> Option<char> {
+        match self.peek() {
+            Some(Tok::Op(c)) if ops.contains(&c) => {
+                self.at += 1;
+                Some(c)
+            }
+            _ => None,
+        }
+    }
+    // a + b - c
+    fn expr(&mut self) -> Option<f64> {
+        let mut v = self.term()?;
+        while let Some(o) = self.op(&['+', '-']) {
+            let r = self.term()?;
+            v = if o == '+' { v + r } else { v - r };
+        }
+        Some(v)
+    }
+    // a * b / c % d
+    fn term(&mut self) -> Option<f64> {
+        let mut v = self.unary()?;
+        while let Some(o) = self.op(&['*', '/', '%']) {
+            let r = self.unary()?;
+            v = match o {
+                '*' => v * r,
+                '/' => v / r,
+                _ => v % r,
+            };
+        }
+        Some(v)
+    }
+    // -a, +a: looser than ^, so -2^2 is -4
+    fn unary(&mut self) -> Option<f64> {
+        match self.op(&['-', '+']) {
+            Some('-') => Some(-self.unary()?),
+            Some(_) => self.unary(),
+            None => self.power(),
+        }
+    }
+    // a ^ b ^ c, from the right; the power can be negative (2^-1)
+    fn power(&mut self) -> Option<f64> {
+        let b = self.primary()?;
+        if self.op(&['^']).is_some() {
+            return Some(b.powf(self.unary()?));
+        }
+        Some(b)
+    }
+    fn primary(&mut self) -> Option<f64> {
+        let t = self.peek()?;
+        self.at += 1;
+        match t {
+            Tok::Num(n) => Some(n),
+            Tok::Open => {
+                let v = self.expr()?;
+                (self.peek()? == Tok::Close).then(|| self.at += 1)?;
+                Some(v)
+            }
+            _ => None,
+        }
+    }
+}
+
+/// a calc answer for showing and copying: 8192, 3.3333333333, 1.5e+20
+pub fn calc_text(v: f64) -> String {
+    if v.fract() == 0.0 && v.abs() < 1e15 {
+        format!("{}", v as i64)
+    } else if v.abs() >= 1e15 || v.abs() < 1e-6 {
+        format!("{v:e}")
+    } else {
+        let s = format!("{v:.10}");
+        s.trim_end_matches('0').trim_end_matches('.').to_string()
+    }
+}
+
 /// a saved repeat: label, how often, window ("app_id=ID", "class=C" or -)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Preset {
@@ -472,6 +606,32 @@ pub fn windows() -> Vec<(String, String, String)> {
         .collect()
 }
 
+/// puts text on the clipboard. wl-copy stays behind to hand it out, in a
+/// session of its own so it outlives the menu's terminal.
+pub fn copy(text: &str) -> Result<(), String> {
+    use std::io::Write;
+    use std::os::unix::process::CommandExt;
+    let mut cmd = Command::new("wl-copy");
+    cmd.stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null());
+    unsafe {
+        cmd.pre_exec(|| {
+            libc::setsid();
+            Ok(())
+        });
+    }
+    let mut child = cmd.spawn().map_err(|e| format!("can't run wl-copy: {e}"))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+    }
+    // (wl-copy hands the text to a copy of itself in the background, then
+    // exits)
+    if !child.wait().map_err(|e| e.to_string())?.success() {
+        return Err("wl-copy couldn't take it (no Wayland session?)".into());
+    }
+    let _ = Command::new("notify-send").args(["-c", "osd", "-t", "1500", "copied", text]).stdin(Stdio::null()).status();
+    Ok(())
+}
+
 /// runs msqu-TOOL with args; the error text if it failed
 pub fn run(tool: &str, args: &[String]) -> Result<(), String> {
     let out = Command::new(format!("msqu-{tool}")).args(args).stdin(Stdio::null()).output();
@@ -529,6 +689,37 @@ mod tests {
         let d = read_running("drink", "pause 120 2700").unwrap();
         assert_eq!((d.paused, d.left, d.total, d.label.as_str()), (true, 120, 2700, ""));
         assert!(read_running("alarm", "run 5").is_none());
+    }
+
+    #[test]
+    fn sums() {
+        for (q, v) in [
+            ("4+4", "8"),
+            ("1024x8", "8192"),
+            ("1024 x 8", "8192"),
+            ("1024*8", "8192"),
+            ("10/4", "2.5"),
+            ("10/3", "3.3333333333"),
+            ("2^10", "1024"),
+            ("2^3^2", "512"),
+            ("(3+4)*2", "14"),
+            ("-3+5", "2"),
+            ("17%5", "2"),
+            ("1.5×4", "6"),
+            ("9÷3", "3"),
+            ("100-150", "-50"),
+            ("2^64", "1.8446744073709552e19"),
+            ("-2^2", "-4"),
+            ("2^-1", "0.5"),
+            ("1,000x8", "8000"),
+            ("0.1+0.2", "0.3"),
+            ("2*-3", "-6"),
+        ] {
+            assert_eq!(calc(q).map(calc_text).as_deref(), Some(v), "{q}");
+        }
+        for q in ["25", "-5", "(5)", "1:30", "25 tea", "4+", "x4", "1/0", "2(3)", "a 7:30", "5m", "", "(1+2"] {
+            assert_eq!(calc(q), None, "{q}");
+        }
     }
 
     #[test]

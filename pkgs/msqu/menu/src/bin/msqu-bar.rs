@@ -62,7 +62,7 @@ pub fn render(tool: &str, r: Option<&Running>) -> String {
         "timer" => block(
             &format!("{} {}", if r.paused { PAUSED } else { TIMER }, hms(r.left)),
             "yellow",
-            &format!("{}{} of {}\n{hint}, right-click to cancel", label(": "), hms(r.left), hms(r.total)),
+            &format!("{}{} of {}\n{hint}, right-click to cancel\nmiddle-click for more time", label(": "), hms(r.left), hms(r.total)),
             r.paused,
         ),
         "stopwatch" => block(&format!("{STOPWATCH} {}", hms(r.left)), "green", &format!("stopwatch\n{hint}, right-click to stop"), r.paused),
@@ -171,7 +171,7 @@ mod tests {
         let t = model::read_running("timer", "pause 75 300 tea & <b>").unwrap();
         assert_eq!(
             render("timer", Some(&t)),
-            r#"{"text":"󰏤 1:15","class":["msqu","yellow","paused"],"tooltip":"tea &amp; &lt;b&gt;: 1:15 of 5:00\nclick to resume, right-click to cancel"}"#
+            r#"{"text":"󰏤 1:15","class":["msqu","yellow","paused"],"tooltip":"tea &amp; &lt;b&gt;: 1:15 of 5:00\nclick to resume, right-click to cancel\nmiddle-click for more time"}"#
         );
         assert_eq!(render("timer", None), r#"{"text":""}"#);
         let d = model::read_running("drink", "pause 61 2700").unwrap();

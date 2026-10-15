@@ -551,7 +551,8 @@ $actions"
   # The rules live in ~/.config/sway/placement-on.conf. Sway includes
   # ~/.local/state/sway/placement.conf, a symlink to that file or to the
   # empty placement-off.conf; placement-toggle flips it and reloads sway.
-  # Matches are exact (so kitty doesn't also catch kitty-float).
+  # Matches are the whole name (so kitty doesn't also catch kitty-float),
+  # in any case (Thunar's app_id is "Thunar").
   # Check app ids with: swaymsg -t get_tree | grep -E 'app_id|class'
   # (app_id for wayland apps, class for xwayland)
   placementRules = {
@@ -565,7 +566,7 @@ $actions"
   };
   placementConf = lib.concatStrings (lib.flatten (lib.mapAttrsToList (ws: rules:
     map (r: "assign [${lib.concatStringsSep " "
-      (lib.mapAttrsToList (k: v: "${k}=\"^${v}$\"") r)}] workspace number ${ws}\n") rules)
+      (lib.mapAttrsToList (k: v: "${k}=\"(?i)^${v}$\"") r)}] workspace number ${ws}\n") rules)
     placementRules));
 
   placementToggle = pkgs.writeShellApplication {

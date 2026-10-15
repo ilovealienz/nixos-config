@@ -11,7 +11,7 @@
 
 use msqu_ui::{model, term};
 
-use model::{Preset, Recent, Running, clock, duration, hms, rough, split_clock, split_when};
+use model::{Preset, Recent, Running, calc, calc_text, clock, duration, hms, rough, split_clock, split_when};
 use term::{BOLD, Key, Pal, RESET, cut, width};
 
 /// what Enter does on a home row
@@ -29,6 +29,8 @@ enum Act {
     Open(&'static str, String),
     /// empties RECENT, on a second Enter
     ClearRecent,
+    /// a sum's answer, to the clipboard
+    Copy(String),
     /// the same, on its first field: changing a running alarm (its slot)
     Change(&'static str, String, String),
 }
@@ -108,6 +110,7 @@ const ALARM: &str = "󰀠";
 const DRINK: &str = "󰆫";
 const PAUSED: &str = "󰏤";
 const CLEAR: &str = "󰗩";
+const CALC: &str = "󰃬";
 
 fn icon(tool: &str) -> &'static str {
     match tool {
@@ -156,9 +159,24 @@ impl App {
                 (false, Some(e)) => format!("{note} · {e}"),
             }
         };
+        // a sum: its answer ("1024x8" = 8192), enter copies it
+        let q = self.query.trim();
+        if let Some(v) = calc(q) {
+            let answer = calc_text(v);
+            rows.push(Row {
+                section: "CALC",
+                tool: "calc",
+                icon: CALC,
+                title: format!("= {answer}"),
+                note: q.to_string(),
+                act: Act::Copy(answer),
+                cancel: None,
+                forget: None,
+            });
+            return rows;
+        }
         // typing a time starts it straight away: "25 tea", "7pm", or with
         // the tool first: "t 25 tea", "r 15", "a 7:30 wake up", "d 45"
-        let q = self.query.trim();
         let (tool, rest) = match q.split_once(' ') {
             Some(("t" | "timer", r)) => ("timer", r),
             Some(("r" | "repeat", r)) => ("repeat", r),
@@ -393,6 +411,7 @@ impl App {
                 Ok(true)
             }
             Act::StartStopwatch => model::run("stopwatch", &["start".into()]).map(|_| true),
+            Act::Copy(text) => model::copy(&text).map(|_| true),
             Act::ClearRecent => {
                 if self.confirm_clear {
                     model::clear_recent();
@@ -624,10 +643,11 @@ impl App {
         };
         let (crumb, input, hints) = match &self.screen {
             Screen::Home => {
-                let on_clear = self.home_rows().into_iter().nth(self.sel).is_some_and(|r| matches!(r.act, Act::ClearRecent));
-                let clear_hint = match (on_clear, self.confirm_clear) {
-                    (true, true) => Some("enter again to clear · any other key keeps them"),
-                    (true, false) => Some("enter clear all recent · ↑↓ move · esc quit"),
+                let act = self.home_rows().into_iter().nth(self.sel).map(|r| r.act);
+                let clear_hint = match (&act, self.confirm_clear) {
+                    (Some(Act::ClearRecent), true) => Some("enter again to clear · any other key keeps them"),
+                    (Some(Act::ClearRecent), false) => Some("enter clear all recent · ↑↓ move · esc quit"),
+                    (Some(Act::Copy(_)), _) => Some("enter copy the answer · esc quit"),
                     _ => None,
                 };
                 ("", self.query.clone(), running_hint.as_deref().or(replace_hint.as_deref()).or(clear_hint).unwrap_or("↑↓ move · enter start · esc quit"))
@@ -650,7 +670,7 @@ impl App {
         } else {
             top += &format!("{}{}{RESET}{}▏{RESET}", p.bright, cut(&input, cols.saturating_sub(12)), p.accent);
             if input.is_empty() {
-                top += &format!("{}25 starts a timer, 7pm an alarm; or search{RESET}", p.muted);
+                top += &format!("{}25 starts a timer, 7pm an alarm, 4+4 sums; or search{RESET}", p.muted);
             }
         }
         lines.push(top);
@@ -713,6 +733,7 @@ impl App {
             // the same colours as the bar
             let icon_c = match (r.icon, r.tool) {
                 (PAUSED | CLEAR, _) => p.muted.clone(),
+                (CALC, _) => p.accent.clone(),
                 (_, "timer") => p.yellow.clone(),
                 (_, "repeat") => p.blue.clone(),
                 (_, "stopwatch") => p.green.clone(),
