@@ -7,10 +7,10 @@
 #               the same order. Super+drag still moves a single window.
 #   app-group   related apps join one tabbed group when they open; after
 #               that they're left alone. Super+Alt+g pauses/resumes it.
-#   group-end   a tab group down to one window (the others closed, moved
-#               out or floated) is kept for 10 seconds, so a window can be
-#               put back; then it becomes a plain window again, so new
-#               windows open beside it rather than as tabs.
+#   group-end   a tab group down to one window is removed, leaving a plain
+#               window, so new windows open beside it rather than as tabs:
+#               at once if the other was closed (Super+q), 10 seconds
+#               later if it was moved out or floated, so it can be put back.
 #   attention   XWayland apps (Wine/IMVU, Steam chats...) ask for attention
 #               in a way sway ignores; the count is shown in the title,
 #               e.g. "(3) the rock - IMVU", reset when you focus the window.

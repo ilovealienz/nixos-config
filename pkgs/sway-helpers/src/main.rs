@@ -2,7 +2,7 @@
 //!
 //!   group-drag  Super+Shift+drag moves a whole tab group
 //!   app-group   related apps join one tabbed group when they open
-//!   group-end   a tab group left with one window ends 10s later
+//!   group-end   a tab group left with one window ends (10s later if moved)
 //!   attention   XWayland attention requests are counted in the title
 //!
 //! Each runs in its own thread with its own sway connections. If one
