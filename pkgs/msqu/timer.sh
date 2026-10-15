@@ -111,10 +111,13 @@ case "${1:-}" in
     use_slot "${2:-}"
     read_state || exit 0
     if [ "$mode" = run ]; then left=$((t - $(now))); else left=$t; fi
+    # not locked while choosing; add reads the timer again after
+    unlock
     pick=$(printf '%s\n' +1m +5m +10m +15m -1m -5m |
       fuzzel --dmenu --lines 6 --width 34 --prompt "${label:-timer} $(hms "$left")  " \
         --placeholder "or type: +3, -2, 90s, 1:30") || exit 0
     [ -n "$pick" ] || exit 0
+    flock 9
     if d=$(signed_secs "$pick"); then
       add "$d"
     else
@@ -127,7 +130,12 @@ case "${1:-}" in
     # "timer"; nothing reads it now)
     [ -n "${2:-}" ] && use_slot "$2"
     msg="done"
-    read_state && msg="${label:-done} ($(hms "$total"))"
+    if read_state; then
+      stale && exit 0
+      msg="${label:-done} ($(hms "$total"))"
+    elif [ -n "${MSQU_AT:-}" ]; then
+      exit 0 # cancelled as it went off
+    fi
     if [ -n "$slot" ]; then
       rm -f "$state/$slot"
     else

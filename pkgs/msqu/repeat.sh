@@ -6,6 +6,7 @@
 #                         WINDOW: app_id=ID, class=CLASS or - for none
 #   msqu repeat windows   the open windows, one per app: "WINDOW<tab>title"
 #   msqu repeat toggle    pause / resume (clicking the block)
+#   msqu repeat reset     start the wait over, from now (middle-clicking)
 #   msqu repeat cancel    stop (right-clicking the block)
 #
 # One repeat at a time: starting another replaces it. Its notifications
@@ -63,17 +64,32 @@ case "${1:-}" in
       put repeat "run $end $every $window $label"
     fi
     ;;
+  reset | middle-click)
+    # the full wait again: from now if running, or for when it's resumed
+    read_state || exit 0
+    if [ "$mode" = run ]; then
+      end=$(($(now) + every))
+      arm "$end"
+      put repeat "run $end $every $window $label"
+    else
+      put repeat "pause $every $every $window $label"
+    fi
+    notify-send -c osd -t 1500 "$label" "back to $(hms "$every")"
+    ;;
   cancel | right-click)
     disarm
     rm -f "$state/repeat"
     ;;
   running) read_state ;;
   ring)
-    read_state && [ "$mode" = run ] || exit 0
+    if ! read_state || [ "$mode" != run ] || stale; then
+      exit 0
+    fi
     # the next one first, so it keeps going whatever happens below
     end=$(($(now) + every))
     arm "$end"
     put repeat "run $end $every $window $label"
+    unlock
     if [ "$window" = - ]; then
       notify-send -c msqu-repeat "$label" "every $(hms "$every")"
     elif swaymsg -q "[${window%%=*}=\"${window#*=}\"] focus"; then
@@ -83,9 +99,8 @@ case "${1:-}" in
     fi
     bell
     ;;
-  middle-click) ;;
   *)
-    echo "usage: msqu repeat [start SECONDS WINDOW [LABEL]|windows|toggle|cancel|running]" >&2
+    echo "usage: msqu repeat [start SECONDS WINDOW [LABEL]|windows|toggle|reset|cancel|running]" >&2
     exit 2
     ;;
 esac

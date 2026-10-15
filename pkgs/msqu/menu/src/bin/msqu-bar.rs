@@ -79,7 +79,7 @@ pub fn render(tool: &str, r: Option<&Running>) -> String {
             block(
                 &format!("{} {}", if r.paused { PAUSED } else { REPEAT }, hms(r.left)),
                 "blue",
-                &format!("{}every {}{win}\nnext in {}\n{hint}, right-click to stop", label(": "), hms(r.total), hms(r.left)),
+                &format!("{}every {}{win}\nnext in {}\n{hint}, right-click to stop\nmiddle-click to start the wait over", label(": "), hms(r.total), hms(r.left)),
                 r.paused,
             )
         }

@@ -47,10 +47,13 @@ case "${1:-}" in
     ;;
   running) read_state ;;
   ring)
-    read_state && [ "$mode" = run ] || exit 0
+    if ! read_state || [ "$mode" != run ] || stale; then
+      exit 0
+    fi
     end=$(($(now) + every))
     arm "$end"
     put drink "run $end $every"
+    unlock
     # locked: swaylock, or its Nix wrapper's name if it ever gets one
     pgrep -x 'swaylock|\.swaylock-wrapp' >/dev/null && exit 0
     notify-send -c msqu-drink "drink some water" "it's been $(hms "$every")"

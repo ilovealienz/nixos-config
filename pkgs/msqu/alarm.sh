@@ -43,7 +43,12 @@ case "${1:-}" in
     # no slot: one set before alarms had slots (its state file is "alarm")
     [ -n "${2:-}" ] && use_slot "$2"
     msg="alarm"
-    read_state && msg="${label:-alarm} ($(date -d "@$t" '+%H:%M'))"
+    if read_state; then
+      stale && exit 0
+      msg="${label:-alarm} ($(date -d "@$t" '+%H:%M'))"
+    elif [ -n "${MSQU_AT:-}" ]; then
+      exit 0 # cancelled as it went off
+    fi
     if [ -n "$slot" ]; then
       rm -f "$state/$slot"
     else

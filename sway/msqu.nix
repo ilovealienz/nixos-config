@@ -28,7 +28,8 @@
 #
 # repeat: goes off every so often until stopped, and can bring a window to
 # the front each time (the Roblox anti-AFK preset below). Blue on the bar:
-# click to pause or resume, right-click to stop.
+# click to pause or resume, right-click to stop, middle-click to start the
+# wait over (after doing what it reminds you to by hand, say).
 #
 # drink: a reminder to drink water every so often (45 minutes to start
 # with), with repeat's bell, until stopped; skipped while the screen is
@@ -107,7 +108,8 @@ let
 
   tool = name: t: pkgs.writeShellApplication {
     name = "msqu-${name}";
-    runtimeInputs = with pkgs; [ coreutils ] ++ t.deps;
+    # util-linux: flock, one command of a tool at a time (lib.sh)
+    runtimeInputs = with pkgs; [ coreutils util-linux ] ++ t.deps;
     runtimeEnv = { MSQU_TOOL = name; MSQU_BELL = "${bellSound}"; }
       // lib.optionalAttrs (t ? slots) { MSQU_SLOTS = toString t.slots; }
       // (t.env or { });
