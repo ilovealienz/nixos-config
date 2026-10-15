@@ -9,6 +9,11 @@
 //! workspace), the group is kept for GRACE first, so it can be put back.
 //! Floating groups are left alone.
 //!
+//! A side-by-side or one-above-the-other container left with one window
+//! after a close is removed the same way, at once: it would only get in
+//! the way of moving that window. (One made on purpose, with Super+s, is
+//! left alone until it has had two.)
+//!
 //! A group made with one window on purpose (Super+g, to open windows into)
 //! is left alone until it has had two. Sway reports no event when a group
 //! is made, so the tree is also read shortly after each key binding, which
@@ -43,6 +48,17 @@ fn groups(root: &Node) -> HashMap<i64, (usize, i64)> {
     out
 }
 
+/// Split containers (not workspaces): id -> (children, the first child).
+fn splits(root: &Node) -> HashMap<i64, (usize, i64)> {
+    let mut out = HashMap::new();
+    root.each(&mut |n| {
+        if n.kind == "con" && (n.layout == "splith" || n.layout == "splitv") && !n.nodes.is_empty() {
+            out.insert(n.id, (n.nodes.len(), n.nodes[0].id));
+        }
+    });
+    out
+}
+
 enum Msg {
     Binding, // a key binding ran
     Closed,  // a window closed
@@ -52,6 +68,7 @@ enum Msg {
 #[derive(Default)]
 struct State {
     seen: HashMap<i64, (usize, i64)>, // the groups as last read
+    splits: HashMap<i64, (usize, i64)>, // the split containers as last read
     ends: HashMap<i64, Instant>,      // group down to one -> when it ends
 }
 
@@ -61,6 +78,7 @@ impl State {
     fn update(&mut self, sway: &mut Sway, closed: bool) {
         let root = sway.tree();
         let now = groups(&root);
+        let splits = splits(&root);
         drop(root);
         trim();
         let t = Instant::now();
@@ -77,10 +95,19 @@ impl State {
         }
         self.ends.retain(|id, _| now.contains_key(id));
         self.seen = now;
+        if closed {
+            for (id, &(n, child)) in &splits {
+                if n == 1 && self.splits.get(id).is_some_and(|s| s.0 >= 2) {
+                    end_now.push((*id, child));
+                }
+            }
+        }
+        self.splits = splits;
         self.end(sway, end_now);
     }
 
-    /// Removes groups, leaving their one tab in their place: (group, tab).
+    /// Removes groups (or split containers), leaving their one tab in their
+    /// place: (group, tab).
     fn end(&mut self, sway: &mut Sway, groups: Vec<(i64, i64)>) {
         if groups.is_empty() {
             return;
@@ -92,6 +119,7 @@ impl State {
         for (id, _) in &groups {
             self.ends.remove(id);
             self.seen.remove(id);
+            self.splits.remove(id);
         }
         sway.run(&c.join("; "));
     }

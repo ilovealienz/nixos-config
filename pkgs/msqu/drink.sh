@@ -2,6 +2,8 @@
 # with repeat's bell. On the bar in magenta, showing
 # the minutes to the next one. Skipped while the screen is locked, so you
 # don't come back to a pile of them; the next one still comes on time.
+# Each stays up until it's clicked away, and a new one takes the place of
+# one still showing.
 #
 #   msqu drink start SECONDS
 #   msqu drink toggle   pause / resume (clicking the block)
@@ -56,7 +58,12 @@ case "${1:-}" in
     unlock
     # locked: swaylock, or its Nix wrapper's name if it ever gets one
     pgrep -x 'swaylock|\.swaylock-wrapp' >/dev/null && exit 0
-    notify-send -c msqu-drink "drink some water" "it's been $(hms "$every")"
+    # the last one's id, so a new one replaces it rather than stacking
+    id=$(cat "$state/.notify" 2>/dev/null) || id=""
+    [[ $id =~ ^[0-9]+$ ]] || id=0
+    if id=$(notify-send -p -r "$id" -t 0 -c msqu-drink "drink some water" "it's been $(hms "$every")"); then
+      printf '%s\n' "$id" > "$state/.notify"
+    fi
     bell
     ;;
   middle-click) ;;

@@ -11,6 +11,11 @@
 #               window, so new windows open beside it rather than as tabs:
 #               at once if the other was closed (Super+q), 10 seconds
 #               later if it was moved out or floated, so it can be put back.
+#               A split left with one window after a close is removed too.
+#   open-beside new windows never open underneath another: one that lands
+#               in a vertical split (after Super+Shift+j/k, say) is moved
+#               to the right of it. Super+s or Super+t first lets the next
+#               one open below.
 #   attention   XWayland apps (Wine/IMVU, Steam chats...) ask for attention
 #               in a way sway ignores; the count is shown in the title,
 #               e.g. "(3) the rock - IMVU", reset when you focus the window.
@@ -33,7 +38,7 @@ let
 
   swayHelpers = pkgs.rustPlatform.buildRustPackage {
     pname = "sway-helpers";
-    version = "1.1.0";
+    version = "1.2.0";
     src = ../pkgs/sway-helpers;
     cargoLock.lockFile = ../pkgs/sway-helpers/Cargo.lock;   # no dependencies
   };
@@ -66,7 +71,7 @@ in
 {
   systemd.user.services.sway-helpers = {
     Unit = {
-      Description = "Tab group dragging, app grouping, ending groups of one and XWayland attention for sway";
+      Description = "Tab group dragging, app grouping, ending groups of one, opening windows beside and XWayland attention for sway";
       After = [ "sway-session.target" ];
       PartOf = [ "sway-session.target" ];
     };

@@ -3,6 +3,8 @@
 //!   group-drag  Super+Shift+drag moves a whole tab group
 //!   app-group   related apps join one tabbed group when they open
 //!   group-end   a tab group left with one window ends (10s later if moved)
+//!   open-beside new windows open beside the others, not underneath
+//!               (runs in app-group's thread)
 //!   attention   XWayland attention requests are counted in the title
 //!
 //! Each runs in its own thread with its own sway connections. If one
@@ -14,7 +16,7 @@
 //!
 //! Usage: sway-helpers [--group NAME=APP,APP...]... [--title-suffix TEXT]
 //!                     [--no-group-drag] [--no-app-group] [--no-group-end]
-//!                     [--no-attention]
+//!                     [--no-open-beside] [--no-attention]
 
 mod app_group;
 mod attention;
@@ -22,6 +24,7 @@ mod group_drag;
 mod group_end;
 mod ipc;
 mod json;
+mod open_beside;
 mod x11;
 
 use std::panic::{self, AssertUnwindSafe};
@@ -67,6 +70,8 @@ pub fn state_file(rel: &str) -> PathBuf {
 pub struct Config {
     pub groups: Vec<(String, Vec<String>)>, // name -> lower-cased apps
     pub title_suffix: String,
+    pub app_group: bool,
+    pub open_beside: bool,
 }
 
 /// Small stacks: nothing here recurses deeper than sway's tree.
@@ -102,7 +107,7 @@ fn usage(msg: &str) -> ! {
     eprintln!("sway-helpers: {msg}");
     eprintln!("usage: sway-helpers [--group NAME=APP,APP...]... [--title-suffix TEXT]");
     eprintln!("                    [--no-group-drag] [--no-app-group] [--no-group-end]");
-    eprintln!("                    [--no-attention]");
+    eprintln!("                    [--no-open-beside] [--no-attention]");
     exit(2)
 }
 
@@ -113,8 +118,8 @@ fn main() {
         mallopt(M_ARENA_MAX, 1);
     }
 
-    let mut cfg = Config { groups: Vec::new(), title_suffix: String::new() };
-    let (mut drag, mut group, mut end, mut attention) = (true, true, true, true);
+    let mut cfg = Config { groups: Vec::new(), title_suffix: String::new(), app_group: true, open_beside: true };
+    let (mut drag, mut group, mut end, mut beside, mut attention) = (true, true, true, true, true);
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -137,6 +142,7 @@ fn main() {
             "--no-group-drag" => drag = false,
             "--no-app-group" => group = false,
             "--no-group-end" => end = false,
+            "--no-open-beside" => beside = false,
             "--no-attention" => attention = false,
             other => usage(&format!("unknown argument {other:?}")),
         }
@@ -144,15 +150,17 @@ fn main() {
     if cfg.groups.is_empty() {
         group = false;
     }
-    if !(drag || group || end || attention) {
+    if !(drag || group || end || beside || attention) {
         usage("nothing to do");
     }
+    cfg.app_group = group;
+    cfg.open_beside = beside;
 
     let cfg = Arc::new(cfg);
     if drag {
         supervise("group-drag", cfg.clone(), group_drag::run);
     }
-    if group {
+    if group || beside {
         supervise("app-group", cfg.clone(), app_group::run);
     }
     if end {

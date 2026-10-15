@@ -14,10 +14,13 @@
 //! Sway sends the "new" event before it applies floating and for_window
 //! rules and before it focuses the window, so whether the window ended up
 //! tiled and focused is read from the tree fetched afterwards.
+//!
+//! The same thread runs open-beside (see open_beside.rs), so it sees the
+//! same tree and knows whether app-group took the window.
 
-use crate::ipc::{Sway, WINDOW_EVENT};
-use crate::json::{Node, WindowEvent};
-use crate::{state_file, trim, Config};
+use crate::ipc::{Sway, BINDING_EVENT, WINDOW_EVENT};
+use crate::json::{binding_command, Node, WindowEvent};
+use crate::{open_beside, state_file, trim, Config};
 
 const NAME: &str = "app-group";
 
@@ -101,35 +104,56 @@ pub fn run(cfg: &Config) {
     for (g, _) in &cfg.groups {
         sway.run_quiet(&format!("unmark __app_group_{g}"));
     }
-    let mut events = Sway::connect(NAME).subscribe(r#"["window"]"#);
+    let events = if cfg.open_beside { r#"["window","binding"]"# } else { r#"["window"]"# };
+    let mut events = Sway::connect(NAME).subscribe(events);
+    // a split was chosen by hand: the next window opens where sway puts it
+    let mut chosen = false;
 
     // read events as they come: everything here is quick, and sway drops
     // a client that falls far behind
     while let Some((typ, body)) = events.next() {
+        if typ == BINDING_EVENT {
+            if binding_command(&body).is_some_and(|c| open_beside::chooses_split(&c)) {
+                chosen = true;
+            }
+            continue;
+        }
         if typ != WINDOW_EVENT {
             continue;
         }
         let Some(ev) = WindowEvent::from(&body) else { continue };
         drop(body);
+        if ev.change == "focus" {
+            // the split chosen was for the window that had focus
+            chosen = false;
+        }
         if ev.change != "new" {
             continue;
         }
         let w = ev.container;
-        let Some(g) = group_of(cfg, &w) else { continue };
-        if paused() {
+        let leave = std::mem::take(&mut chosen);
+        let g = group_of(cfg, &w).filter(|_| cfg.app_group && !paused());
+        if g.is_none() && (leave || !cfg.open_beside) {
             continue;
         }
 
         let root = sway.tree();
         let found = placed(&root, w.id);
-        let tgt = target(cfg, &root, w.id, g);
+        let tgt = g.and_then(|g| target(cfg, &root, w.id, g).map(|t| (g, t)));
+        let beside = if tgt.is_none() && cfg.open_beside && !leave { open_beside::command(&root, w.id) } else { None };
         drop(root);
         trim();
         let Some((tiled, focused)) = found else { continue }; // already closed
         if !tiled {
             continue; // floating windows and dialogs are left alone
         }
-        let Some((t, grouped)) = tgt else { continue }; // first window of its group
+        let Some((g, (t, grouped))) = tgt else {
+            // not one app-group takes
+            if let Some(c) = beside {
+                sway.run(&c);
+            }
+            continue;
+        };
 
         let mark = format!("__app_group_{g}");
         let mut c = String::new();
