@@ -15,8 +15,6 @@ let
       (k [ "Super" "U" ] "Urgent marking" "red border when IMVU, Steam chats… want attention")
       (k [ "Shift" "Print" ] "Screen recording" "or click the red dot in waybar to stop")
       (k [ "Right-click DND" ] "Do not disturb" "the DND icon in waybar; left-click shows history")
-      (k [ "Super" "Shift" "A" ] "msqu: quick utils" "timer, stopwatch, alarm, repeat, drink reminder")
-      (k [ "Click an msqu block" ] "Pause / resume" "right-click stops or cancels it")
       (k [ "Click idle sliver" ] "Stay awake" "amber: no lock or screen-off")
       (k [ "Right-click idle sliver" ] "Game mode" "green: stay awake, GameMode on")
     ]; }
@@ -29,18 +27,15 @@ let
       (k [ "Super" "A" ] "Audio menu" "outputs, mics, mute, hide, rename")
       (k [ "Super" "Shift" "P" ] "Power menu" "profile, battery limit; or click the battery")
       (k [ "Super" "/" ] "This list" "")
-      (k [ "Super" "Shift" "X" ] "Lock screen" "")
     ]; }
     { name = "Windows"; items = [
       (k [ "Super" "Q" ] "Close window" "")
       (k [ "Super" "F" ] "Fullscreen" "floats Proton and Wine games first so they stay fullscreen")
       (k [ "Super" "V" ] "Float / tile" "")
       (k [ "Super" "Alt" "V" ] "Popout window" "small, bottom-right, on every workspace; again: back to the corner, then back to tiling")
-      (k [ "Super" "Shift" "Tab" ] "Window picker" "every window, grouped by workspace")
       (k [ "Super" "S" ] "Split direction" "next window opens beside or below")
       (k [ "Super" "T" ] "Toggle split layout" "")
-      (k [ "Super" "Shift" "C" ] "Reload sway" "")
-      (k [ "Super" "Shift" "E" ] "Session menu" "shut down, reboot, log out, suspend, lock")
+      (k [ "Super" "Shift" "Tab" ] "Window picker" "every window, grouped by workspace")
     ]; }
     { name = "Focus, move, resize"; note = "vim keys"; items = [
       (k [ "Super" "H/J/K/L" ] "Focus left / down / up / right" "")
@@ -49,7 +44,7 @@ let
       (k [ "Super" "Alt" "H/L" ] "Move the window edge left / right" "40px")
       (k [ "Super" "Alt" "K/J" ] "Move the window edge up / down" "40px")
     ]; }
-    { name = "Tab groups"; items = [
+    { name = "Tab groups"; note = "one left: back to a split (at once on Super+Q, 10s after moving out)"; items = [
       (k [ "Super" "G" ] "Group with neighbours" "or turn a group back into a split")
       (k [ "Super" "Tab" ] "Next tab in the group" "wraps around")
       (k [ "Super" "Shift" "G" ] "Tabbed / stacked" "")
@@ -73,6 +68,18 @@ let
       (k [ "Print" ] "Screenshot menu" "freezes the screen, then annotate, upload, copy, save")
       (k [ "Super" "Shift" "S" ] "Region to clipboard" "")
     ]; }
+    { name = "Session"; items = [
+      (k [ "Super" "Shift" "X" ] "Lock screen" "")
+      (k [ "Super" "Shift" "E" ] "Session menu" "shut down, reboot, log out, suspend, lock")
+      (k [ "Super" "Shift" "C" ] "Reload sway" "")
+    ]; }
+    { name = "msqu"; note = "timer, stopwatch, alarm, repeat, drink reminder"; items = [
+      (k [ "Super" "Shift" "A" ] "msqu: quick utils" "start one, or pick from recents")
+      (k [ "Click a block" ] "Pause / resume" "")
+      (k [ "Right-click a block" ] "Stop or cancel it" "")
+      (k [ "Middle-click timer" ] "More or less time" "pick in fuzzel, or type +3, -2, 90s, 1:30")
+      (k [ "Middle-click repeat" ] "Start the wait over" "")
+    ]; }
     { name = "Media keys"; items = [
       (k [ "Vol +/-" ] "Volume" "with on-screen level")
       (k [ "Mute" ] "Mute output" "")
@@ -94,8 +101,10 @@ let
     { name = "Waybar"; style = "cmd"; items = [
       (k [ "volume" ] "Click: mute" "right-click: pavucontrol")
       (k [ "network" ] "Click: nmtui" "right-click: Bluetooth")
+      (k [ "battery" ] "Click: power menu" "")
+      (k [ "clock" ] "Right-click: month / year" "scroll: change month")
       (k [ "dnd" ] "Click: history" "right-click: on / off")
-      (k [ "idle" ] "Click: stay awake on / off" "")
+      (k [ "idle" ] "Click: stay awake on / off" "right-click: game mode")
       (k [ "rec" ] "Click: stop recording" "")
     ]; }
     { name = "nx commands"; note = "zsh"; style = "cmd"; items = [
@@ -104,17 +113,17 @@ let
       (k [ "nxpull" ] "Pull the config from GitHub, then rebuild" "drops an unpushed local flake.lock first")
       (k [ "nxpush" ] "Check, commit and push" "nxpush \"message\" (default: update); never commits hardware-configuration.nix")
       (k [ "nxcheck" ] "Check every host still builds" "evaluates pc, laptop, x1carbon without building")
-      (k [ "theme-edit" ] "Theme editor" "colour pickers and a preview for theme.nix")
+      (k [ "nxclean" ] "Clean old generations, keep 3" "")
       (k [ "nxedit" ] "Pick a config file" "Enter edit · Ctrl+R rebuild · Ctrl+A git add")
+      (k [ "theme-edit" ] "Theme editor" "colour pickers and a preview for theme.nix")
       (k [ "nxshortcuts" ] "This list" "")
       (k [ "nxsearch" ] "Search nixpkgs" "")
       (k [ "nxsrun" ] "Search nixpkgs and run the pick" "")
       (k [ "nxrun <pkg>" ] "Run a package without installing it" "")
-      (k [ "nxclean" ] "Clean old generations, keep 3" "")
-      (k [ "nxport <port> [close]" ] "Open or close a firewall port" "")
-      (k [ "nxaudio [-c N]" ] "alsamixer, saved on exit" "")
       (k [ "ldrun <bin>" ] "Run a generic Linux binary" "")
       (k [ "fpup" ] "Update flatpaks" "")
+      (k [ "nxport <port> [close]" ] "Open or close a firewall port" "")
+      (k [ "nxaudio [-c N]" ] "alsamixer, saved on exit" "")
       (k [ "v" ] "nvim" "")
     ]; }
   ];
