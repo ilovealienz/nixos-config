@@ -1,7 +1,7 @@
 # Theme editor: colour pickers for every colour in theme.nix, dark and
 # light, a live mock of the desktop (bar, kitty, a GTK window, fuzzel,
 # mako) and contrast checks. Saves to ~/.config/theme/colors.json, which
-# nxrebuild applies; "Save and rebuild" runs nxrebuild in kitty.
+# nxrebuild applies; "Save and rebuild" runs nxrebuild in foot.
 # Run theme-edit, or "Theme editor" in the launcher.
 #
 # Source: ../pkgs/theme-edit/

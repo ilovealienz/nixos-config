@@ -93,9 +93,11 @@ pub const TOOLS: [&str; 5] = ["timer", "stopwatch", "alarm", "repeat", "drink"];
 /// the tools that run several at once (`slots` in sway/msqu.nix)
 pub const SLOTTED: [&str; 2] = ["timer", "alarm"];
 
-/// where the tools keep their state: $XDG_RUNTIME_DIR/msqu/TOOL/
+/// where the tools keep their state: $XDG_RUNTIME_DIR/msqu/TOOL/ (/tmp if
+/// it's unset or empty, like the scripts' ${XDG_RUNTIME_DIR:-/tmp})
 pub fn state_dir() -> PathBuf {
-    PathBuf::from(std::env::var_os("XDG_RUNTIME_DIR").unwrap_or_else(|| "/tmp".into())).join("msqu")
+    let run = std::env::var_os("XDG_RUNTIME_DIR").filter(|v| !v.is_empty());
+    PathBuf::from(run.unwrap_or_else(|| "/tmp".into())).join("msqu")
 }
 
 /// the state files:

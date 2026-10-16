@@ -914,6 +914,10 @@ fn main() {
         if matches!(app.screen, Screen::Home) {
             app.sel = app.sel.min(app.home_rows().len().saturating_sub(1));
         }
+        // resized: start from a clear screen, so nothing of the old size is left
+        if term::resized() {
+            term::out(&format!("{}\x1b[2J", app.pal.bg));
+        }
         app.draw();
         // wake on the next whole second, so countdowns keep moving
         let ms = 1000 - (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_millis()).unwrap_or(0) as i32) + 5;

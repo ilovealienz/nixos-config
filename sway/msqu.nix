@@ -1,8 +1,7 @@
 # msqu (my sway quick utils): small tools with a menu on Super+Shift+A and,
 # if they want one, a block on the bar. In ../pkgs/msqu/: menu/ (Rust: the
-# menu, msqu-ui, in a floating terminal, and the bar blocks, msqu-bar),
-# msqu.sh (the msqu command), lib.sh (shared by every tool) and one script
-# per tool.
+# menu, msqu-ui, in a floating terminal; the bar blocks, msqu-bar; and the
+# tools, msqu-tool) and msqu.sh (the msqu command).
 #
 # The menu: what's running (enter pauses or resumes, ctrl+x stops),
 # something new, presets and recent ones (ctrl+x removes one; "clear all"
@@ -36,11 +35,15 @@
 # locked. Magenta on the bar, showing the minutes to the next one: click
 # to pause or resume, right-click to stop.
 #
-# Adding a tool: write ../pkgs/msqu/NAME.sh (lib.sh says what it needs),
-# add it to `tools` below, and teach menu/src its state file (model.rs),
-# its menu entries (main.rs) and its block (bin/msqu-bar.rs). A tool with
-# `bar = true` gets a waybar block (#custom-msqu-NAME) at the start of the
-# right side; clicking it runs "NAME.sh click", right-click "right-click",
+# Each tool is menu/src/tool/NAME.rs, run as msqu-NAME: a small launcher
+# for `msqu-tool NAME` with the tool's programs and settings.
+#
+# Adding a tool: write menu/src/tool/NAME.rs (tool/mod.rs has what they
+# share) and add it to msqu-tool (bin/msqu-tool.rs) and to `tools` below,
+# and teach menu/src its state file (model.rs), its menu entries (main.rs)
+# and its block (bin/msqu-bar.rs). A tool with `bar = true` gets a waybar
+# block (#custom-msqu-NAME) at the start of the right side; clicking it
+# runs "msqu-NAME click", right-click "right-click",
 # middle-click "middle-click". With `slots = N` it can run N at once, and
 # gets a block for each (#custom-msqu-NAME-1, ...; the clicks get the
 # number too). The blocks' colours come from the theme (the style below).
@@ -73,11 +76,11 @@ let
       env.MSQU_ALARM = "${alarmSound}";
     };
     repeat = {
-      deps = with pkgs; [ systemd libnotify pipewire mako sway jq ];
+      deps = with pkgs; [ systemd libnotify pipewire mako ];
       bar = true;
     };
     drink = {
-      deps = with pkgs; [ systemd libnotify pipewire mako procps ];
+      deps = with pkgs; [ systemd libnotify pipewire mako ];
       bar = true;
     };
   };
@@ -106,15 +109,21 @@ let
       -ar 48000 -f flac $out
   '';
 
-  tool = name: t: pkgs.writeShellApplication {
-    name = "msqu-${name}";
-    # util-linux: flock, one command of a tool at a time (lib.sh)
-    runtimeInputs = with pkgs; [ coreutils util-linux ] ++ t.deps;
-    runtimeEnv = { MSQU_TOOL = name; MSQU_BELL = "${bellSound}"; }
-      // lib.optionalAttrs (t ? slots) { MSQU_SLOTS = toString t.slots; }
-      // (t.env or { });
-    text = builtins.readFile ../pkgs/msqu/lib.sh + "\n" + builtins.readFile (../pkgs/msqu + "/${name}.sh");
-  };
+  # msqu-NAME: msqu-tool NAME through a small compiled launcher (no
+  # shell), with the tool's programs on its PATH and its settings, and
+  # MSQU_SELF: itself, for an alarm to run again
+  toolEnv = name: t: { MSQU_TOOL = name; MSQU_BELL = "${bellSound}"; MSQU_SELF = "$out/bin/msqu-${name}"; }
+    // lib.optionalAttrs (t ? slots) { MSQU_SLOTS = toString t.slots; }
+    // (t.env or { });
+  tool = name: t: pkgs.runCommand "msqu-${name}" {
+    nativeBuildInputs = [ pkgs.makeBinaryWrapper ];
+    meta.mainProgram = "msqu-${name}";
+  } ''
+    makeWrapper ${msquUi}/bin/msqu-tool $out/bin/msqu-${name} \
+      --add-flags ${name} \
+      --prefix PATH : ${lib.makeBinPath t.deps} \
+      ${lib.concatStringsSep " " (lib.mapAttrsToList (k: v: "--set ${k} \"${v}\"") (toolEnv name t))}
+  '';
   toolPkgs = lib.mapAttrs tool tools;
 
   # the menu: theme colours and presets, then the program
@@ -123,10 +132,11 @@ let
     + lib.concatMapStrings (p: "preset ${p.label}|${p.every}|${p.focus}\n") repeatPresets
     + lib.concatStrings (lib.mapAttrsToList (n: t: lib.optionalString (t ? slots) "slots ${n} ${toString t.slots}\n") tools)
   );
-  # the menu and the bar blocks (msqu-ui, msqu-bar)
+  # the menu, the bar blocks and the tools moved to Rust (msqu-ui,
+  # msqu-bar, msqu-tool)
   msquUi = pkgs.rustPlatform.buildRustPackage {
     pname = "msqu-ui";
-    version = "1.0.0";
+    version = "1.1.0";
     src = ../pkgs/msqu/menu;
     cargoLock.lockFile = ../pkgs/msqu/menu/Cargo.lock;
     meta.mainProgram = "msqu-ui";

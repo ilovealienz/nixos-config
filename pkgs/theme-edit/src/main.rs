@@ -181,20 +181,19 @@ impl App {
     }
 }
 
-/// kitty in the floating popup, running nxrebuild
+/// foot in the floating popup, running nxrebuild
 fn rebuild() -> Result<(), String> {
-    Command::new("kitty")
+    Command::new("foot")
         .args([
-            "--class",
-            "kitty-float",
-            "-e",
+            "--app-id",
+            "foot-float",
             "zsh",
             "-ic",
             "nxrebuild; echo; read -sk '?press a key to close'",
         ])
         .spawn()
         .map(|_| ())
-        .map_err(|e| format!("can't start kitty: {e}"))
+        .map_err(|e| format!("can't start foot: {e}"))
 }
 
 fn style(ctx: &egui::Context, l: Look) {

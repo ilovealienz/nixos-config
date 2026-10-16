@@ -57,7 +57,7 @@ let
       else
         case "$app" in
           # terminals paste with Ctrl+Shift+V
-          kitty|kitty-float|foot|footclient|Alacritty|org.wezfurlong.wezterm|com.mitchellh.ghostty)
+          kitty|kitty-float|foot|foot-float|footclient|Alacritty|org.wezfurlong.wezterm|com.mitchellh.ghostty)
             wtype -M ctrl -M shift -k v -m shift -m ctrl ;;
           *) wtype -M ctrl -k v -m ctrl ;;
         esac
@@ -559,7 +559,7 @@ $actions"
     "1" = [ { app_id = "firefox"; } { app_id = "brave-browser"; } { class = "Brave-browser"; } { app_id = "librewolf"; } { app_id = "LibreWolf"; } ];
     "2" = [ { app_id = "spotify"; } { app_id = "signal"; } { app_id = "vesktop"; } ];
     "3" = [ { app_id = "mpv"; } ];
-    "4" = [ { app_id = "kitty"; } ];
+    "4" = [ { app_id = "kitty"; } { app_id = "foot"; } ];
     "5" = [ { app_id = "thunar"; } ];
     "6" = [ { app_id = "org.qbittorrent.qBittorrent"; } ];
     "7" = [ { app_id = "virt-manager"; } ];
@@ -742,7 +742,7 @@ in
 
       window.commands = [
         { command = "floating enable, resize set 900 600, move position center";
-          criteria = { app_id = "kitty-float"; }; }
+          criteria = { app_id = "^(kitty|foot)-float$"; }; }
         { command = "floating enable"; criteria = { app_id = "pavucontrol"; }; }
         { command = "floating enable"; criteria = { app_id = "blueman-manager"; }; }
       ];
@@ -755,6 +755,7 @@ in
         "${mod}+semicolon" = "exec ${lib.getExe emojiPicker}";
         "${mod}+Shift+x" = "exec swaylock";
         "${mod}+Return" = "exec kitty; exec ${lib.getExe placementFollow} 4";
+        "${mod}+Shift+Return" = "exec foot; exec ${lib.getExe placementFollow} 4";
         "${mod}+e" = "exec thunar; exec ${lib.getExe placementFollow} 5";
 
         # window management

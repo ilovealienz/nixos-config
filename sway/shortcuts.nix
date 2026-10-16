@@ -20,6 +20,7 @@ let
     ]; }
     { name = "Launch"; items = [
       (k [ "Super" "Return" ] "Kitty" "jumps to workspace 4 while placement is on")
+      (k [ "Super" "Shift" "Return" ] "Foot" "lighter terminal, no images; workspace 4 too")
       (k [ "Super" "E" ] "Thunar" "jumps to workspace 5 while placement is on")
       (k [ "Super" "R" ] "App launcher" "fuzzel")
       (k [ "Super" "Shift" "R" ] "Run a command" "wmenu-run")
@@ -59,7 +60,7 @@ let
       (k [ "1" ] "Firefox, Brave, LibreWolf" "")
       (k [ "2" ] "Spotify, Signal, Vesktop" "")
       (k [ "3" ] "mpv" "")
-      (k [ "4" ] "kitty" "")
+      (k [ "4" ] "kitty, foot" "")
       (k [ "5" ] "Thunar" "")
       (k [ "6" ] "qBittorrent" "")
       (k [ "7" ] "virt-manager" "")
@@ -145,7 +146,7 @@ in
 {
   home.packages = [ nxshortcuts ];
 
-  # popup in the floating kitty (kitty-float rule in compositor.nix)
+  # popup in a floating foot (the foot-float rule in compositor.nix)
   wayland.windowManager.sway.config.keybindings."Mod4+slash" =
-    "exec kitty --class kitty-float -e ${lib.getExe nxshortcuts}";
+    "exec foot --app-id foot-float ${lib.getExe nxshortcuts}";
 }

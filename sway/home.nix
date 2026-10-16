@@ -10,6 +10,7 @@
     ./mako.nix
     ./gtk.nix
     ./kitty.nix
+    ./foot.nix
     ./weather.nix
     ./sway-helpers.nix
     ./shortcuts.nix

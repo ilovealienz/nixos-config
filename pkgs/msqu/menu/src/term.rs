@@ -2,6 +2,29 @@
 
 use std::io::{Read, Write};
 use std::os::fd::AsRawFd;
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+
+/// the window changed size (SIGWINCH) since `resized` last said so
+static RESIZED: AtomicBool = AtomicBool::new(false);
+/// a pipe the resize handler writes a byte to, which the wait for keys
+/// also watches (read end, write end)
+static WAKE_R: AtomicI32 = AtomicI32::new(-1);
+static WAKE_W: AtomicI32 = AtomicI32::new(-1);
+
+extern "C" fn on_winch(_: libc::c_int) {
+    RESIZED.store(true, Ordering::SeqCst);
+    let fd = WAKE_W.load(Ordering::SeqCst);
+    if fd >= 0 {
+        unsafe { libc::write(fd, b"w".as_ptr().cast(), 1) };
+    }
+}
+
+/// True once after each resize. The terminal can start at one size and be
+/// resized straight away (sway sizing the menu's window), so a resize
+/// wakes the wait for keys and is drawn at once, not at the next second.
+pub fn resized() -> bool {
+    RESIZED.swap(false, Ordering::SeqCst)
+}
 
 pub struct Raw {
     old: libc::termios,
@@ -19,6 +42,20 @@ impl Raw {
         // keep \n -> \r\n off; we write \r\n ourselves
         if unsafe { libc::tcsetattr(fd, libc::TCSANOW, &t) } != 0 {
             return Err(std::io::Error::last_os_error());
+        }
+        // a resize wakes the wait for keys through a pipe, so one that
+        // comes while drawing isn't missed until the next second either
+        unsafe {
+            let mut fds = [-1; 2];
+            if libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC | libc::O_NONBLOCK) == 0 {
+                WAKE_R.store(fds[0], Ordering::SeqCst);
+                WAKE_W.store(fds[1], Ordering::SeqCst);
+            }
+            let mut sa: libc::sigaction = std::mem::zeroed();
+            sa.sa_sigaction = on_winch as extern "C" fn(libc::c_int) as libc::sighandler_t;
+            sa.sa_flags = libc::SA_RESTART;
+            libc::sigemptyset(&mut sa.sa_mask);
+            libc::sigaction(libc::SIGWINCH, &sa, std::ptr::null_mut());
         }
         // alternate screen, hide cursor
         out("\x1b[?1049h\x1b[?25l\x1b[2J");
@@ -69,10 +106,24 @@ pub enum Key {
     Quit,
 }
 
-/// waits up to `ms` milliseconds for input
+/// waits up to `ms` milliseconds for input; false at once on a resize
 fn ready(ms: i32) -> bool {
-    let mut p = libc::pollfd { fd: std::io::stdin().as_raw_fd(), events: libc::POLLIN, revents: 0 };
-    unsafe { libc::poll(&mut p, 1, ms) > 0 }
+    let wake = WAKE_R.load(Ordering::SeqCst);
+    let mut p = [
+        libc::pollfd { fd: std::io::stdin().as_raw_fd(), events: libc::POLLIN, revents: 0 },
+        libc::pollfd { fd: wake, events: libc::POLLIN, revents: 0 },
+    ];
+    let n = if wake >= 0 { 2 } else { 1 };
+    if unsafe { libc::poll(p.as_mut_ptr(), n, ms) } <= 0 {
+        return false;
+    }
+    if p[1].revents != 0 {
+        // resized: empty the pipe and draw
+        let mut buf = [0u8; 64];
+        while unsafe { libc::read(wake, buf.as_mut_ptr().cast(), buf.len()) } > 0 {}
+        return false;
+    }
+    p[0].revents != 0
 }
 
 /// keys typed within `ms` milliseconds (none if nothing was typed)
