@@ -7,6 +7,7 @@
     ./home/fastfetch.nix
     ./home/local-apps.nix
     ./home/mime.nix
+    ./home/secrets.nix
     ./sway/home.nix
   ];
 

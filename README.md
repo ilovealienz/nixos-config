@@ -74,3 +74,11 @@ chmod 600 ~/.config/weather/key
 ```
 
 Can take up to 2 hours before a newly created key becomes active.
+
+The key and `~/.config/birthdays` are also kept in the repo encrypted
+(`secrets.age`, with the key for it in `secrets.key.age`, locked with a
+passphrase kept in Bitwarden). `nxsecrets unpack` puts them in place on a
+new machine (the bootstrap offers to) and asks for the passphrase once per
+machine; after that `nxpush` re-encrypts them whenever they change and
+`nxpull` brings in changes from other machines. `nxsecrets init` sets it up
+the first time; `nxsecrets rekey` makes a new key and passphrase.

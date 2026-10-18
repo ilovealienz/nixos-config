@@ -2,7 +2,18 @@
 let
   c = osConfig.theme.colors;
   dark = osConfig.theme.variant == "dark";
-  icons = if dark then "Gruvbox-Plus-Dark" else "Gruvbox-Plus-Light";
+  # the icon set picked in theme-edit (theme.nix's iconSets)
+  icons = osConfig.theme.icon.name;
+  iconPkg = pkgs.${osConfig.theme.icon.package};
+  # stops the rebuild, instead of leaving apps without icons, if the
+  # package doesn't have the theme (renamed in a newer release, say)
+  iconCheck = pkgs.runCommandLocal "icon-theme-check" { } ''
+    if [ ! -f ${iconPkg}/share/icons/${icons}/index.theme ]; then
+      echo "theme.nix iconSets: ${osConfig.theme.icon.package} has no icon theme ${icons}" >&2
+      exit 1
+    fi
+    mkdir $out
+  '';
 in
 {
   # ── GTK theme (dark or light, from theme.nix) + compact headerbar CSS ──
@@ -14,7 +25,7 @@ in
     };
     iconTheme = {
       name = icons;
-      package = pkgs.gruvbox-plus-icons;
+      package = iconPkg;
     };
     gtk3.extraCss = ''
       /* ── Desert Night palette (recolours adw-gtk3 like Stylix did) ── */
@@ -195,6 +206,8 @@ in
       gtk-application-prefer-dark-theme = if dark then 1 else 0;
     };
   };
+
+  home.packages = [ iconCheck ] ++ map (p: pkgs.${p}) osConfig.theme.icon.also;
 
   # ── libadwaita / GNOME apps, and Brave/Electron through the portal ──
   dconf.settings."org/gnome/desktop/interface" = {

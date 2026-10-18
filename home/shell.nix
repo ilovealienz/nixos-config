@@ -77,6 +77,11 @@
           return 1
         fi
         nxrebuild
+        local rc=$?
+        # a new weather key / birthdays from another machine (after the
+        # rebuild's output, so it's seen)
+        nxsecrets unpack --if-changed
+        return $rc
       }
       # evaluate every host the way a rebuild would, without building
       nxcheck() {
@@ -123,6 +128,9 @@
         local skip=(-- . ':(exclude)hardware-configuration.nix' ':(exclude)local-theme.json')
         local check=1
         if [ "''${1:-}" = --no-check ]; then check=0; shift; fi
+        # the weather key and birthdays into secrets.age when they've
+        # changed (no passphrase); stops if the repo's copy is newer
+        nxsecrets pack --if-changed || { echo "nxpush: not pushed"; return 1; }
         "''${g[@]}" add -A || return
         # nothing new and nothing unpushed: no need to check
         if "''${g[@]}" diff --cached --quiet "''${skip[@]}" &&

@@ -5,13 +5,18 @@
 //!                default /etc/nixos/theme.nix
 //!   colors.json  your colours, default ~/.config/theme/colors.json
 //!
-//! Saving writes colors.json: the variant (dark or light) and the colours
-//! that differ from theme.nix's defaults. nxrebuild applies it.
+//! Saving writes colors.json: the variant (dark or light), the colours
+//! that differ from theme.nix's defaults, the icon set and the wallpaper.
+//! nxrebuild applies it. A new wallpaper is copied to
+//! ~/.config/theme/wallpaper and shown at once.
 
+mod icons;
 mod preview;
 mod theme;
+mod wallpaper;
 
 use eframe::egui::{self, Color32, RichText};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use theme::{Rgb, Theme, VARIANTS};
@@ -49,6 +54,26 @@ struct App {
     find: Vec<String>,
     find_since: f64,
     find_scrolled: bool,
+    tab: Tab,
+    /// installed icon themes, and each one's preview icons (looked up
+    /// once; Reload looks again)
+    icon_themes: icons::Themes,
+    previews: HashMap<String, Vec<Option<PathBuf>>>,
+    /// the wallpaper folders and their images (None: not looked at yet),
+    /// the thumbnail maker, and the thumbnails made (or why not)
+    walls: Option<Vec<(String, Vec<PathBuf>)>>,
+    thumbs: Option<wallpaper::Thumbs>,
+    thumb_tex: HashMap<PathBuf, Result<egui::TextureHandle, String>>,
+    /// the folder being typed in to add
+    new_folder: String,
+}
+
+/// what the left panel shows
+#[derive(Clone, Copy, PartialEq)]
+enum Tab {
+    Colours,
+    Icons,
+    Wallpaper,
 }
 
 /// colours for the editor itself: the saved colours of the variant shown,
@@ -128,6 +153,9 @@ impl App {
             Ok((theme, json_text, warning)) => {
                 self.theme = theme;
                 self.json_text = json_text;
+                self.icon_themes = icons::Themes::new(icons::roots());
+                self.previews.clear();
+                self.walls = None;
                 self.refresh();
                 self.status = if warning.is_empty() {
                     ("reloaded".into(), false)
@@ -157,6 +185,24 @@ impl App {
             );
             return false;
         }
+        // a newly picked wallpaper is put in place first, so colors.json
+        // never names one that isn't there; a missing copy is put back if
+        // the image is still there (without it, sway shows walls/1.png)
+        let copy = wallpaper::copy_path(&self.json);
+        let wall_changed = self.theme.wallpaper != self.theme.saved_wallpaper;
+        let mut note = String::new();
+        if let Some(w) = &self.theme.wallpaper {
+            let new_image = self.theme.saved_wallpaper.as_ref().map(|s| &s.from) != Some(&w.from);
+            if (new_image || !copy.exists())
+                && let Err(e) = wallpaper::install(Path::new(&w.from), &copy)
+            {
+                if new_image {
+                    self.status = (format!("not saved: wallpaper: {e}"), true);
+                    return false;
+                }
+                note = format!("; the wallpaper's copy is missing: {e}");
+            }
+        }
         let new = self.theme.to_json();
         let res = (|| {
             let dir = self.json.parent().ok_or("no folder")?;
@@ -170,7 +216,27 @@ impl App {
                 self.json_text = new;
                 self.theme.mark_saved();
                 self.refresh();
-                self.status = ("saved; rebuild to use it".into(), false);
+                self.status = (format!("saved; rebuild to use it{note}"), !note.is_empty());
+                if wall_changed {
+                    if self.theme.wallpaper.is_none() {
+                        // so sway's startup command (until the rebuild)
+                        // falls back to the default too
+                        let _ = std::fs::remove_file(&copy);
+                    }
+                    let bg = theme::hex(self.theme.c("bg"));
+                    let shown = match &self.theme.wallpaper {
+                        Some(w) => wallpaper::show(&copy, &w.mode, &bg),
+                        None => wallpaper::show(&self.default_wall(), "fill", &bg),
+                    };
+                    self.status = match shown {
+                        Ok(()) => (
+                            "saved; wallpaper shown now, rebuild so it stays after a sway reload"
+                                .into(),
+                            false,
+                        ),
+                        Err(e) => (format!("saved; {e}"), true),
+                    };
+                }
                 true
             }
             Err(e) => {
@@ -275,12 +341,9 @@ impl eframe::App for App {
                     self.status = (e, true);
                 }
                 if revert.clicked() {
-                    for e in self.theme.entries_mut() {
-                        e.color = e.saved;
-                    }
-                    self.theme.variant = self.theme.saved_variant;
+                    self.theme.undo_all();
                     self.refresh();
-                    self.status = ("back to the saved colours".into(), false);
+                    self.status = ("back to what was saved".into(), false);
                 }
                 if reload.clicked() {
                     self.reload();
@@ -301,10 +364,26 @@ impl eframe::App for App {
             .default_size(340.0)
             .min_size(300.0)
             .show(ui, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.add_space(6.0);
-                    self.colour_list(ui, l);
-                    ui.add_space(10.0);
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    ui.selectable_value(&mut self.tab, Tab::Colours, "colours");
+                    ui.selectable_value(&mut self.tab, Tab::Icons, "icons");
+                    ui.selectable_value(&mut self.tab, Tab::Wallpaper, "wallpaper");
+                });
+                ui.separator();
+                egui::ScrollArea::vertical().show(ui, |ui| match self.tab {
+                    Tab::Colours => {
+                        self.colour_list(ui, l);
+                        ui.add_space(10.0);
+                    }
+                    Tab::Icons => {
+                        self.icon_list(ui, l);
+                        ui.add_space(10.0);
+                    }
+                    Tab::Wallpaper => {
+                        self.wallpaper_list(ui, l);
+                        ui.add_space(10.0);
+                    }
                 });
             });
 
@@ -320,6 +399,7 @@ impl eframe::App for App {
                         self.find = names;
                         self.find_since = ui.input(|i| i.time);
                         self.find_scrolled = false;
+                        self.tab = Tab::Colours;
                     }
                 });
             });
@@ -331,6 +411,363 @@ impl eframe::App for App {
 }
 
 impl App {
+    /// the config's own wallpaper, used when none is picked
+    fn default_wall(&self) -> PathBuf {
+        self.theme_nix.with_file_name("walls").join("1.png")
+    }
+
+    /// the folders added to the picker: remove one, or type one in
+    fn folder_list(&mut self, ui: &mut egui::Ui, l: Look) {
+        ui.add_space(8.0);
+        ui.label(RichText::new("folders").size(11.5).color(col(l.muted)));
+        let mut remove = None;
+        for (i, f) in self.theme.wall_folders.iter().enumerate() {
+            ui.horizontal(|ui| {
+                if ui
+                    .small_button("×")
+                    .on_hover_text("stop looking here")
+                    .clicked()
+                {
+                    remove = Some(i);
+                }
+                let there = Path::new(f).is_dir();
+                let label = RichText::new(if there {
+                    f.clone()
+                } else {
+                    format!("{f} (not there now)")
+                })
+                .size(11.5);
+                // cut short rather than widen the panel
+                ui.add(
+                    egui::Label::new(if there {
+                        label
+                    } else {
+                        label.color(col(l.muted))
+                    })
+                    .truncate(),
+                )
+                .on_hover_text(f);
+            });
+        }
+        if let Some(i) = remove {
+            self.theme.wall_folders.remove(i);
+            self.walls = None;
+        }
+        let mut add = false;
+        ui.horizontal(|ui| {
+            let r = ui.add(
+                egui::TextEdit::singleline(&mut self.new_folder)
+                    .hint_text("add a folder: /path or ~/path")
+                    .desired_width((ui.available_width() - 60.0).max(80.0)),
+            );
+            add = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+            add |= ui
+                .add_enabled(!self.new_folder.trim().is_empty(), egui::Button::new("add"))
+                .clicked();
+        });
+        if add {
+            match wallpaper::check_folder(&self.new_folder) {
+                Ok(f) if self.theme.wall_folders.contains(&f) => {
+                    self.status = ("that folder is there already".into(), true);
+                }
+                Ok(f) => {
+                    self.theme.wall_folders.push(f);
+                    self.new_folder.clear();
+                    self.walls = None;
+                }
+                Err(e) => self.status = (e, true),
+            }
+        }
+    }
+
+    fn wallpaper_list(&mut self, ui: &mut egui::Ui, l: Look) {
+        ui.label(RichText::new("wallpaper").strong().color(col(l.fg)));
+        ui.label(
+            RichText::new(
+                "Saving copies the picked image to ~/.config/theme/wallpaper and shows it at once.",
+            )
+            .size(11.5)
+            .color(col(l.muted)),
+        );
+        ui.add_space(6.0);
+        let changed = self.theme.wallpaper != self.theme.saved_wallpaper;
+        ui.horizontal(|ui| {
+            let what = match &self.theme.wallpaper {
+                Some(w) => Path::new(&w.from)
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| w.from.clone()),
+                None => "the config's default (walls/1.png)".into(),
+            };
+            let label = RichText::new(what);
+            ui.label(if changed {
+                label.color(col(l.accent))
+            } else {
+                label
+            });
+            if self.theme.wallpaper.is_some() && ui.small_button("default").clicked() {
+                self.theme.wallpaper = None;
+            }
+        });
+        if let Some(w) = &mut self.theme.wallpaper {
+            ui.horizontal(|ui| {
+                for m in theme::MODES {
+                    if ui.selectable_label(w.mode == m, m).clicked() {
+                        w.mode = m.to_string();
+                    }
+                }
+            });
+            if !Path::new(&w.from).exists() {
+                let copied = wallpaper::copy_path(&self.json).exists();
+                ui.label(
+                    RichText::new(if copied {
+                        "the picked image is gone; its copy is still used"
+                    } else {
+                        "the picked image and its copy are gone: sway shows walls/1.png"
+                    })
+                    .size(11.5)
+                    .color(col(l.muted)),
+                );
+            }
+        }
+
+        self.folder_list(ui, l);
+
+        let theme_nix = self.theme_nix.clone();
+        let added = self.theme.wall_folders.clone();
+        let default_wall = self.default_wall();
+        let default_wall_again = default_wall.clone();
+        let walls = self
+            .walls
+            .get_or_insert_with(|| wallpaper::groups(&wallpaper::folders(&theme_nix, &added)));
+        if walls.is_empty() {
+            ui.add_space(8.0);
+            ui.label(
+                RichText::new(
+                    "no wallpaper folders: make a Wallpaper folder in Pictures, or add one",
+                )
+                .color(col(l.muted)),
+            );
+            return;
+        }
+        let thumbs = self
+            .thumbs
+            .get_or_insert_with(|| wallpaper::Thumbs::new(ui.ctx()));
+        for (path, r) in thumbs.ready() {
+            let tex = r.map(|img| {
+                ui.ctx().load_texture(
+                    path.display().to_string(),
+                    img,
+                    egui::TextureOptions::LINEAR,
+                )
+            });
+            self.thumb_tex.insert(path, tex);
+        }
+        // the one in use: the picked image, or the config's default
+        let picked = match &self.theme.wallpaper {
+            Some(w) => PathBuf::from(&w.from),
+            None => default_wall,
+        };
+        let mut pick = None;
+        let width = ((ui.available_width() - 8.0) / 2.0).max(60.0);
+        for (gi, (label, files)) in walls.iter().enumerate() {
+            // a line between folders, subfolders included
+            ui.add_space(if gi == 0 { 10.0 } else { 6.0 });
+            if gi > 0 {
+                ui.separator();
+            }
+            ui.label(RichText::new(label).size(11.5).color(col(l.muted)));
+            if files.is_empty() {
+                ui.label(RichText::new("no images").size(11.5).color(col(l.muted)));
+                continue;
+            }
+            for row in files.chunks(2) {
+                ui.horizontal(|ui| {
+                    for f in row {
+                        let size = egui::vec2(width, width * 9.0 / 16.0);
+                        let (rect, r) = ui.allocate_exact_size(size, egui::Sense::click());
+                        // only once it scrolls into view, so a big folder
+                        // doesn't make (and keep) hundreds of thumbnails
+                        if !self.thumb_tex.contains_key(f) && ui.is_rect_visible(rect) {
+                            thumbs.ask(f.clone());
+                            self.thumb_tex.insert(f.clone(), Err(String::new()));
+                        }
+                        let name = f.file_name().map(|n| n.to_string_lossy().to_string());
+                        match self.thumb_tex.get(f) {
+                            Some(Ok(tex)) => {
+                                // fill the box, cut to its shape
+                                let [w, h] = tex.size().map(|v| v as f32);
+                                let (bw, bh) = (rect.width(), rect.height());
+                                let scale = (bw / w).max(bh / h);
+                                let (uw, uh) = (bw / (w * scale), bh / (h * scale));
+                                let uv = egui::Rect::from_min_max(
+                                    egui::pos2((1.0 - uw) / 2.0, (1.0 - uh) / 2.0),
+                                    egui::pos2((1.0 + uw) / 2.0, (1.0 + uh) / 2.0),
+                                );
+                                ui.painter().image(tex.id(), rect, uv, Color32::WHITE);
+                            }
+                            Some(Err(e)) if !e.is_empty() => {
+                                ui.painter().rect_filled(rect, 2.0, col(l.bg_alt));
+                                ui.painter().text(
+                                    rect.center(),
+                                    egui::Align2::CENTER_CENTER,
+                                    "can't read",
+                                    egui::FontId::proportional(11.0),
+                                    col(l.red),
+                                );
+                            }
+                            _ => {
+                                ui.painter().rect_filled(rect, 2.0, col(l.bg_alt));
+                            }
+                        }
+                        let selected = picked == *f;
+                        if selected || r.hovered() {
+                            ui.painter().rect_stroke(
+                                rect,
+                                2.0,
+                                egui::Stroke::new(
+                                    if selected { 3.0 } else { 1.0 },
+                                    col(if selected { l.accent } else { l.fg }),
+                                ),
+                                egui::StrokeKind::Inside,
+                            );
+                        }
+                        let r = r.on_hover_text(name.unwrap_or_default());
+                        if r.clicked() && !selected {
+                            pick = Some(f.clone());
+                        }
+                    }
+                });
+            }
+        }
+        if let Some(f) = pick {
+            let s = f.to_str().unwrap_or("").to_string();
+            if f == default_wall_again {
+                // the config's own: no copy needed
+                self.theme.wallpaper = None;
+            } else if s.is_empty() || s.contains(['"', '\\']) || s.chars().any(char::is_control) {
+                self.status = (
+                    "that file's name or folder has a \" or \\ or odd characters in it: rename it to use it"
+                        .into(),
+                    true,
+                );
+            } else {
+                let mode = self.theme.wallpaper.as_ref().map(|w| w.mode.clone());
+                self.theme.wallpaper = Some(theme::Wallpaper {
+                    from: s,
+                    mode: mode.unwrap_or_else(|| "fill".into()),
+                });
+            }
+        }
+    }
+
+    fn icon_list(&mut self, ui: &mut egui::Ui, l: Look) {
+        let v = self.theme.variant;
+        ui.label(RichText::new("icon theme").strong().color(col(l.fg)));
+        ui.label(
+            RichText::new(format!(
+                "Only the set picked is installed: rebuild to use it. Shown for {}; \
+                 previews are of sets installed now.",
+                VARIANTS[v]
+            ))
+            .size(11.5)
+            .color(col(l.muted)),
+        );
+        if self.theme.icon_sets.is_empty() {
+            ui.add_space(6.0);
+            ui.label(
+                RichText::new("theme.nix has no iconSets: update the config first")
+                    .color(col(l.red)),
+            );
+            return;
+        }
+        let mut pick = None;
+        let mut open = None;
+        for s in &self.theme.icon_sets {
+            let name = &s.names[v];
+            let picked = self.theme.icons == s.key;
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                let r = ui
+                    .selectable_label(picked, &s.label)
+                    .on_hover_text(if s.also.is_empty() {
+                        format!("{name} (package {})", s.package)
+                    } else {
+                        format!("{name} (packages {} {})", s.package, s.also.join(" "))
+                    });
+                if r.clicked() && !picked {
+                    pick = Some(s.key.clone());
+                }
+                // its page, right after the name
+                if let Some(p) = &s.page {
+                    let r = ui
+                        .add(
+                            egui::Label::new(RichText::new("↗").color(col(l.muted)))
+                                .sense(egui::Sense::click()),
+                        )
+                        .on_hover_cursor(egui::CursorIcon::PointingHand)
+                        .on_hover_text(format!("see what it looks like: {p}"));
+                    if r.clicked() {
+                        open = Some(p.clone());
+                    }
+                }
+                if picked && self.theme.icons != self.theme.saved_icons {
+                    ui.label(RichText::new("unsaved").size(11.5).color(col(l.accent)));
+                }
+                if s.key == self.theme.icon_default {
+                    ui.label(RichText::new("default").size(11.5).color(col(l.muted)));
+                }
+                if s.key == self.theme.saved_icons {
+                    ui.label(RichText::new("saved").size(11.5).color(col(l.muted)));
+                }
+            });
+            let icons = self.previews.entry(name.clone()).or_insert_with(|| {
+                if !self.icon_themes.installed(name) {
+                    return Vec::new();
+                }
+                icons::SAMPLES
+                    .iter()
+                    // the size a file manager shows: some sets draw
+                    // small sizes differently (Gruvbox Plus's folders)
+                    .map(|names| self.icon_themes.lookup(name, names, 64))
+                    .collect()
+            });
+            if icons.iter().all(Option::is_none) {
+                ui.label(
+                    RichText::new(if !icons.is_empty() {
+                        format!("{name}: installed, no icons to preview")
+                    } else if picked {
+                        format!("{name}: installs on rebuild")
+                    } else {
+                        format!("{name}: not installed (pick it and rebuild)")
+                    })
+                    .size(11.5)
+                    .color(col(l.muted)),
+                );
+                continue;
+            }
+            ui.horizontal(|ui| {
+                for p in icons.iter().flatten() {
+                    ui.add(
+                        egui::Image::new(format!("file://{}", p.display()))
+                            .fit_to_exact_size(egui::vec2(32.0, 32.0)),
+                    );
+                }
+            });
+            ui.label(RichText::new(name).size(11.5).color(col(l.muted)));
+        }
+        if let Some(k) = pick {
+            self.theme.icons = k;
+        }
+        if let Some(url) = open {
+            match Command::new("xdg-open").arg(&url).spawn() {
+                // waited for on the side, so it doesn't linger
+                Ok(mut child) => drop(std::thread::spawn(move || child.wait())),
+                Err(e) => self.status = (format!("can't open {url}: {e}"), true),
+            }
+        }
+    }
+
     fn colour_list(&mut self, ui: &mut egui::Ui, l: Look) {
         // outline for the colours picked in the contrast list, fading out
         let age = ui.input(|i| i.time) - self.find_since;
@@ -485,6 +922,13 @@ fn main() {
         find: Vec::new(),
         find_since: 0.0,
         find_scrolled: false,
+        tab: Tab::Colours,
+        icon_themes: icons::Themes::new(icons::roots()),
+        previews: HashMap::new(),
+        walls: None,
+        thumbs: None,
+        thumb_tex: HashMap::new(),
+        new_folder: String::new(),
     };
     app.refresh();
     let options = eframe::NativeOptions {
@@ -494,8 +938,14 @@ fn main() {
             .with_inner_size([1400.0, 800.0]),
         ..Default::default()
     };
-    if let Err(e) = eframe::run_native("theme-edit", options, Box::new(move |_| Ok(Box::new(app))))
-    {
+    if let Err(e) = eframe::run_native(
+        "theme-edit",
+        options,
+        Box::new(move |cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+            Ok(Box::new(app))
+        }),
+    ) {
         eprintln!("theme-edit: {e}");
         std::process::exit(1);
     }

@@ -6,7 +6,12 @@
 //! (`name = mix c.a c.b 0.67;`). colors.json holds the variant in use and
 //! only the colours that differ from the defaults:
 //!
-//!   { "variant": "light", "dark": { "accent": "4fa3e0" }, "light": {} }
+//!   { "variant": "light", "dark": { "accent": "4fa3e0" }, "light": {},
+//!     "icons": "papirus",
+//!     "wallpaper": { "from": "/path/to/the/picked.png", "mode": "fill" } }
+//!
+//! The icon sets come from theme.nix's `iconSets`, one per line. Keys in
+//! colors.json this doesn't know are kept as they are when saving.
 
 pub type Rgb = [u8; 3];
 
@@ -36,12 +41,50 @@ pub struct Derived {
     pub comment: String,
 }
 
+/// an icon set from theme.nix's iconSets
+pub struct IconSet {
+    pub key: String,
+    /// shown in the picker: the comment after it, or the key
+    pub label: String,
+    pub package: String,
+    /// packages it borrows icons from
+    pub also: Vec<String>,
+    /// the theme's name for dark and light
+    pub names: [String; 2],
+    /// its web page (https), to see what it looks like
+    pub page: Option<String>,
+}
+
+/// how sway fits the wallpaper to a screen (sway-output(5))
+pub const MODES: [&str; 5] = ["fill", "fit", "center", "tile", "stretch"];
+
+/// the wallpaper picked: the image it was copied from, and its mode
+#[derive(Clone, PartialEq, Debug)]
+pub struct Wallpaper {
+    pub from: String,
+    pub mode: String,
+}
+
 pub struct Theme {
     pub sections: Vec<Section>,
     pub derived: Vec<Derived>,
     /// 0 dark, 1 light: shown and edited
     pub variant: usize,
     pub saved_variant: usize,
+    pub icon_sets: Vec<IconSet>,
+    /// the set used when colors.json doesn't pick one
+    pub icon_default: String,
+    /// the set picked, and the one saved
+    pub icons: String,
+    pub saved_icons: String,
+    /// the wallpaper picked (None: the config's default), and the saved one
+    pub wallpaper: Option<Wallpaper>,
+    pub saved_wallpaper: Option<Wallpaper>,
+    /// folders added to the wallpaper picker, and the saved list
+    pub wall_folders: Vec<String>,
+    pub saved_wall_folders: Vec<String>,
+    /// keys of colors.json this doesn't know, kept as JSON text
+    pub extra: Vec<(String, String)>,
 }
 
 pub fn parse_hex(s: &str) -> Option<Rgb> {
@@ -110,6 +153,95 @@ fn entry_line(l: &str) -> Option<(String, Rgb, String)> {
     let color = parse_hex(&value[..6])?;
     let comment = value[8..].trim().trim_start_matches('#').trim().to_string();
     Some((name.to_string(), color, comment))
+}
+
+/// `  key = { package = "p"; also = "a b"; dark = "D"; light = "L"; page = "https://…"; };  # Label`
+/// (also and page are optional)
+fn icon_line(l: &str) -> Option<IconSet> {
+    let (code, label) = match l.split_once('#') {
+        Some((c, m)) => (c, m.trim()),
+        None => (l, ""),
+    };
+    let (key, rest) = code.split_once('=')?;
+    let key = key.trim();
+    let body = rest
+        .trim()
+        .strip_prefix('{')?
+        .strip_suffix(';')?
+        .trim_end()
+        .strip_suffix('}')?;
+    let (mut package, mut also, mut dark, mut light, mut page) = (None, None, None, None, None);
+    for field in body.split(';').map(str::trim).filter(|f| !f.is_empty()) {
+        let (k, v) = field.split_once('=')?;
+        let (k, v) = (k.trim(), v.trim().strip_prefix('"')?.strip_suffix('"')?);
+        if k == "page" {
+            // a link, opened with xdg-open: https only, nothing odd in it
+            let ok = v.starts_with("https://")
+                && v.chars().all(|c| c.is_ascii_graphic())
+                && !v.contains(['"', '\\', '$', '`']);
+            if !ok {
+                return None;
+            }
+            page = Some(v.to_string());
+            continue;
+        }
+        if v.is_empty() || v.contains(['"', '\\', '$', '/']) {
+            return None;
+        }
+        let slot = match k {
+            "package" => &mut package,
+            "also" => &mut also,
+            "dark" => &mut dark,
+            "light" => &mut light,
+            _ => return None,
+        };
+        *slot = Some(v.to_string());
+    }
+    if !is_ident(key) {
+        return None;
+    }
+    Some(IconSet {
+        key: key.to_string(),
+        label: if label.is_empty() { key } else { label }.to_string(),
+        package: package?,
+        also: also
+            .map(|a: String| a.split_whitespace().map(String::from).collect())
+            .unwrap_or_default(),
+        names: [dark?, light?],
+        page,
+    })
+}
+
+/// theme.nix's icon sets and default; none if it has no iconSets
+fn icon_sets(lines: &[&str]) -> Result<(Vec<IconSet>, String), String> {
+    let Some((start, end)) = block(lines, 0, "iconSets = {") else {
+        return Ok((Vec::new(), String::new()));
+    };
+    let mut sets = Vec::new();
+    for (i, l) in lines.iter().enumerate().take(end).skip(start + 1) {
+        let t = l.trim();
+        if t.is_empty() || t.starts_with('#') {
+            continue;
+        }
+        let s = icon_line(t).ok_or(format!(
+            "line {}: not a `name = {{ package = \"…\"; dark = \"…\"; light = \"…\"; }};` line:\n{t}",
+            i + 1
+        ))?;
+        sets.push(s);
+    }
+    let default = lines
+        .iter()
+        .find_map(|l| {
+            l.trim()
+                .strip_prefix("iconDefault = \"")?
+                .strip_suffix("\";")
+                .map(str::to_string)
+        })
+        .ok_or("no `iconDefault = \"…\";` found")?;
+    if !sets.iter().any(|s| s.key == default) {
+        return Err(format!("iconDefault {default:?} isn't in iconSets"));
+    }
+    Ok((sets, default))
 }
 
 /// `  name = mix c.accent c.bg 0.67;  # comment`
@@ -222,11 +354,21 @@ pub fn parse(text: &str) -> Result<Theme, String> {
             .filter_map(|l| derived_line(l))
             .collect();
     }
+    let (icon_sets, icon_default) = icon_sets(&lines)?;
     let theme = Theme {
         sections,
         derived,
         variant: 0,
         saved_variant: 0,
+        icon_sets,
+        icons: icon_default.clone(),
+        saved_icons: icon_default.clone(),
+        icon_default,
+        wallpaper: None,
+        saved_wallpaper: None,
+        wall_folders: Vec::new(),
+        saved_wall_folders: Vec::new(),
+        extra: Vec::new(),
     };
     for d in &theme.derived {
         if theme.get(&d.a).is_none() || theme.get(&d.b).is_none() {
@@ -263,13 +405,17 @@ impl Theme {
     }
 
     /// colours (in either variant) changed since loading or saving, plus
-    /// one if the variant changed
+    /// one if the variant changed, and one if the icon set did
     pub fn changed(&self) -> usize {
         let colours: usize = self
             .entries()
             .map(|e| (0..2).filter(|&v| e.color[v] != e.saved[v]).count())
             .sum();
-        colours + usize::from(self.variant != self.saved_variant)
+        colours
+            + usize::from(self.variant != self.saved_variant)
+            + usize::from(self.icons != self.saved_icons)
+            + usize::from(self.wallpaper != self.saved_wallpaper)
+            + usize::from(self.wall_folders != self.saved_wall_folders)
     }
 
     pub fn mark_saved(&mut self) {
@@ -277,6 +423,24 @@ impl Theme {
             e.saved = e.color;
         }
         self.saved_variant = self.variant;
+        self.saved_icons = self.icons.clone();
+        self.saved_wallpaper = self.wallpaper.clone();
+        self.saved_wall_folders = self.wall_folders.clone();
+    }
+
+    /// back to what was saved
+    pub fn undo_all(&mut self) {
+        for e in self.entries_mut() {
+            e.color = e.saved;
+        }
+        self.variant = self.saved_variant;
+        self.icons = self.saved_icons.clone();
+        self.wallpaper = self.saved_wallpaper.clone();
+        self.wall_folders = self.saved_wall_folders.clone();
+    }
+
+    pub fn icon_set(&self, key: &str) -> Option<&IconSet> {
+        self.icon_sets.iter().find(|s| s.key == key)
     }
 
     /// apply colors.json (already parsed); unknown names are reported
@@ -286,6 +450,19 @@ impl Theme {
             self.variant = v;
             self.saved_variant = v;
         }
+        if let Some(i) = &local.icons {
+            if self.icon_set(i).is_some() {
+                self.icons = i.clone();
+                self.saved_icons = i.clone();
+            } else {
+                unknown.push(format!("icons {i:?}"));
+            }
+        }
+        self.wallpaper = local.wallpaper.clone();
+        self.saved_wallpaper = local.wallpaper.clone();
+        self.wall_folders = local.wall_folders.clone();
+        self.saved_wall_folders = local.wall_folders.clone();
+        self.extra = local.extra.clone();
         for (v, colours) in local.colours.iter().enumerate() {
             for (name, c) in colours {
                 match self.entries_mut().find(|e| &e.name == name) {
@@ -300,7 +477,8 @@ impl Theme {
         unknown
     }
 
-    /// colors.json: the variant, and the colours that differ from theme.nix
+    /// colors.json: the variant, the colours that differ from theme.nix,
+    /// the icon set if it isn't the default, and keys kept from the file
     pub fn to_json(&self) -> String {
         let mut out = format!("{{\n  \"variant\": \"{}\"", VARIANTS[self.variant]);
         for (v, name) in VARIANTS.iter().enumerate() {
@@ -315,6 +493,26 @@ impl Theme {
                 out += &format!(",\n  \"{name}\": {{\n{}\n  }}", mine.join(",\n"));
             }
         }
+        if self.icons != self.icon_default {
+            out += &format!(",\n  \"icons\": \"{}\"", self.icons);
+        }
+        if let Some(w) = &self.wallpaper {
+            out += &format!(
+                ",\n  \"wallpaper\": {{ \"from\": \"{}\", \"mode\": \"{}\" }}",
+                w.from, w.mode
+            );
+        }
+        if !self.wall_folders.is_empty() {
+            let list: Vec<String> = self
+                .wall_folders
+                .iter()
+                .map(|f| format!("\"{f}\""))
+                .collect();
+            out += &format!(",\n  \"wallpaperFolders\": [ {} ]", list.join(", "));
+        }
+        for (k, v) in &self.extra {
+            out += &format!(",\n  \"{k}\": {v}");
+        }
         out + "\n}\n"
     }
 }
@@ -324,11 +522,18 @@ impl Theme {
 pub struct Local {
     pub variant: Option<usize>,
     pub colours: [Vec<(String, Rgb)>; 2],
+    pub icons: Option<String>,
+    pub wallpaper: Option<Wallpaper>,
+    pub wall_folders: Vec<String>,
+    /// other keys, as JSON text
+    pub extra: Vec<(String, String)>,
 }
 
-/// Reads colors.json. Only the shape theme.nix reads is accepted: an
-/// object with "variant" (a string) and "dark"/"light" (objects of
-/// 6-digit hex strings).
+/// Reads colors.json: an object with "variant" (a string), "dark"/"light"
+/// (objects of 6-digit hex strings), "icons" (a string) and "wallpaper"
+/// (an object: "from", a path, and "mode", one of MODES) and
+/// "wallpaperFolders" (a list of folders). Other keys are kept as they
+/// are (strings, objects and lists only).
 pub fn parse_local(text: &str) -> Result<Local, String> {
     let mut p = Json {
         s: text.as_bytes(),
@@ -361,7 +566,33 @@ pub fn parse_local(text: &str) -> Result<Local, String> {
                     local.colours[v].push((name, rgb));
                 }
             }
-            (k, _) => return Err(format!("unexpected {k:?}")),
+            ("icons", Value::Str(i)) => local.icons = Some(i),
+            ("wallpaper", Value::Obj(w)) => {
+                let (mut from, mut mode) = (None, None);
+                for (k, v) in w {
+                    match (k.as_str(), v) {
+                        ("from", Value::Str(s)) if !s.is_empty() => from = Some(s),
+                        ("mode", Value::Str(s)) if MODES.contains(&s.as_str()) => mode = Some(s),
+                        (k, _) => return Err(format!("wallpaper.{k}: not a path or a mode")),
+                    }
+                }
+                local.wallpaper = Some(Wallpaper {
+                    from: from.ok_or("wallpaper: no \"from\"")?,
+                    mode: mode.unwrap_or_else(|| "fill".into()),
+                });
+            }
+            ("wallpaperFolders", Value::Arr(list)) => {
+                for v in list {
+                    match v {
+                        Value::Str(s) if s.starts_with('/') => local.wall_folders.push(s),
+                        _ => return Err("wallpaperFolders: not a list of folders".into()),
+                    }
+                }
+            }
+            ("variant" | "dark" | "light" | "icons" | "wallpaper" | "wallpaperFolders", _) => {
+                return Err(format!("{key:?} has the wrong type"));
+            }
+            (_, v) => local.extra.push((key.clone(), v.json())),
         }
     }
     Ok(local)
@@ -370,6 +601,35 @@ pub fn parse_local(text: &str) -> Result<Local, String> {
 enum Value {
     Str(String),
     Obj(Vec<(String, Value)>),
+    Arr(Vec<Value>),
+}
+
+impl Value {
+    /// back to JSON (strings have no escapes: the reader refuses them)
+    fn json(&self) -> String {
+        match self {
+            Value::Str(s) => format!("\"{s}\""),
+            Value::Obj(o) => {
+                let inner: Vec<String> = o
+                    .iter()
+                    .map(|(k, v)| format!("\"{k}\": {}", v.json()))
+                    .collect();
+                if inner.is_empty() {
+                    "{}".into()
+                } else {
+                    format!("{{ {} }}", inner.join(", "))
+                }
+            }
+            Value::Arr(a) => {
+                let inner: Vec<String> = a.iter().map(Value::json).collect();
+                if inner.is_empty() {
+                    "[]".into()
+                } else {
+                    format!("[ {} ]", inner.join(", "))
+                }
+            }
+        }
+    }
 }
 
 struct Json<'a> {
@@ -415,7 +675,33 @@ impl Json<'_> {
         match self.s.get(self.i) {
             Some(b'"') => Ok(Value::Str(self.string()?)),
             Some(b'{') => Ok(Value::Obj(self.object()?)),
-            _ => Err(format!("expected a string or an object at byte {}", self.i)),
+            Some(b'[') => Ok(Value::Arr(self.array()?)),
+            _ => Err(format!(
+                "expected a string, object or list at byte {}",
+                self.i
+            )),
+        }
+    }
+
+    fn array(&mut self) -> Result<Vec<Value>, String> {
+        self.eat(b'[')?;
+        let mut out = Vec::new();
+        self.ws();
+        if self.s.get(self.i) == Some(&b']') {
+            self.i += 1;
+            return Ok(out);
+        }
+        loop {
+            out.push(self.value()?);
+            self.ws();
+            match self.s.get(self.i) {
+                Some(b',') => self.i += 1,
+                Some(b']') => {
+                    self.i += 1;
+                    return Ok(out);
+                }
+                _ => return Err(format!("expected ',' or ']' at byte {}", self.i)),
+            }
         }
     }
 
@@ -513,13 +799,167 @@ mod tests {
     }
 
     #[test]
+    fn icon_sets_from_theme_nix() {
+        let t = parse(FILE).unwrap();
+        assert_eq!(t.icon_sets.len(), 16);
+        assert_eq!(t.icon_default, "gruvbox-plus");
+        assert_eq!(t.icons, "gruvbox-plus");
+        let p = t.icon_set("papirus").unwrap();
+        assert_eq!(p.label, "Papirus");
+        assert_eq!(p.package, "papirus-icon-theme");
+        assert_eq!(p.names, ["Papirus-Dark", "Papirus-Light"]);
+        assert!(p.also.is_empty());
+        let n = t.icon_set("numix-circle").unwrap();
+        assert_eq!(n.also, ["numix-icon-theme"]);
+        assert_eq!(n.names, ["Numix-Circle", "Numix-Circle-Light"]);
+        assert_eq!(t.icon_set("rose-pine").unwrap().label, "Rosé Pine");
+        for bad in [
+            "x = { package = \"p\"; dark = \"D\"; };",
+            "x = { package = \"p\"; dark = \"D\"; light = \"../L\"; };",
+            "x = { package = \"p\"; dark = \"D\"; light = \"L\"; other = \"o\"; };",
+            "x = { package = p; dark = \"D\"; light = \"L\"; };",
+            "x y = { package = \"p\"; dark = \"D\"; light = \"L\"; };",
+        ] {
+            assert!(icon_line(bad).is_none(), "{bad}");
+        }
+        // an older theme.nix, without icon sets, still reads
+        let old: String = FILE
+            .lines()
+            .filter(|l| {
+                !l.contains("package = ")
+                    && !l.contains("iconSets = {")
+                    && !l.contains("iconDefault =")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(parse(&old).unwrap().icon_sets.is_empty());
+    }
+
+    #[test]
+    fn icons_and_other_keys_in_colors_json() {
+        let mut t = parse(FILE).unwrap();
+        let unknown = t.load_local(
+            &parse_local(r#"{"variant":"dark","icons":"papirus","note":"hi","wallpaper":{"from":"/a b.png","mode":"fit"},"e":{}}"#)
+                .unwrap(),
+        );
+        assert!(unknown.is_empty());
+        assert_eq!((t.icons.as_str(), t.changed()), ("papirus", 0));
+        let json = t.to_json();
+        assert_eq!(
+            json,
+            "{\n  \"variant\": \"dark\",\n  \"dark\": {},\n  \"light\": {},\n  \"icons\": \"papirus\",\n  \"wallpaper\": { \"from\": \"/a b.png\", \"mode\": \"fit\" },\n  \"note\": \"hi\",\n  \"e\": {}\n}\n"
+        );
+        // reads back the same
+        let mut again = parse(FILE).unwrap();
+        again.load_local(&parse_local(&json).unwrap());
+        assert_eq!(again.to_json(), json);
+        // picking another counts as one change; undo goes back
+        t.icons = "kora".into();
+        assert_eq!(t.changed(), 1);
+        t.undo_all();
+        assert_eq!((t.icons.as_str(), t.changed()), ("papirus", 0));
+        // the default isn't written
+        t.icons = "gruvbox-plus".into();
+        assert!(!t.to_json().contains("icons"));
+        t.mark_saved();
+        assert_eq!(t.changed(), 0);
+        // an unknown set is reported, and the default used
+        let mut u = parse(FILE).unwrap();
+        assert_eq!(
+            u.load_local(&parse_local(r#"{"icons":"nope"}"#).unwrap()),
+            ["icons \"nope\""]
+        );
+        assert_eq!(u.icons, "gruvbox-plus");
+    }
+
+    #[test]
+    fn wallpaper_in_colors_json() {
+        let mut t = parse(FILE).unwrap();
+        t.load_local(&parse_local(r#"{"wallpaper":{"from":"/w/x.jpg"}}"#).unwrap());
+        let w = Wallpaper {
+            from: "/w/x.jpg".into(),
+            mode: "fill".into(),
+        };
+        assert_eq!(t.wallpaper.as_ref(), Some(&w));
+        assert_eq!(t.changed(), 0);
+        t.wallpaper.as_mut().unwrap().mode = "tile".into();
+        assert_eq!(t.changed(), 1);
+        t.undo_all();
+        assert_eq!(t.wallpaper.as_ref(), Some(&w));
+        // back to the default: no key
+        t.wallpaper = None;
+        assert!(!t.to_json().contains("wallpaper"));
+        t.mark_saved();
+        assert_eq!(t.changed(), 0);
+    }
+
+    #[test]
+    fn wallpaper_folders_and_lists() {
+        let mut t = parse(FILE).unwrap();
+        t.load_local(
+            &parse_local(r#"{"wallpaperFolders":["/mnt/a b","/w"],"other":["x",{"y":"z"},[]]}"#)
+                .unwrap(),
+        );
+        assert_eq!(t.wall_folders, ["/mnt/a b", "/w"]);
+        let json = t.to_json();
+        assert!(json.contains("\n  \"wallpaperFolders\": [ \"/mnt/a b\", \"/w\" ]"));
+        assert!(json.contains("\n  \"other\": [ \"x\", { \"y\": \"z\" }, [] ]"));
+        let mut again = parse(FILE).unwrap();
+        again.load_local(&parse_local(&json).unwrap());
+        assert_eq!(again.to_json(), json);
+        t.wall_folders.pop();
+        assert_eq!(t.changed(), 1);
+        t.undo_all();
+        assert_eq!(t.changed(), 0);
+        t.wall_folders.clear();
+        assert!(!t.to_json().contains("wallpaperFolders"));
+        for bad in [
+            r#"{"wallpaperFolders":"/a"}"#,
+            r#"{"wallpaperFolders":["relative"]}"#,
+            r#"{"wallpaperFolders":[{}]}"#,
+            r#"{"wallpaperFolders":["/a",]}"#,
+            r#"{"x":[}"#,
+        ] {
+            assert!(parse_local(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn icon_set_pages() {
+        let t = parse(FILE).unwrap();
+        assert!(
+            t.icon_sets.iter().all(|s| s.page.is_some()),
+            "every set has a page"
+        );
+        let ok = icon_line(
+            "x = { package = \"p\"; dark = \"D\"; light = \"L\"; page = \"https://a.org/b\"; };",
+        )
+        .unwrap();
+        assert_eq!(ok.page.as_deref(), Some("https://a.org/b"));
+        for bad in [
+            "x = { package = \"p\"; dark = \"D\"; light = \"L\"; page = \"http://a.org\"; };",
+            "x = { package = \"p\"; dark = \"D\"; light = \"L\"; page = \"https://a.org/$(x)\"; };",
+            "x = { package = \"p\"; dark = \"D\"; light = \"L\"; page = \"https://a b\"; };",
+        ] {
+            assert!(icon_line(bad).is_none(), "{bad}");
+        }
+    }
+
+    #[test]
     fn bad_colors_json() {
         for bad in [
             r#"{"variant":"blue"}"#,
             r#"{"dark":{"accent":"zzz"}}"#,
             r##"{"dark":{"accent":"#e5a440"}}"##,
             r#"{"dark":{"accent":1}}"#,
-            r#"{"other":{}}"#,
+            r#"{"icons":{}}"#,
+            r#"{"wallpaper":"x"}"#,
+            r#"{"wallpaper":{"mode":"fill"}}"#,
+            r#"{"wallpaper":{"from":"/a","mode":"zoom"}}"#,
+            r#"{"wallpaper":{"from":"","mode":"fill"}}"#,
+            r#"{"wallpaper":{"from":"/a","x":"y"}}"#,
+            r#"{"variant":{}}"#,
+            r#"{"dark":"x"}"#,
             r#"{"dark":{}} x"#,
             r#"{"dark":{"a":"A"}}"#,
         ] {

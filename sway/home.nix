@@ -12,6 +12,7 @@
     ./kitty.nix
     ./foot.nix
     ./weather.nix
+    ./birthdays.nix
     ./sway-helpers.nix
     ./shortcuts.nix
     ./msqu.nix

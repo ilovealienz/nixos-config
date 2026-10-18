@@ -363,34 +363,86 @@ pub fn desktop(ui: &mut egui::Ui, t: &Theme) {
     }
 }
 
-/// text colour, background, what it's used for, large/bold text only
-const PAIRS: &[(&str, &str, &str, bool)] = &[
-    ("fg", "bg", "text", false),
-    ("fgBright", "bg", "bright text", false),
-    ("muted", "bg", "dim text, labels", false),
-    ("fg", "bgAlt", "text on raised views", false),
+/// What a pair of colours is used for, which sets how much contrast it
+/// needs (WCAG 2: 4.5 for text, 3 for large or bold text).
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Role {
+    /// read in sentences: needs 4.5
+    Body,
+    /// short labels (tabs, buttons, workspaces, selected rows): 4.5 is
+    /// best, 3 is fine
+    Label,
+    /// dim on purpose (hints, labels in grey): 3 is the aim, more is fine
+    Dim,
+    /// terminal colours: coloured output, often short: like a label
+    Term,
+}
+
+/// the groups the table shows, in order: role, heading, its bar
+const GROUPS: &[(Role, &str, &str)] = &[
+    (Role::Body, "text you read", "needs 4.5"),
+    (Role::Label, "labels and highlights", "4.5 best, 3 fine"),
+    (Role::Dim, "dim on purpose", "3 is enough"),
+    (Role::Term, "terminal colours", "4.5 best, 3 fine"),
+];
+
+/// text colour, background, what it's used for, and its role
+const PAIRS: &[(&str, &str, &str, Role)] = &[
+    ("fg", "bg", "text", Role::Body),
+    ("fgBright", "bg", "bright text", Role::Body),
+    ("muted", "bg", "dim text, labels", Role::Dim),
+    ("fg", "bgAlt", "text on raised views", Role::Body),
     (
         "selectionFg",
         "selectionBg",
         "selected rows, terminal selection",
-        false,
+        Role::Label,
     ),
-    ("fgBright", "surface", "launcher selection", false),
-    ("accent", "bg", "focused workspace", true),
+    ("fgBright", "surface", "launcher selection", Role::Label),
+    ("accent", "bg", "focused workspace", Role::Label),
     (
         "onAccent",
         "accent",
         "text on accent: tab titles, buttons",
-        false,
+        Role::Label,
     ),
-    ("onAccent", "red", "urgent workspace", true),
-    ("red", "bg", "errors", false),
-    ("orange", "bg", "warnings", false),
-    ("yellow", "bg", "terminal yellow", false),
-    ("green", "bg", "terminal green", false),
-    ("blue", "bg", "terminal blue", false),
-    ("magenta", "bg", "terminal magenta", false),
+    ("onAccent", "red", "urgent workspace", Role::Label),
+    ("red", "bg", "errors", Role::Body),
+    ("orange", "bg", "warnings", Role::Body),
+    ("yellow", "bg", "terminal yellow", Role::Term),
+    ("green", "bg", "terminal green", Role::Term),
+    ("blue", "bg", "terminal blue", Role::Term),
+    ("magenta", "bg", "terminal magenta", Role::Term),
 ];
+
+/// How a verdict looks: fine, a caution, or a problem.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Mark {
+    Good,
+    Okay,
+    Bad,
+}
+
+/// The ratio as shown: cut to two decimals, never rounded up, so a
+/// number shown as passing always passes (WCAG: 4.499 isn't 4.5).
+pub fn shown(r: f32) -> String {
+    format!("{:.2}", (r as f64 * 100.0).floor() / 100.0)
+}
+
+/// What a ratio means for this role, judged on the exact ratio.
+pub fn verdict(r: f32, role: Role) -> (&'static str, Mark) {
+    match role {
+        Role::Body if r >= 4.5 => ("good", Mark::Good),
+        Role::Body if r >= 3.0 => ("too faint for reading", Mark::Okay),
+        Role::Body => ("hard to read", Mark::Bad),
+        Role::Label | Role::Term if r >= 4.5 => ("good", Mark::Good),
+        Role::Label if r >= 3.0 => ("fine for labels", Mark::Good),
+        Role::Term if r >= 3.0 => ("fine for short output", Mark::Good),
+        Role::Dim if r >= 4.5 => ("good, not very dim", Mark::Good),
+        Role::Dim if r >= 3.0 => ("dim, as meant", Mark::Good),
+        _ => ("hard to read", Mark::Bad),
+    }
+}
 
 /// returns the colours of a row that was clicked: its two colours, or for
 /// a worked-out one, the colours it's mixed from
@@ -405,57 +457,136 @@ pub fn contrast(
     let mut clicked = None;
     ui.label(egui::RichText::new("contrast").strong());
     ui.label(
-        egui::RichText::new("4.5 or more is easy to read; 3 is fine for bold or large text (WCAG). Click a row to find its colours.")
-            .size(11.5)
-            .color(col(muted)),
+        egui::RichText::new(
+            "Each group is judged for its use (WCAG contrast). Click a row to find its colours.",
+        )
+        .size(11.5)
+        .color(col(muted)),
     );
     ui.add_space(4.0);
+    // the panel's width, for the lines between groups
+    let across = ui.max_rect().x_range();
     egui::Grid::new("contrast")
         .num_columns(3)
         .spacing([14.0, 4.0])
         .striped(false)
         .show(ui, |ui| {
-            for (fg, bg, what, large) in PAIRS {
-                let (Some(f), Some(b)) = (t.get(fg), t.get(bg)) else {
-                    continue;
-                };
-                let r = theme::contrast(f, b);
-                let (sample, sr) = ui.allocate_exact_size(vec2(44.0, 20.0), egui::Sense::click());
-                ui.painter().rect_filled(sample, 2.0, col(b));
-                ui.painter().text(
-                    sample.center(),
-                    Align2::CENTER_CENTER,
-                    "Aa",
-                    FontId::proportional(14.0),
-                    col(f),
-                );
-                let made = |n: &str| match t.derived.iter().find(|d| d.name == n) {
-                    Some(d) => format!("\n{n} is worked out from {} and {}", d.a, d.b),
-                    None => String::new(),
-                };
-                let hover = format!("{fg} on {bg}{}{}\nclick to find them", made(fg), made(bg));
-                let lr = ui.add(egui::Label::new(*what).sense(egui::Sense::click()));
-                if sr.union(lr.clone()).on_hover_text(hover).clicked() {
-                    let mut names = Vec::new();
-                    for n in [fg, bg] {
-                        names.push(n.to_string());
-                        if let Some(d) = t.derived.iter().find(|d| d.name == *n) {
-                            names.extend([d.a.clone(), d.b.clone()]);
-                        }
-                    }
-                    clicked = Some(names);
+            for (gi, (group, title, bar)) in GROUPS.iter().enumerate() {
+                // the group's heading, with a line above all but the first
+                let tall = if gi > 0 { 30.0 } else { 18.0 };
+                let (head, _) = ui.allocate_exact_size(vec2(44.0, tall), egui::Sense::hover());
+                if gi > 0 {
+                    ui.painter().hline(
+                        across,
+                        head.top() + 5.0,
+                        Stroke::new(1.0, col(muted).gamma_multiply(0.5)),
+                    );
                 }
-                let need = if *large { 3.0 } else { 4.5 };
-                let (verdict, c) = if r >= need {
-                    ("good", green)
-                } else if r >= 3.0 {
-                    ("bold/large only", accent)
-                } else {
-                    ("hard to read", red)
-                };
-                ui.label(egui::RichText::new(format!("{r:.1}  {verdict}")).color(col(c)));
+                ui.label(
+                    egui::RichText::new(*title)
+                        .size(12.0)
+                        .strong()
+                        .color(col(muted)),
+                );
+                ui.label(egui::RichText::new(*bar).size(11.5).color(col(muted)));
                 ui.end_row();
+                for (fg, bg, what, role) in PAIRS.iter().filter(|p| p.3 == *group) {
+                    let (Some(f), Some(b)) = (t.get(fg), t.get(bg)) else {
+                        continue;
+                    };
+                    let r = theme::contrast(f, b);
+                    let (sample, sr) =
+                        ui.allocate_exact_size(vec2(44.0, 20.0), egui::Sense::click());
+                    ui.painter().rect_filled(sample, 2.0, col(b));
+                    ui.painter().text(
+                        sample.center(),
+                        Align2::CENTER_CENTER,
+                        "Aa",
+                        FontId::proportional(14.0),
+                        col(f),
+                    );
+                    let made = |n: &str| match t.derived.iter().find(|d| d.name == n) {
+                        Some(d) => format!("\n{n} is worked out from {} and {}", d.a, d.b),
+                        None => String::new(),
+                    };
+                    let need = match role {
+                        Role::Body => "read in sentences: needs 4.5",
+                        Role::Label => "short labels: 4.5 is best, 3 is fine",
+                        Role::Dim => "dim on purpose: 3 is enough",
+                        Role::Term => "terminal colour: 4.5 is best, 3 is fine",
+                    };
+                    let hover = format!(
+                        "{fg} on {bg}{}{}\n{need}\nclick to find them",
+                        made(fg),
+                        made(bg)
+                    );
+                    let lr = ui.add(egui::Label::new(*what).sense(egui::Sense::click()));
+                    if sr.union(lr.clone()).on_hover_text(hover).clicked() {
+                        let mut names = Vec::new();
+                        for n in [fg, bg] {
+                            names.push(n.to_string());
+                            if let Some(d) = t.derived.iter().find(|d| d.name == *n) {
+                                names.extend([d.a.clone(), d.b.clone()]);
+                            }
+                        }
+                        clicked = Some(names);
+                    }
+                    let (v, mark) = verdict(r, *role);
+                    let c = match mark {
+                        Mark::Good => green,
+                        Mark::Okay => accent,
+                        Mark::Bad => red,
+                    };
+                    ui.label(egui::RichText::new(format!("{}  {v}", shown(r))).color(col(c)));
+                    ui.end_row();
+                }
             }
         });
     clicked
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn numbers_never_round_up() {
+        assert_eq!(shown(4.499), "4.49");
+        assert_eq!(shown(4.4999), "4.49");
+        assert_eq!(shown(4.5), "4.50");
+        assert_eq!(shown(21.0), "21.00");
+        assert_eq!(shown(1.0), "1.00");
+    }
+
+    #[test]
+    fn verdicts_by_role() {
+        // just under 4.5: shown as 4.49 and not good for sentences
+        assert_eq!(verdict(4.499, Role::Body).1, Mark::Okay);
+        assert_eq!(verdict(4.5, Role::Body).1, Mark::Good);
+        // text on accent at 4.40: fine as a label
+        assert_eq!(verdict(4.40, Role::Label), ("fine for labels", Mark::Good));
+        // dim text at 3.6: as meant
+        assert_eq!(verdict(3.6, Role::Dim), ("dim, as meant", Mark::Good));
+        assert_eq!(verdict(2.9, Role::Dim).1, Mark::Bad);
+        assert_eq!(verdict(2.9, Role::Label).1, Mark::Bad);
+        assert_eq!(verdict(2.9, Role::Term).1, Mark::Bad);
+        assert_eq!(verdict(2.9, Role::Body).1, Mark::Bad);
+        assert_eq!(verdict(3.0, Role::Term).1, Mark::Good);
+        assert_eq!(verdict(7.8, Role::Dim).0, "good, not very dim");
+    }
+
+    #[test]
+    fn every_pair_is_in_a_group() {
+        for (_, _, what, role) in PAIRS {
+            assert!(GROUPS.iter().any(|g| g.0 == *role), "{what}");
+        }
+    }
+
+    #[test]
+    fn every_pair_has_colours_in_the_test_theme() {
+        let t = theme::parse(include_str!("../testdata/theme.nix")).unwrap();
+        for (fg, bg, what, _) in PAIRS {
+            assert!(t.get(fg).is_some() && t.get(bg).is_some(), "{what}");
+        }
+    }
 }

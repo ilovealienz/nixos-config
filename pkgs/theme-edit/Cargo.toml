@@ -1,10 +1,12 @@
 [package]
 name = "theme-edit"
-version = "1.1.0"
+version = "1.4.0"
 edition = "2024"
 rust-version = "1.95"
 
 [dependencies]
+egui_extras = { version = "0.36", default-features = false, features = ["file", "image", "svg"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 eframe = { version = "0.36.2", default-features = false, features = ["default_fonts", "glow", "wayland"] }
 
 [profile.release]

@@ -88,6 +88,20 @@ EOF
   say "creating xdg user directories..."
   sudo -u "$USER_NAME" xdg-user-dirs-update 2>/dev/null || true
 
+  # the weather key and birthday list, from the repo's encrypted copy
+  if [ -f "$NIXOS_DIR/secrets.age" ]; then
+    echo
+    say "put the weather key and birthdays in place? (passphrase in Bitwarden)"
+    local s
+    read -rp "   [Y/n] " s
+    if [[ ! "$s" =~ ^[Nn] ]]; then
+      until sudo -u "$USER_NAME" -i nxsecrets unpack; do
+        read -rp "   try again? [Y/n] " s
+        [[ "$s" =~ ^[Nn] ]] && { warn "skipped: nxsecrets unpack later"; break; }
+      done
+    fi
+  fi
+
   notes
 }
 
@@ -159,7 +173,10 @@ ${B}─────────────────────────�
 ${B} not handled by the config${X}
 ${B}────────────────────────────────────────────${X}
 
- ${C}weather widget${X}   needs an openweathermap api key
+ ${C}weather key, birthdays${X}   kept encrypted in the repo (secrets.age)
+     nxsecrets unpack          passphrase in Bitwarden, asked once
+   not set up yet: put them in place, then nxsecrets init (once)
+   a new openweathermap key: put it in place, then nxpush packs it
      mkdir -p ~/.config/weather
      echo "YOUR_KEY" > ~/.config/weather/key
      chmod 600 ~/.config/weather/key
