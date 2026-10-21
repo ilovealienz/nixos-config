@@ -3,6 +3,10 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ./hardware/graphics.nix
+    ./hardware/audio.nix
+    ./hardware/bluetooth.nix
+    ./hardware/power.nix
     ./sway/system.nix
     ./programs/core-packages.nix
     ./programs/gaming.nix
@@ -10,6 +14,7 @@
     ./programs/social.nix
     ./programs/dev.nix
     ./programs/language.nix
+    ./programs/nix-ld.nix
     ./root-theme.nix
     ./theme.nix
   ];
@@ -33,21 +38,11 @@
   networking.networkmanager.enable = true;
 
   # Firewall
-    networking.firewall = {
+  networking.firewall = {
     allowedTCPPorts = [ 53317 25567 ];
     allowedUDPPorts = [ 53317 25567 ];
   };
 
-  # Bluetooth
-  hardware.bluetooth.enable = true;
-  hardware.bluetooth.powerOnBoot = true;
-  hardware.bluetooth.settings = {
-    General = {
-      Experimental = true;   # enables battery % reporting for supported devices
-    };
-  };
-
-  # Timezone & locale
   # Timezone & locale
   time.timeZone = "Europe/London";
 
@@ -76,77 +71,12 @@
   # ZSH
   programs.zsh.enable = true;
 
-  # nix-ld for generic Linux binaries
-  programs.nix-ld.enable = true;
-  programs.nix-ld.libraries = with pkgs; [
-    wayland
-    libxkbcommon
-    libGL
-    mesa
-    vulkan-loader
-    libx11
-    libxcursor
-    libxrandr
-    libxi
-    fontconfig
-    freetype
-    openssl
-    gtk3
-    pango
-    harfbuzz
-    atk
-    cairo
-    gdk-pixbuf
-    glib
-    zlib
-    stdenv.cc.cc.lib
-    libxcb
-    libpulseaudio
-    alsa-lib
-    pipewire
-    libjack2
-  ];
-
-  # XDG portal
-  xdg.portal = {
-    enable = true;
-    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-    config.common.default = "*";
-    # xdg-open sends links through the portal, so apps in sandboxes (Steam)
-    # open them in the normal browser instead of starting one inside the sandbox
-    xdgOpenUsePortal = true;
-  };
-
   # Flatpak
   services.flatpak.enable = true;
 
   # Keyboard
   services.xserver.xkb = { layout = "gb"; variant = ""; };
   console.keyMap = "uk";
-
-  # Audio
-  services.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-  hardware.alsa.enablePersistence = true;   # keep mixer levels across reboots
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-  };
-
-  # power menu (sway/power.nix): power-profiles-daemon for performance /
-  # balanced / power-saver, upower for the battery charge limit (and to
-  # tell power-profiles-daemon when a laptop is on battery)
-  services.power-profiles-daemon.enable = true;
-  services.upower.enable = true;
-  # battery charge limit on by default, on laptops that support one. This
-  # only creates the setting the first time; after that upower keeps
-  # whatever the power menu last set. Limits: upower's 75-80% unless a
-  # host sets CHARGE_LIMIT (hosts/laptop.nix).
-  systemd.tmpfiles.rules = [
-    "f /var/lib/upower/charging-threshold-status 0640 root root - 1"
-  ];
 
   # Electron Wayland
   environment.sessionVariables = {

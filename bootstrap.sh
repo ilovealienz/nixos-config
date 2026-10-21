@@ -187,7 +187,7 @@ ${B}─────────────────────────�
 
  ${C}check your displays${X}   modes are hardcoded per host
      swaymsg -t get_outputs
-   fix sway/monitors-<host>.nix if they don't match
+   fix sway/monitors/<host>.nix if they don't match
 
  log out and back in. from now on: ${B}nxrebuild${X}
 

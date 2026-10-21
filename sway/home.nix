@@ -1,10 +1,21 @@
 { ... }:
 {
   imports = [
+    # sway itself, then its tools (each with its keys); the monitors are
+    # per machine, imported by hosts/<host>.nix
     ./compositor.nix
-    ./monitors-pc.nix
-    ./monitors-laptop.nix
-    ./monitors-x1carbon.nix
+    ./menus.nix
+    ./wallpaper.nix
+    ./lock.nix
+    ./nightlight.nix
+    ./osd.nix
+    ./emoji.nix
+    ./audio-menu.nix
+    ./screenshot.nix
+    ./screenrec.nix
+    ./window-picker.nix
+    ./dnd.nix
+    ./placement.nix
     ./waybar.nix
     ./fuzzel.nix
     ./mako.nix

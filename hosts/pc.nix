@@ -1,9 +1,9 @@
 { ... }:
 
 {
-  imports = [ ../hardware/graphics.nix
-	      ../programs/virt.nix ];
+  imports = [ ../programs/virt.nix ];
 
+  home-manager.users.pc.imports = [ ../sway/monitors/pc.nix ];
 
   fileSystems."/mnt/Shared" = {
     device = "/dev/disk/by-label/Shared";

@@ -18,7 +18,13 @@
     TERMINAL = "kitty";
   };
 
+  # portals: gtk for most things, wlr for screen sharing and screenshots
   xdg.portal = {
+    enable = true;
+    # xdg-open sends links through the portal, so apps in sandboxes (Steam)
+    # open them in the normal browser instead of starting one inside the sandbox
+    xdgOpenUsePortal = true;
+    config.common.default = "*";
     wlr = {
       enable = true;
       settings.screencast = {

@@ -1,8 +1,6 @@
-{ lib, osConfig, ... }:
-let
-  isPc = osConfig.networking.hostName == "pc";
-in
-lib.mkIf isPc {
+# imported by hosts/pc.nix
+{ ... }:
+{
   wayland.windowManager.sway = {
     config = {
       output = {

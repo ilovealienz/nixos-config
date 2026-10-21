@@ -12,6 +12,9 @@ let c = osConfig.theme.colors; in
 
       modules-left = [ "sway/workspaces" ];
       modules-center = [ "sway/window" ];
+      # left to right, after the blocks msqu.nix and birthdays.nix put first;
+      # custom/rec, custom/weather and custom/dnd are in screenrec.nix,
+      # weather.nix and dnd.nix
       modules-right = [ "custom/rec" "tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "custom/dnd" "custom/awake" ];
 
       "sway/workspaces" = {
@@ -82,23 +85,6 @@ let c = osConfig.theme.colors; in
           on-scroll-down  = "shift_down";
         };
       };
-
-      "custom/dnd" = {
-        return-type = "json";
-        interval = 5;
-        signal = 9;
-        exec = "dnd status";
-        on-click = "dnd history";
-        on-click-right = "dnd toggle";
-      };
-
-      "custom/rec" = {
-        return-type = "json";
-        interval = 1;
-        signal = 8;
-        exec = "screenrec status";
-        on-click = "screenrec";
-      };      
 
       # left-click stay awake, right-click game mode (sway/awake.nix)
       "custom/awake" = {
@@ -176,24 +162,6 @@ let c = osConfig.theme.colors; in
       }
       #custom-awake.game {
         background: #${c.green};
-      }
-
-      #custom-dnd {
-        padding: 0 8px;
-        color: #${c.fg};
-      }
-      #custom-dnd.dnd {
-        color: #${c.red};
-        background: alpha(#${c.red}, 0.15);
-      }
-
-      #custom-rec {
-        padding: 0 8px;
-        color: #${c.onAccent};
-        background: #${c.red};
-      }
-      #custom-rec.busy {
-        background: #${c.orange};
       }
 
     '';

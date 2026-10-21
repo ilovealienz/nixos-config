@@ -2,8 +2,8 @@
 #   - power profile (power-profiles-daemon): performance / balanced /
 #     power-saver. Balanced already saves more power on battery by itself.
 #   - battery limit (upower), on laptops whose battery supports one: on
-#     stops charging at the limit set in hosts/ (upower's default 80%),
-#     off charges to 100%. upower remembers the choice.
+#     stops charging at the limit in hardware/intel-laptop.nix (upower's
+#     default 80%), off charges to 100%. upower remembers the choice.
 { pkgs, lib, ... }:
 let
   powerMenu = pkgs.writeShellApplication {
