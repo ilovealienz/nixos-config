@@ -1,6 +1,6 @@
 { ... }:
 {
-  # power menu (sway/power.nix): power-profiles-daemon for performance /
+  # power menu (desktop/power.nix): power-profiles-daemon for performance /
   # balanced / power-saver, upower for the battery charge limit (and to
   # tell power-profiles-daemon when a laptop is on battery)
   services.power-profiles-daemon.enable = true;

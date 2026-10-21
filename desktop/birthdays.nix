@@ -1,4 +1,4 @@
-# Birthdays in waybar: a pink block like the msqu ones (sway/msqu.nix), shown
+# Birthdays in waybar: a pink block like the msqu ones (desktop/msqu.nix), shown
 # from a few days before someone's birthday through the day; hovering it
 # shows who. Left-click lists
 # the next ones coming up; right-click hides it until you log in again

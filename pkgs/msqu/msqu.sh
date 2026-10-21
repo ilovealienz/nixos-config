@@ -7,7 +7,7 @@
 #   msqu TOOL [args]         run a tool, e.g. msqu stopwatch stop
 #
 # The menu and the tools are menu/ (Rust: msqu-ui, and msqu-tool behind
-# each msqu-TOOL). MSQU_TOOLS and MSQU_MENU are set by sway/msqu.nix.
+# each msqu-TOOL). MSQU_TOOLS and MSQU_MENU are set by desktop/msqu.nix.
 
 usage() {
   echo "usage: msqu [menu [TOOL] | TOOL [args]]   tools: $MSQU_TOOLS" >&2
@@ -17,7 +17,7 @@ usage() {
 case "${1:-menu}" in
   menu)
     shift || true
-    # its own app_id, so sway floats and sizes it (sway/msqu.nix)
+    # its own app_id, so sway floats and sizes it (desktop/msqu.nix)
     exec foot --app-id msqu "$MSQU_MENU" "$@"
     ;;
 esac

@@ -52,7 +52,7 @@ let
   };
 in
 {
-  # used by the launch keys in compositor.nix
+  # used by the launch keys in sway.nix
   options.my.placementFollow = lib.mkOption {
     type = lib.types.package;
     readOnly = true;

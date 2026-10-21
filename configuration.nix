@@ -7,7 +7,8 @@
     ./hardware/audio.nix
     ./hardware/bluetooth.nix
     ./hardware/power.nix
-    ./sway/system.nix
+    ./hardware/memory.nix
+    ./desktop/system.nix
     ./programs/core-packages.nix
     ./programs/gaming.nix
     ./programs/media.nix
@@ -30,12 +31,20 @@
   # Bootloader
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  # the last 10 NixOS generations in the boot menu, so the boot partition
+  # can't fill up between cleanups (Windows' entry isn't affected)
+  boot.loader.systemd-boot.configurationLimit = 10;
 
   # SFTP support
   services.gvfs.enable = true;
 
   # Networking
   networking.networkmanager.enable = true;
+
+  # GitHub's host key (nxpush, nxpull), from GitHub's docs; fingerprint
+  # SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU
+  programs.ssh.knownHosts."github.com".publicKey =
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
 
   # Firewall
   networking.firewall = {
@@ -83,9 +92,10 @@
     ELECTRON_OZONE_PLATFORM_HINT = "auto";
   };
 
+  # in a terminal: the default browser, and Brave for what wants Chromium
   environment.shellAliases = {
     chromium-browser = "brave";
-    x-www-browser = "brave";
+    x-www-browser = "librewolf";
   };
 
   # User
@@ -110,9 +120,6 @@
 
   # firmware updates: fwupdmgr refresh && fwupdmgr update
   services.fwupd.enable = true;
-
-  # compressed swap in RAM
-  zramSwap.enable = true;
 
   system.stateVersion = "26.05";
 }

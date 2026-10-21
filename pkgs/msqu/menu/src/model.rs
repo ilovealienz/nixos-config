@@ -90,7 +90,7 @@ pub struct Running {
 
 /// every tool, in the bar's order
 pub const TOOLS: [&str; 5] = ["timer", "stopwatch", "alarm", "repeat", "drink"];
-/// the tools that run several at once (`slots` in sway/msqu.nix)
+/// the tools that run several at once (`slots` in desktop/msqu.nix)
 pub const SLOTTED: [&str; 2] = ["timer", "alarm"];
 
 /// where the tools keep their state: $XDG_RUNTIME_DIR/msqu/TOOL/ (/tmp if
@@ -442,7 +442,7 @@ pub struct Config {
     pub slots: HashMap<String, usize>,
 }
 
-/// the file sway/msqu.nix writes: "color NAME HEX",
+/// the file desktop/msqu.nix writes: "color NAME HEX",
 /// "preset LABEL|EVERY|WINDOW" and "slots TOOL N" lines
 pub fn parse_config(text: &str) -> Config {
     let mut c = Config { colors: HashMap::new(), presets: Vec::new(), slots: HashMap::new() };

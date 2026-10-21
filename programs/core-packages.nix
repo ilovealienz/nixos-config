@@ -1,10 +1,13 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 let
   # Browser chooser. xdg-open falls back to scanning for generic binary
   # names when no desktop handler matches, so the shims provide those
   # names and route them here.
-  urlopen = pkgs.writeShellScriptBin "urlopen" (builtins.readFile ../scripts/urlopen);
+  c = config.theme.colors;
+  urlopen = pkgs.writeShellScriptBin "urlopen" (builtins.replaceStrings
+    [ "@bg@" "@fg@" "@accent@" "@onAccent@" ] [ c.bg c.fg c.accent c.onAccent ]
+    (builtins.readFile ../scripts/urlopen));
 
   urlopenDesktop = pkgs.makeDesktopItem {
     name = "urlopen";

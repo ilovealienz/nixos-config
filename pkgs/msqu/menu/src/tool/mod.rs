@@ -6,7 +6,7 @@
 //! running the programs they use (notify-send, systemd-run, systemctl,
 //! pw-play, makoctl, fuzzel).
 //!
-//! sway/msqu.nix runs each tool through a launcher that sets MSQU_TOOL,
+//! desktop/msqu.nix runs each tool through a launcher that sets MSQU_TOOL,
 //! MSQU_BELL, MSQU_SELF (the launcher itself, which an alarm runs again)
 //! and, for tools that have them, MSQU_SLOTS and MSQU_ALARM.
 //!

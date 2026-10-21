@@ -9,17 +9,17 @@ set -u
 url=${1:-}
 
 # label|command  — first installed entry is the default
-ENTRIES='brave|brave
-librewolf|librewolf
+ENTRIES='librewolf|librewolf
+brave|brave
 chromium|chromium
-brave private|brave --incognito
 librewolf private|librewolf --private-window
+brave private|brave --incognito
 mpv|mpv
 copy|@copy
 qr|@qr'
 
 if [ -z "$url" ]; then
-    exec brave
+    exec librewolf
 fi
 
 # keep only entries whose binary exists
@@ -43,9 +43,10 @@ prompt=$(printf '%s' "$url" | sed -E 's|^[a-z]+://||' | cut -c1-44)
 if [ "$(printf '%s\n' "$labels" | wc -l)" -eq 1 ]; then
     choice=$labels
 else
+    # the theme's colours, filled in by programs/core-packages.nix
     choice=$(printf '%s' "$labels" | wmenu -i \
         -p "$prompt" \
-        -N 24221c -n d4b07b -S e5a440 -s 24221c \
+        -N @bg@ -n @fg@ -S @accent@ -s @onAccent@ \
         -f 'Inter 13') || exit 0
 fi
 

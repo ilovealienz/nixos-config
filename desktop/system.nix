@@ -48,18 +48,15 @@
     noto-fonts-color-emoji
   ];
 
+  # kitty, waybar, fuzzel, mako, swaylock and swayidle are installed by
+  # home-manager (their files in desktop/); swaylock's permission to check
+  # your password comes from programs.sway above. The icons and cursor are
+  # here too as well as in gtk.nix: root's apps (root-theme.nix) only see
+  # system packages.
   environment.systemPackages = with pkgs; [
     # core stack
-    kitty
-    waybar
-    fuzzel
     wmenu
-    mako
     polkit_gnome
-
-    # sway tools
-    swaylock
-    swayidle
 
     # utilities
     wl-clipboard

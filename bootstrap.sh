@@ -102,7 +102,60 @@ EOF
     fi
   fi
 
+  echo
+  say "set up pushing to GitHub from this machine? (nxpush)"
+  read -rp "   [Y/n] " s
+  if [[ "$s" =~ ^[Nn] ]]; then
+    warn "skipped: repair → 5 later"
+  else
+    github_push
+  fi
+
   notes
+}
+
+# ─────────────────────────────────────────────────────────────────────
+# pushing to GitHub (nxpush): an SSH key for this machine, and the repo's
+# remote switched to SSH (install clones over https, which can't push)
+# ─────────────────────────────────────────────────────────────────────
+github_push() {
+  local home key out s git=/run/current-system/sw/bin/git
+  home=$(getent passwd "$USER_NAME" | cut -d: -f6)
+  if [ -z "$home" ] || [ ! -d "$home" ]; then
+    err "no home directory for '$USER_NAME'"
+    return 1
+  fi
+  key="$home/.ssh/id_ed25519"
+  if [ -f "$key" ]; then
+    ok "using the key already there ($key)"
+  else
+    sudo -u "$USER_NAME" mkdir -p -m 700 "$home/.ssh"
+    say "making a key (a passphrase is optional; with one, nxpush asks for it)"
+    sudo -u "$USER_NAME" ssh-keygen -t ed25519 -C "$USER_NAME@$(hostname)" -f "$key" \
+      || { err "no key made"; return 1; }
+  fi
+  "$git" -C "$NIXOS_DIR" remote set-url origin "git@github.com:ilovealienz/nixos-config.git" \
+    || { err "couldn't switch the repo to SSH"; return 1; }
+  echo
+  echo " add this key on GitHub: Settings → SSH and GPG keys → New SSH key"
+  echo
+  cat "$key.pub"
+  echo
+  # GitHub answers "successfully authenticated" (and exits 1: no shell)
+  while :; do
+    # (Ctrl+D counts as skip)
+    read -rp " press enter once it's added (s to skip) " s || s=s
+    if [[ "$s" =~ ^[Ss] ]]; then
+      warn "skipped: nxpush won't work until the key is on GitHub (repair → 5)"
+      return 0
+    fi
+    out=$(sudo -u "$USER_NAME" ssh -i "$key" -o StrictHostKeyChecking=yes -T git@github.com 2>&1 || true)
+    if [[ "$out" == *"successfully authenticated"* ]]; then
+      ok "GitHub accepts this machine's key: nxpush works"
+      return 0
+    fi
+    warn "not accepted yet: ${out:0:120}"
+  done
 }
 
 # ─────────────────────────────────────────────────────────────────────
@@ -116,6 +169,7 @@ ${B}repair${X}
   2) reset home-manager profile       ${Y}(theming/config not applying)${X}
   3) fix ownership + stage files       ${Y}("not tracked by Git" errors)${X}
   4) roll back to previous generation  ${Y}(rebuild broke the system)${X}
+  5) set up pushing to GitHub          ${Y}(nxpush can't push)${X}
   b) back
 MENU
   read -rp "> " c
@@ -160,6 +214,7 @@ MENU
       read -rp " roll back to the previous generation? [y/N] " a
       [[ "$a" =~ ^[Yy]$ ]] && nixos-rebuild switch --rollback && ok "rolled back"
       ;;
+    5) github_push ;;
     b|B) return ;;
     *) echo "?" ;;
   esac
@@ -187,7 +242,7 @@ ${B}─────────────────────────�
 
  ${C}check your displays${X}   modes are hardcoded per host
      swaymsg -t get_outputs
-   fix sway/monitors/<host>.nix if they don't match
+   fix desktop/monitors/<host>.nix if they don't match
 
  log out and back in. from now on: ${B}nxrebuild${X}
 

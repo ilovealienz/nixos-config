@@ -62,7 +62,7 @@ let c = osConfig.theme.colors; in
         format-charging = "{capacity}%+";
         format-plugged = "{capacity}%p";
         tooltip-format = "{timeTo}";
-        on-click = "power-menu";   # sway/power.nix
+        on-click = "power-menu";   # desktop/power.nix
       };
       clock = {
         format = "{:%a %d %b  %H:%M}";
@@ -86,7 +86,7 @@ let c = osConfig.theme.colors; in
         };
       };
 
-      # left-click stay awake, right-click game mode (sway/awake.nix)
+      # left-click stay awake, right-click game mode (desktop/awake.nix)
       "custom/awake" = {
         return-type = "json";
         exec = "awake status";

@@ -8,7 +8,7 @@
 //! Usage: msqu-bar TOOL [SLOT]
 //!   SLOT: which one, for a tool that runs several at once (timer 1, 2, 3)
 //!
-//! The look is waybar's CSS (sway/msqu.nix): each block has the classes
+//! The look is waybar's CSS (desktop/msqu.nix): each block has the classes
 //! "msqu", its colour, and "paused" while paused.
 
 use msqu_ui::model::{self, Running, clock_text, hms};

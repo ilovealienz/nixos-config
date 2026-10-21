@@ -44,7 +44,7 @@ let
   };
 
   # added after the title in every title attention sets; keep it the same
-  # as the `title_format "%title [XWayland]"` rule in compositor.nix
+  # as the `title_format "%title [XWayland]"` rule in sway.nix
   titleSuffix = " [XWayland]";
 
   swayHelpers = pkgs.rustPlatform.buildRustPackage {

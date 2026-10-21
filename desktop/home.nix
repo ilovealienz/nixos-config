@@ -3,7 +3,7 @@
   imports = [
     # sway itself, then its tools (each with its keys); the monitors are
     # per machine, imported by hosts/<host>.nix
-    ./compositor.nix
+    ./sway.nix
     ./menus.nix
     ./wallpaper.nix
     ./lock.nix

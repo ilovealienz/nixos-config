@@ -39,6 +39,6 @@ let
   };
 in
 {
-  # on PATH for the Super+Shift+E binding in compositor.nix
+  # on PATH for the Super+Shift+E binding in sway.nix
   home.packages = [ sessionMenu ];
 }

@@ -3,7 +3,7 @@
 {
   imports = [ ../programs/virt.nix ];
 
-  home-manager.users.pc.imports = [ ../sway/monitors/pc.nix ];
+  home-manager.users.pc.imports = [ ../desktop/monitors/pc.nix ];
 
   fileSystems."/mnt/Shared" = {
     device = "/dev/disk/by-label/Shared";

@@ -1,6 +1,6 @@
 # Sway itself: layout, borders, colours, input, window rules and the core
-# keys. Each tool (screenshots, menus, locking...) is its own file in sway/,
-# with its keys; sway/home.nix lists them.
+# keys. Each tool (screenshots, menus, locking...) is its own file in desktop/,
+# with its keys; desktop/home.nix lists them.
 { config, pkgs, lib, osConfig, ... }:
 let
   c = osConfig.theme.colors;
@@ -92,7 +92,7 @@ in
         # window management
         "${mod}+q" = "kill";
         "${mod}+Shift+c" = "reload";
-        "${mod}+Shift+e" = "exec session-menu";   # sway/session.nix
+        "${mod}+Shift+e" = "exec session-menu";   # desktop/session.nix
         "${mod}+v" = "floating toggle";
         "${mod}+s" = "split toggle";
 

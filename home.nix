@@ -8,7 +8,7 @@
     ./home/local-apps.nix
     ./home/mime.nix
     ./home/secrets.nix
-    ./sway/home.nix
+    ./desktop/home.nix
   ];
 
   home.username = "pc";
@@ -20,6 +20,7 @@
     enable = true;
     settings = {
       user.name = "ilovealienz";
+      user.email = "github@brightlittlestars.moe";
     };
   };
 

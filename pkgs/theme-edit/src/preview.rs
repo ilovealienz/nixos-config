@@ -1,5 +1,5 @@
 //! The mock desktop and the contrast table, drawn from the live colours.
-//! Which colour goes where follows the config: sway/compositor.nix
+//! Which colour goes where follows the config: desktop/sway.nix
 //! (borders), waybar.nix, kitty.nix, fuzzel.nix, mako.nix, gtk.nix.
 
 use crate::col;

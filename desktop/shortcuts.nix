@@ -150,7 +150,7 @@ in
 {
   home.packages = [ nxshortcuts ];
 
-  # popup in a floating foot (the foot-float rule in compositor.nix)
+  # popup in a floating foot (the foot-float rule in sway.nix)
   wayland.windowManager.sway.config.keybindings."Mod4+slash" =
     "exec foot --app-id foot-float ${lib.getExe nxshortcuts}";
 }
