@@ -1,5 +1,4 @@
-# Power menu (Super+Shift+P, or the bar's battery): power profile and
-# battery charge limit.
+# Power menu (Super+Shift+P, or the bar's battery): profile and charge limit.
 { pkgs, lib, ... }:
 let
   powerMenu = pkgs.writeShellApplication {

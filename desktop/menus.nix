@@ -3,8 +3,7 @@
 let
   c = osConfig.theme.colors;
 
-  # your fuzzel config, monospace, Shift+Enter as custom-1 (fuzzel has no
-  # --override)
+  # the pickers: your fuzzel config, monospace, Shift+Enter as custom-1
   pickerFuzzel = pkgs.writeText "window-picker-fuzzel.ini"
     (lib.generators.toINI { } (config.programs.fuzzel.settings // {
       main = config.programs.fuzzel.settings.main // {

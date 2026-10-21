@@ -3,8 +3,7 @@
 let
   c = config.theme.colors;
 
-  # browser chooser; the shims catch generic browser names xdg-open falls
-  # back to
+  # browser chooser, plus shims for the generic names xdg-open tries
   urlopen = pkgs.writeShellScriptBin "urlopen" (builtins.replaceStrings
     [ "@bg@" "@fg@" "@accent@" "@onAccent@" ] [ c.bg c.fg c.accent c.onAccent ]
     (builtins.readFile ../scripts/urlopen));

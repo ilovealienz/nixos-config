@@ -1,5 +1,4 @@
-# foot: a lighter terminal for popups and Super+Shift+Return. Same look as
-# kitty.
+# foot: lighter terminal for popups and Super+Shift+Return; looks like kitty.
 { osConfig, ... }:
 let
   c = osConfig.theme.colors;

@@ -1,4 +1,4 @@
-# libraries for non-Nix binaries (ldrun, ~/.bin)
+# libraries for non-Nix binaries (~/.bin, downloads)
 { pkgs, ... }:
 {
   programs.nix-ld.enable = true;

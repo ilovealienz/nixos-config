@@ -1,5 +1,4 @@
-# Do not disturb (waybar bell): click for missed notifications, right-click
-# to toggle.
+# Do not disturb (waybar bell): click for history, right-click to toggle.
 { config, pkgs, osConfig, ... }:
 let
   c = osConfig.theme.colors;

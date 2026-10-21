@@ -1,0 +1,12 @@
+[package]
+name = "nxedit"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.88"
+
+[dependencies]
+ratatui = { version = "0.30", default-features = false, features = ["crossterm", "layout-cache"] }
+
+[profile.release]
+strip = true
+lto = true

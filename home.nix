@@ -2,6 +2,7 @@
 {
   imports = [
     ./home/shell.nix
+    ./home/nx.nix
     ./home/autostart.nix
     ./home/fastfetch.nix
     ./home/local-apps.nix

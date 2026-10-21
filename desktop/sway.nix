@@ -108,8 +108,7 @@ in
         "${mod}+Shift+h" = "move left";
         "${mod}+Shift+l" = "move right";
 
-        # resize
-        # moves the edge the key points to (the other edge if there's no neighbour)
+        # resize: moves the edge the key points to (the other edge if nothing's on that side)
         "${mod}+Alt+h" = "exec ${pkgs.sway}/bin/swaymsg -q resize shrink right 40px || ${pkgs.sway}/bin/swaymsg -q resize grow left 40px";
         "${mod}+Alt+l" = "exec ${pkgs.sway}/bin/swaymsg -q resize grow right 40px || ${pkgs.sway}/bin/swaymsg -q resize shrink left 40px";
         "${mod}+Alt+k" = "exec ${pkgs.sway}/bin/swaymsg -q resize shrink down 40px || ${pkgs.sway}/bin/swaymsg -q resize grow up 40px";

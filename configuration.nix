@@ -91,7 +91,7 @@
     ELECTRON_OZONE_PLATFORM_HINT = "auto";
   };
 
-  # browser names some terminal programs look for
+  # shell aliases for generic browser names
   environment.shellAliases = {
     chromium-browser = "brave";
     x-www-browser = "librewolf";
