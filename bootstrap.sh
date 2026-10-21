@@ -8,7 +8,7 @@ NIXOS_DIR="/etc/nixos"
 TMP_CLONE="/tmp/nixos-config-clone"
 USER_NAME="pc"
 # installed from Flathub on a new machine (more later: flatpak install flathub <id>)
-FLATPAKS=(org.vinegarhq.Sober com.usebottles.bottles)
+FLATPAKS=(org.vinegarhq.Sober com.usebottles.bottles io.github.kolunmi.Bazaar)
 
 # flakes are off on a fresh install
 export NIX_CONFIG="experimental-features = nix-command flakes"
