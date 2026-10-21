@@ -7,7 +7,8 @@ REPO="https://github.com/ilovealienz/nixos-config"
 NIXOS_DIR="/etc/nixos"
 TMP_CLONE="/tmp/nixos-config-clone"
 USER_NAME="pc"
-# installed from Flathub on a new machine (more later: flatpak install flathub <id>)
+# installed from Flathub on a new machine, also named in the main menu
+# (more later: flatpak install flathub <id>)
 FLATPAKS=(org.vinegarhq.Sober com.usebottles.bottles io.github.kolunmi.Bazaar)
 
 # flakes are off on a fresh install
@@ -108,7 +109,7 @@ EOF
   say "add Flathub and install ${FLATPAKS[*]}?"
   read -rp "   [Y/n] " s
   if [[ "$s" =~ ^[Nn] ]]; then
-    warn "skipped: repair → 6 later"
+    warn "skipped: 3) flatpaks in the menu later"
   else
     flatpaks
   fi
@@ -185,7 +186,7 @@ flatpaks() {
   if "$fp" install --system --noninteractive flathub "${FLATPAKS[@]}"; then
     ok "installed ${FLATPAKS[*]}"
   else
-    err "not all installed: repair → 6 to try again"
+    err "not all installed: 3) flatpaks in the menu to try again"
   fi
 }
 
@@ -196,12 +197,11 @@ repair() {
   cat <<MENU
 
 ${B}repair${X}
-  1) set the '$USER_NAME' password      ${Y}(can't log in)${X}
-  2) reset home-manager profile       ${Y}(theming/config not applying)${X}
+  1) set the '$USER_NAME' password             ${Y}(can't log in)${X}
+  2) reset home-manager profile        ${Y}(theming/config not applying)${X}
   3) fix ownership + stage files       ${Y}("not tracked by Git" errors)${X}
   4) roll back to previous generation  ${Y}(rebuild broke the system)${X}
   5) set up pushing to GitHub          ${Y}(nxpush can't push)${X}
-  6) add Flathub + flatpaks            ${Y}(flatpak can't find flathub)${X}
   b) back
 MENU
   read -rp "> " c
@@ -247,7 +247,6 @@ MENU
       [[ "$a" =~ ^[Yy]$ ]] && nixos-rebuild switch --rollback && ok "rolled back"
       ;;
     5) github_push ;;
-    6) flatpaks ;;
     b|B) return ;;
     *) echo "?" ;;
   esac
@@ -270,7 +269,7 @@ ${B}─────────────────────────�
      chmod 600 ~/.config/weather/key
    (new keys take up to 2h to activate)
 
- ${C}flatpaks${X}   Flathub is added during install (or repair → 6)
+ ${C}flatpaks${X}   Flathub is added during install (or 3 in the menu)
      flatpak install flathub <app id>
 
  ${C}check your displays${X}   modes are hardcoded per host
@@ -290,14 +289,16 @@ ${B}nixos-config${X}   $(hostname)
 
   1) install       ${Y}(fresh machine)${X}
   2) repair
-  3) post-install notes
+  3) flatpaks      ${Y}(Flathub, Sober, Bottles, Bazaar)${X}
+  4) post-install notes
   q) quit
 MENU
   read -rp "> " c
   case "$c" in
     1) install ;;
     2) repair ;;
-    3) notes ;;
+    3) flatpaks ;;
+    4) notes ;;
     q|Q) exit 0 ;;
     *) echo "?" ;;
   esac
