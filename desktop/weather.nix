@@ -10,11 +10,11 @@ let c = osConfig.theme.colors; in
     escape = false;
     exec = "${pkgs.writeShellScript "weather" ''
       # ── settings ──────────────────────────────────
-      LAT=${config.my.location.latitude}     # location.nix
+      LAT=${config.my.location.latitude}
       LON=${config.my.location.longitude}
       UNITS=metric          # metric | imperial | standard
       DEGREE="°C"           # °C | °F | K  (match UNITS)
-      SEP="   "             # spacing between icon and temp
+      SEP="   "             # between icon and temp
       WIND_UNIT="m/s"       # m/s for metric, mph for imperial
       CACHE_AGE=1800        # seconds before refetching
 

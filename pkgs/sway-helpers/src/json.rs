@@ -1,8 +1,5 @@
-//! A small JSON reader for sway's replies and events.
-//!
-//! Values are read straight into the structs below. Fields that aren't
-//! needed are skipped without being copied, so a tree with long window
-//! titles costs no more than the ids and names that are kept.
+//! A small JSON reader for sway's replies; unneeded fields are skipped
+//! without copying.
 
 pub struct Parser<'a> {
     b: &'a [u8],

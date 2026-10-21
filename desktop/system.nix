@@ -3,7 +3,7 @@
   programs.sway = {
     enable = true;
     wrapperFeatures.gtk = true;
-    extraPackages = [ ];        # no default foot/dmenu — our stack is below
+    extraPackages = [ ];        # no default foot/dmenu
   };
   programs.dconf.enable = true;
 
@@ -21,8 +21,7 @@
   # portals: gtk for most things, wlr for screen sharing and screenshots
   xdg.portal = {
     enable = true;
-    # xdg-open sends links through the portal, so apps in sandboxes (Steam)
-    # open them in the normal browser instead of starting one inside the sandbox
+    # links from sandboxed apps (Steam) open in the normal browser
     xdgOpenUsePortal = true;
     config.common.default = "*";
     wlr = {
@@ -48,11 +47,7 @@
     noto-fonts-color-emoji
   ];
 
-  # kitty, waybar, fuzzel, mako, swaylock and swayidle are installed by
-  # home-manager (their files in desktop/); swaylock's permission to check
-  # your password comes from programs.sway above. The icons and cursor are
-  # here too as well as in gtk.nix: root's apps (root-theme.nix) only see
-  # system packages.
+  # icons and cursor are here too for root's apps (root-theme.nix)
   environment.systemPackages = with pkgs; [
     # core stack
     wmenu

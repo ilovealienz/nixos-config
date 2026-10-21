@@ -8,7 +8,7 @@ NIXOS_DIR="/etc/nixos"
 TMP_CLONE="/tmp/nixos-config-clone"
 USER_NAME="pc"
 
-# flakes are off on a fresh install — enable for everything this script runs
+# flakes are off on a fresh install
 export NIX_CONFIG="experimental-features = nix-command flakes"
 
 B=$'\e[1m'; R=$'\e[31m'; G=$'\e[32m'; Y=$'\e[33m'; C=$'\e[36m'; X=$'\e[0m'
@@ -115,8 +115,7 @@ EOF
 }
 
 # ─────────────────────────────────────────────────────────────────────
-# pushing to GitHub (nxpush): an SSH key for this machine, and the repo's
-# remote switched to SSH (install clones over https, which can't push)
+# pushing to GitHub (nxpush): an SSH key and an SSH remote
 # ─────────────────────────────────────────────────────────────────────
 github_push() {
   local home key out s git=/run/current-system/sw/bin/git
@@ -141,9 +140,9 @@ github_push() {
   echo
   cat "$key.pub"
   echo
-  # GitHub answers "successfully authenticated" (and exits 1: no shell)
+  # success still exits 1 (no shell)
   while :; do
-    # (Ctrl+D counts as skip)
+    # Ctrl+D skips
     read -rp " press enter once it's added (s to skip) " s || s=s
     if [[ "$s" =~ ^[Ss] ]]; then
       warn "skipped: nxpush won't work until the key is on GitHub (repair → 5)"

@@ -24,8 +24,7 @@
   };
 
   home.activation.mpvConfig = lib.hm.dag.entryAfter ["writeBoundary"] ''
-    # offline: no mpv config yet, and the next rebuild tries again (a
-    # failure here would stop the rest of home-manager)
+    # offline: skipped, retried next rebuild
     if [ ! -d "$HOME/.config/mpv" ]; then
       run ${pkgs.git}/bin/git clone https://github.com/ilovealienz/my-mpv-config "$HOME/.config/mpv" \
         || echo "mpv config: not cloned (offline?), the next rebuild tries again" >&2

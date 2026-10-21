@@ -1,15 +1,8 @@
-// window-picker lists every sway window in fuzzel, grouped under a
-// header per workspace: tiled, floating and scratchpad windows.
+// window-picker: every sway window in fuzzel, grouped by workspace. Enter
+// focuses (a header: the workspace), Shift+Enter for actions.
 //
-//	Enter        focus the window (sway leaves fullscreen or shows the
-//	             scratchpad if that's needed to show it); on a header,
-//	             go to that workspace
-//	Shift+Enter  open an action menu for the window
-//
-// Floating windows end with "[floating]", urgent ones with "!!!".
-//
-// fuzzel and its config are set at build time (-X main.fuzzel=...,
-// -X main.config=...). The config must bind custom-1 to Shift+Return.
+// fuzzel and its config are set at build time; the config must bind
+// custom-1 to Shift+Return.
 package main
 
 import (

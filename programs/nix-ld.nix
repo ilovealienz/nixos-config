@@ -1,4 +1,4 @@
-# nix-ld: generic Linux binaries (ldrun, ~/.bin) find these libraries
+# libraries for non-Nix binaries (ldrun, ~/.bin)
 { pkgs, ... }:
 {
   programs.nix-ld.enable = true;

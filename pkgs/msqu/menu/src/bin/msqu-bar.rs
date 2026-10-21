@@ -1,15 +1,6 @@
-//! msqu-bar: one msqu block on waybar. Prints the block (waybar's JSON)
-//! whenever it changes, and is otherwise asleep: it wakes when the tool's
-//! state files change (inotify), on each whole second while counting, and
-//! at midnight for an alarm (whose block names the day if it isn't today).
-//! It has no child processes, so there's nothing to leave behind when
-//! waybar stops it.
-//!
-//! Usage: msqu-bar TOOL [SLOT]
-//!   SLOT: which one, for a tool that runs several at once (timer 1, 2, 3)
-//!
-//! The look is waybar's CSS (desktop/msqu.nix): each block has the classes
-//! "msqu", its colour, and "paused" while paused.
+//! msqu-bar TOOL [SLOT]: one waybar block, printed on change. Wakes on state
+//! file changes (inotify), each second while counting, and at midnight.
+//! Classes: "msqu", its colour, "paused".
 
 use msqu_ui::model::{self, Running, clock_text, hms};
 use std::ffi::CString;

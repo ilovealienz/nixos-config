@@ -1,12 +1,7 @@
-# The thin sliver at the right end of waybar:
+# The sliver at the right of waybar:
 #   left-click   stay awake (amber): no lock or screen-off
-#   right-click  game mode (green): stay awake, and GameMode on for as long
-#                as it's on (performance profile held, plus GameMode's own
-#                tweaks), whatever you're running
-# Click the same button again to turn it off. While one is on, the other
-# button does nothing, so the two can't be mixed.
-# Staying awake swaps swayidle for one that only locks before sleep and on
-# `loginctl lock-session`, so closing the lid still locks.
+#   right-click  game mode (green): stay awake with GameMode on
+# Click again to turn off. Closing the lid still locks.
 { pkgs, ... }:
 let
   lock = "${pkgs.swaylock}/bin/swaylock -f";
@@ -15,9 +10,7 @@ let
     name = "awake";
     runtimeInputs = with pkgs; [ systemd procps util-linux libnotify ];
     text = ''
-      # one click at a time: a quick left then right click would otherwise
-      # both see "off" and end up mixing the two modes. The status check
-      # only reads, so it doesn't wait for this
+      # one click at a time, so the modes can't mix
       lock() {
         exec 9>"''${XDG_RUNTIME_DIR:-/tmp}/awake.lock"
         flock 9
@@ -56,8 +49,7 @@ let
             off)
               systemctl --user start awake-game.service
               bar
-              # gamemoded -r exits straight away if GameMode can't be turned
-              # on; awake.service stays up, so the sliver goes back to amber
+              # gamemoded -r exits at once if GameMode fails
               sleep 1
               on awake-game.service ||
                 notify-send -u critical "game mode" "GameMode didn't start, only staying awake"
@@ -95,7 +87,7 @@ in
       After = [ "awake.service" ];
       PartOf = [ "awake.service" ];
     };
-    # asks GameMode to stay on, then waits until stopped
+    # holds GameMode on until stopped
     Service.ExecStart = "${pkgs.gamemode}/bin/gamemoded -r";
   };
 }

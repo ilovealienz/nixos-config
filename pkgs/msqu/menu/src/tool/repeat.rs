@@ -1,6 +1,5 @@
-//! msqu repeat: a reminder that goes off every so often until you stop it,
-//! and can bring a window to the front each time (keeping a game from
-//! going AFK, say). Counts down on the bar in blue.
+//! msqu repeat: a reminder every so often, optionally bringing a window to
+//! the front.
 //!
 //!   msqu repeat start SECONDS WINDOW [LABEL]
 //!                         WINDOW: app_id=ID, class=CLASS or - for none
@@ -8,9 +7,6 @@
 //!   msqu repeat toggle    pause / resume (clicking the block)
 //!   msqu repeat reset     start the wait over, from now (middle-clicking)
 //!   msqu repeat cancel    stop (right-clicking the block)
-//!
-//! One repeat at a time: starting another replaces it. Its notifications
-//! (category msqu-repeat) stay out of the notification history.
 //!
 //! state file "repeat": "run END EVERY WINDOW LABEL" or
 //! "pause LEFT EVERY WINDOW LABEL" (seconds; END is a unix time; WINDOW is
@@ -52,8 +48,7 @@ fn window_name(w: &str) -> &str {
 }
 
 /// The open windows, one per app, sorted: "app_id=ID<tab>title" (or
-/// class=CLASS for XWayland ones). Whatever has a pid and an app_id or a
-/// class, as the shell version's jq picked them.
+/// class=CLASS for XWayland).
 fn windows() -> Option<Vec<(String, String)>> {
     let tree = sway::tree()?;
     let mut found: Vec<(String, String)> = Vec::new();

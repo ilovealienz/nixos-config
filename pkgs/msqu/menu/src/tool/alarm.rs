@@ -1,7 +1,4 @@
-//! msqu alarm: goes off at a time of day (the menu works out the next one),
-//! up to MSQU_SLOTS at once, each its own block. On the bar in orange,
-//! showing when. When it goes off, a notification shows and the alarm
-//! sound plays until it's closed.
+//! msqu alarm: goes off at a time of day, up to MSQU_SLOTS at once.
 //!
 //!   msqu alarm start UNIXTIME [LABEL [SLOT]]
 //!                            in the first free slot, or in place of SLOT's

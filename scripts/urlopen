@@ -1,14 +1,11 @@
 #!/bin/sh
-# Browser chooser. Shows a horizontal wmenu with the default first, so
-# Enter takes it and right-arrow picks another.
-#
-# Entries whose command isn't installed are dropped from the menu.
+# Browser chooser: Enter for the default, right-arrow for others.
 
 set -u
 
 url=${1:-}
 
-# label|command  — first installed entry is the default
+# label|command; the first installed one is the default
 ENTRIES='librewolf|librewolf
 brave|brave
 chromium|chromium
@@ -35,15 +32,14 @@ done)
 
 labels=$(printf '%s\n' "$avail" | cut -d'|' -f1)
 
-# a full url fills the row and leaves no space for the options, so show
-# the host and a truncated path instead
+# host and a short path, to leave room for the options
 prompt=$(printf '%s' "$url" | sed -E 's|^[a-z]+://||' | cut -c1-44)
 [ "${#url}" -gt 48 ] && prompt="$prompt…"
 
 if [ "$(printf '%s\n' "$labels" | wc -l)" -eq 1 ]; then
     choice=$labels
 else
-    # the theme's colours, filled in by programs/core-packages.nix
+    # colours filled in by programs/core-packages.nix
     choice=$(printf '%s' "$labels" | wmenu -i \
         -p "$prompt" \
         -N @bg@ -n @fg@ -S @accent@ -s @onAccent@ \
@@ -62,7 +58,6 @@ case "$cmd" in
         exit 0
         ;;
     @qr)
-        # qrencode writes to stdout; imv reads from stdin with -
         if command -v qrencode >/dev/null 2>&1; then
             qrencode -o - -s 8 -m 2 "$url" | imv - 2>/dev/null &
         else
@@ -72,7 +67,6 @@ case "$cmd" in
         ;;
 esac
 
-# launch detached so the browser survives the caller exiting; otherwise it
-# is killed with the process group and reports an unclean shutdown
+# detached, so it outlives the caller
 # shellcheck disable=SC2086
 setsid -f $cmd "$url" >/dev/null 2>&1

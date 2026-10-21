@@ -1,9 +1,5 @@
-# Power menu: Super+Shift+P, or click the battery in waybar on the laptops.
-#   - power profile (power-profiles-daemon): performance / balanced /
-#     power-saver. Balanced already saves more power on battery by itself.
-#   - battery limit (upower), on laptops whose battery supports one: on
-#     stops charging at the limit in hardware/intel-laptop.nix (upower's
-#     default 80%), off charges to 100%. upower remembers the choice.
+# Power menu (Super+Shift+P, or the bar's battery): power profile and
+# battery charge limit.
 { pkgs, lib, ... }:
 let
   powerMenu = pkgs.writeShellApplication {
@@ -27,7 +23,7 @@ let
         if [ "$p" = "$current" ]; then rows+=("● $p"); else rows+=("  $p"); fi
       done
 
-      # battery limit row, only if the battery supports one
+      # only if the battery supports a limit
       bat=$(upower -e 2>/dev/null | grep -m1 '/battery_' || true)
       limit=""
       if [ -n "$bat" ] && [ "$(prop ChargeThresholdSupported)" = true ]; then
@@ -42,7 +38,6 @@ let
 
       i=$(printf '%s\n' "''${rows[@]}" | fuzzel --dmenu --index --prompt 'power: ' \
             --lines "''${#rows[@]}" --width 36) || exit 0
-      # fuzzel's output is a row number only if a row was picked
       [[ $i =~ ^[0-9]+$ ]] && (( i < ''${#rows[@]} )) || exit 0
 
       if (( i < ''${#profiles[@]} )); then
@@ -65,7 +60,6 @@ let
   };
 in
 {
-  # on PATH for waybar's battery on-click
   home.packages = [ powerMenu ];
 
   wayland.windowManager.sway.config.keybindings."Mod4+Shift+p" =

@@ -1,5 +1,4 @@
-//! msqu-tool: the msqu tools, in one program. desktop/msqu.nix makes
-//! msqu-TOOL a small launcher that runs `msqu-tool TOOL ARGS...`.
+//! msqu-tool: the msqu tools in one program (run as msqu-TOOL).
 //!
 //! Usage: msqu-tool TOOL [args]   tools: stopwatch, drink, alarm, timer, repeat
 

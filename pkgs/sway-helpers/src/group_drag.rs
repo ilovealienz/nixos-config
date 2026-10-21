@@ -1,21 +1,10 @@
-//! group-drag makes the rest of a tab group follow a window dragged with
+//! group-drag: the rest of a tab group follows a window dragged with
 //! Super+Shift.
 //!
-//! Sway's own drag only moves one window, so this watches what it does:
-//! pressing Shift while Super is held (or Super while Shift is held) runs a
-//! sway binding "nop group-drag", which arms this and takes a snapshot of
-//! the tab groups; releasing it runs "nop group-drag-off". While armed (and
-//! for 3 seconds after the keys are let go, since sway keeps dragging while
-//! the mouse button is held) it checks the layout every 120ms. If one
-//! window has left its tabbed or stacked group and the others are still
-//! there, the others (windows, or splits holding windows) are moved to join
-//! it, in their old order, as a tabbed group. If the window was dropped
-//! onto the middle of another window, sway swaps the two; the window that
-//! ended up in the old group is then turned back into a plain split.
-//!
-//! Keyboard moves never trigger it: any other binding disarms it, and a
-//! change is only acted on if no binding follows it within 150ms (sway
-//! reports a binding after its command has run).
+//! The "nop group-drag" binding arms it and snapshots the groups; while armed
+//! (and 3s after, as the drag can continue) the layout is polled every 120ms.
+//! A window that left its group gets the others moved to it. Keyboard moves
+//! don't count: a binding within 150ms disarms it.
 
 use crate::ipc::{Sway, BINDING_EVENT};
 use crate::json::{binding_command, Node};

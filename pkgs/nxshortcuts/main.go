@@ -1,12 +1,5 @@
-// nxshortcuts: a searchable list of the desktop's shortcuts in the terminal.
-//
-// The list comes from a JSON file that Nix builds from desktop/shortcuts.nix,
-// so the shortcuts are written down in one place. Type to filter (every
-// word must match), arrows/PgUp/PgDn to scroll, Tab/Shift+Tab to jump
-// between sections, Esc clears the filter or quits, Ctrl+C quits.
-// When stdout isn't a terminal it prints plain text instead, for grep.
-//
-// Standard library only: raw mode and the window size come from ioctls.
+// nxshortcuts: searchable shortcuts list, from desktop/shortcuts.nix's JSON.
+// Plain text when stdout isn't a terminal.
 package main
 
 import (

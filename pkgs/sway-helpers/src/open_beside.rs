@@ -1,23 +1,7 @@
-//! open-beside keeps new windows from opening underneath another.
-//!
-//! Sway opens a new window next to the focused one, in its container's
-//! direction. After a window is moved up or down (Super+Shift+j/k, which
-//! also steps it out of a tab group), the windows there are in a vertical
-//! container, and later windows opened from them would go underneath. A
-//! new tiled window that lands in a vertical container is moved to the
-//! right of that container instead: beside, full height. If the container
-//! is left with one window, it is removed (`split none`) so it doesn't get
-//! in the way of later moves. Sway focuses a window moved this way, so for
-//! one that opened without focus (assigned to another workspace, say) the
-//! focus is put back where it was.
-//!
-//! Choosing a split with a key binding (Super+s, Super+t: any binding
-//! whose command has "split" in it, other than an exec) lets the next new
-//! window open where sway puts it, below included, unless the focus moves
-//! to another window first.
-//!
-//! Runs in app-group's thread, on the same "new" events and tree read, so
-//! a window app-group puts in a tab group is left to it.
+//! open-beside: a new tiled window landing in a vertical container is moved
+//! to its right, full height (focus restored if it opened unfocused). A
+//! binding with "split" lets the next window open where sway puts it.
+//! Runs in app-group's thread.
 
 use crate::json::Node;
 

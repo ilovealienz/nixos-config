@@ -9,18 +9,8 @@ let
     pkgs.gcc.cc.lib
   ];
 
-  # Keeps release binaries in ~/.bin up to date. For each app it asks
-  # GitHub's API for the latest release, and downloads the asset when
-  # it's missing or changed since last time (by the asset's sha256 digest,
-  # or for assets without one, the release tag and upload time). The
-  # download is checked against that digest before it replaces anything,
-  # and patched while it's still a temporary file, so ~/.bin never has a
-  # half-downloaded or unpatched binary. What's installed is kept in
-  # ~/.bin/.versions. Offline, or past GitHub's limit (60 checks an hour),
-  # it keeps what's there, and only fetches missing apps the old way
-  # (latest/download, unchecked).
-  #
-  # Runs at login, once a day, and on `nxapps`.
+  # Keeps GitHub release binaries in ~/.bin up to date (sha256-checked,
+  # versions in ~/.bin/.versions). Runs at login, daily, and on nxapps.
   fetchApps = pkgs.writeShellApplication {
     name = "local-apps-fetch";
     runtimeInputs = with pkgs; [ curl jq patchelf coreutils util-linux networkmanager libnotify ];
@@ -28,7 +18,7 @@ let
       bin="$HOME/.bin" state="$HOME/.bin/.versions"
       mkdir -p "$bin"
       touch "$state"
-      # one run at a time (login, the timer and nxapps can overlap)
+      # one run at a time
       exec 9>"$bin/.lock"
       flock 9
 
@@ -53,8 +43,7 @@ let
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null) \
             || ! jq -e '.tag_name and (.assets | type == "array")' >/dev/null 2>&1 <<<"$json"; then
-          # offline, over the limit, or not GitHub's answer (a wifi login
-          # page, say): never fed to the rest, which would stop the script
+          # offline, rate-limited, or a wifi login page
           if [ -f "$dest" ]; then
             echo "$name: can't check for updates, keeping it" >&2
             return 0
@@ -77,8 +66,7 @@ let
           url="https://github.com/$repo/releases/latest/download/$asset" digest="" key=""
         fi
 
-        # gives up if it stalls (under 1 kB/s for a minute), so a stuck
-        # download can't hold the lock forever
+        # give up if stalled (under 1 kB/s for a minute)
         if ! curl -fsSL --retry 2 --connect-timeout 10 --speed-limit 1024 --speed-time 60 \
             "$url" -o "$part"; then
           rm -f "$part"
@@ -90,8 +78,7 @@ let
           echo "$name: download doesn't match its sha256, not installed" >&2
           return 0
         fi
-        # all three are Linux programs: anything else (a wifi login page
-        # instead of the file, say) isn't installed
+        # must be an ELF binary
         if [ "$(head -c 4 "$part" | od -An -tx1 | tr -d ' \n')" != 7f454c46 ]; then
           rm -f "$part"
           echo "$name: the download isn't a Linux program, not installed" >&2
@@ -100,8 +87,7 @@ let
         # patchelf fails on static binaries (no .interp), that's fine
         patchelf --set-interpreter ${glibcPath} "$@" "$part" 2>/dev/null || true
         chmod +x "$part"
-        # an update (not a first install, or the first check after this
-        # was set up, which fetches everything once)
+        # an update, not a first install
         local was=""
         [ -f "$dest" ] && [ -n "$(have "$name")" ] && was=1
         # a running copy keeps going; the next start gets the new one
@@ -137,12 +123,11 @@ in
       ExecStart = lib.getExe fetchApps;
       TimeoutStartSec = "15min";
     };
-    # runs at login, and again on any rebuild that changes this script
+    # at login, and on rebuilds that change the script
     Install.WantedBy = [ "default.target" ];
   };
 
-  # the daily check: its own service, since local-apps stays "active"
-  # after it runs and starting it again would do nothing
+  # daily check (separate: local-apps stays active after login)
   systemd.user.services.local-apps-update = {
     Unit.Description = "Check local app binaries for updates";
     Service = {
@@ -161,7 +146,7 @@ in
     Install.WantedBy = [ "timers.target" ];
   };
 
-  # uwuplsplay mime/protocol registration (local only, no network needed)
+  # uwuplsplay file type and link handler
   home.activation.localApps = lib.hm.dag.entryAfter ["writeBoundary"] ''
     mkdir -p "$HOME/.local/share/applications" "$HOME/.local/share/mime/packages"
     cat > "$HOME/.local/share/applications/uwuplsplay.desktop" << EOF

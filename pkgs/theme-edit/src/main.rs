@@ -5,10 +5,8 @@
 //!                default /etc/nixos/theme.nix
 //!   colors.json  your colours, default ~/.config/theme/colors.json
 //!
-//! Saving writes colors.json: the variant (dark or light), the colours
-//! that differ from theme.nix's defaults, the icon set and the wallpaper.
-//! nxrebuild applies it. A new wallpaper is copied to
-//! ~/.config/theme/wallpaper and shown at once.
+//! Saves colors.json (variant, changed colours, icons, wallpaper) for
+//! nxrebuild to apply.
 
 mod icons;
 mod preview;
@@ -185,9 +183,7 @@ impl App {
             );
             return false;
         }
-        // a newly picked wallpaper is put in place first, so colors.json
-        // never names one that isn't there; a missing copy is put back if
-        // the image is still there (without it, sway shows walls/1.png)
+        // the wallpaper first, so colors.json never names a missing one
         let copy = wallpaper::copy_path(&self.json);
         let wall_changed = self.theme.wallpaper != self.theme.saved_wallpaper;
         let mut note = String::new();
@@ -352,10 +348,24 @@ impl eframe::App for App {
                 if changed > 0 {
                     ui.label(RichText::new(format!("{changed} unsaved")).color(col(l.accent)));
                 }
-                let (msg, err) = &self.status;
-                if !msg.is_empty() {
-                    ui.label(RichText::new(msg).color(col(if *err { l.red } else { l.muted })));
-                }
+                // the presets on the right, the status in the space left
+                let status = self.status.clone();
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    self.preset_menu(ui);
+                    let (msg, err) = &status;
+                    if !msg.is_empty() {
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                            ui.add(
+                                egui::Label::new(RichText::new(msg).color(col(if *err {
+                                    l.red
+                                } else {
+                                    l.muted
+                                })))
+                                .truncate(),
+                            );
+                        });
+                    }
+                });
             });
             ui.add_space(4.0);
         });
@@ -765,6 +775,54 @@ impl App {
                 Ok(mut child) => drop(std::thread::spawn(move || child.wait())),
                 Err(e) => self.status = (format!("can't open {url}: {e}"), true),
             }
+        }
+    }
+
+    /// top right: the presets dropdown; shows the matching preset or "custom"
+    fn preset_menu(&mut self, ui: &mut egui::Ui) {
+        if self.theme.presets.len() < 2 {
+            return;
+        }
+        let now = self.theme.preset_now();
+        let name = |i: usize, p: &theme::Preset| {
+            if i == 0 {
+                format!("{} (default)", p.label)
+            } else {
+                p.label.clone()
+            }
+        };
+        let shown = now.map_or("custom".into(), |i| name(i, &self.theme.presets[i]));
+        let mut pick = None;
+        egui::ComboBox::from_id_salt("preset")
+            .selected_text(shown)
+            .show_ui(ui, |ui| {
+                for (i, p) in self.theme.presets.iter().enumerate() {
+                    let r = ui
+                        .selectable_label(now == Some(i), name(i, p))
+                        .on_hover_text(format!(
+                            "sets every colour, dark and light, to {}'s; icons and wallpaper stay",
+                            p.label
+                        ));
+                    if r.clicked() && now != Some(i) {
+                        pick = Some(i);
+                    }
+                }
+            })
+            .response
+            .on_hover_text("colour presets from theme.nix: sets every colour, dark and light");
+        ui.label("preset");
+        ui.separator();
+        if let Some(i) = pick {
+            self.theme.apply_preset(i);
+            self.find.clear();
+            self.refresh();
+            let name = &self.theme.presets[i].label;
+            self.status = (
+                format!("{name}: Save to keep it, Undo all to go back"),
+                false,
+            );
+            // the unsaved count and the status above are drawn already
+            ui.ctx().request_repaint();
         }
     }
 

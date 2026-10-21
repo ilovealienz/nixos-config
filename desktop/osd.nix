@@ -1,5 +1,4 @@
-# Volume, brightness and media keys. Volume and brightness show their level
-# in a mako notification (in place of swayosd, ~119MB saved).
+# Volume, brightness and media keys; levels shown as mako notifications.
 { pkgs, ... }:
 let
   osd = pkgs.writeShellScriptBin "osd" ''

@@ -1,13 +1,10 @@
-# What the menus in the other sway files share: the fuzzel config the
-# pickers use (emoji.nix, audio-menu.nix, window-picker.nix) and wmenu's
-# colours from the theme (screenshot.nix, screenrec.nix, dnd.nix).
+# Shared by the menus: the pickers' fuzzel config and wmenu's colours.
 { config, pkgs, lib, osConfig, ... }:
 let
   c = osConfig.theme.colors;
 
-  # fuzzel 1.14 has no --override, so the pickers get their own config: your
-  # fuzzel settings with a monospace font (so the columns line up) and
-  # Shift+Enter moved from execute-input to custom-1.
+  # your fuzzel config, monospace, Shift+Enter as custom-1 (fuzzel has no
+  # --override)
   pickerFuzzel = pkgs.writeText "window-picker-fuzzel.ini"
     (lib.generators.toINI { } (config.programs.fuzzel.settings // {
       main = config.programs.fuzzel.settings.main // {

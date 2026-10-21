@@ -1,6 +1,4 @@
-//! msqu timer: countdowns on the bar (yellow), up to MSQU_SLOTS at once,
-//! each its own block. When one ends, a notification shows and the alarm
-//! sound plays until it's closed.
+//! msqu timer: countdowns, up to MSQU_SLOTS at once.
 //!
 //!   msqu timer start SECONDS [LABEL]   in the first free slot
 //!   msqu timer toggle SLOT   pause / resume (clicking its block)
@@ -74,9 +72,8 @@ pub fn signed_secs(s: &str) -> Option<i64> {
     Some(sign * secs)
 }
 
-/// Adds `d` seconds to the timer in the slot (negative takes time off,
-/// down to a second left); its total changes the same way. Ok(()) also
-/// when there's no timer there; Err(exit code) if systemd-run failed.
+/// Adds `d` seconds (negative takes off, to 1s left) to the slot's timer
+/// and its total. Err(exit code) if systemd-run failed.
 fn add(st: &State, d: i64) -> Result<(), i32> {
     let Some(tm) = Timer::read(st) else { return Ok(()) };
     // saturating: an absurd amount can't wrap round

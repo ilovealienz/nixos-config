@@ -1,6 +1,5 @@
-# Sway itself: layout, borders, colours, input, window rules and the core
-# keys. Each tool (screenshots, menus, locking...) is its own file in desktop/,
-# with its keys; desktop/home.nix lists them.
+# Sway: layout, colours, input, window rules and core keys. Each tool has
+# its own file with its keys.
 { config, pkgs, lib, osConfig, ... }:
 let
   c = osConfig.theme.colors;
@@ -44,7 +43,7 @@ in
         };
       };
 
-      # ── desert night colours ──
+      # ── colours ──
       colors = {
         focused = {
           border = "#${c.accent}"; background = "#${c.accent}"; text = "#${c.onAccent}";
@@ -66,7 +65,7 @@ in
 
       bars = [{ command = "${pkgs.waybar}/bin/waybar"; }];
 
-      # (the wallpaper's is in wallpaper.nix)
+      # wallpaper: wallpaper.nix
       startup = [
         { command = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"; }
       ];
@@ -78,13 +77,12 @@ in
         { command = "floating enable"; criteria = { app_id = "blueman-manager"; }; }
       ];
 
-      # the keys for the tools in the other sway files are in those files
       keybindings = {
 
         # launching
         "${mod}+Shift+r" = "exec ${wmenuRun}";
         "${mod}+r" = "exec fuzzel";
-        # and go to its workspace, while placement (placement.nix) is on
+        # follow to its workspace when placement is on
         "${mod}+Return" = "exec kitty; exec ${lib.getExe follow} 4";
         "${mod}+Shift+Return" = "exec foot; exec ${lib.getExe follow} 4";
         "${mod}+e" = "exec thunar; exec ${lib.getExe follow} 5";
@@ -111,9 +109,7 @@ in
         "${mod}+Shift+l" = "move right";
 
         # resize
-        # move the window's edge the way the key points: the edge facing a
-        # neighbour, or the other edge if there's none that side (sway
-        # refuses the first command then, and the second runs)
+        # moves the edge the key points to (the other edge if there's no neighbour)
         "${mod}+Alt+h" = "exec ${pkgs.sway}/bin/swaymsg -q resize shrink right 40px || ${pkgs.sway}/bin/swaymsg -q resize grow left 40px";
         "${mod}+Alt+l" = "exec ${pkgs.sway}/bin/swaymsg -q resize grow right 40px || ${pkgs.sway}/bin/swaymsg -q resize shrink left 40px";
         "${mod}+Alt+k" = "exec ${pkgs.sway}/bin/swaymsg -q resize shrink down 40px || ${pkgs.sway}/bin/swaymsg -q resize grow up 40px";
@@ -147,7 +143,7 @@ in
     };
 
     extraConfig = ''
-      # XWayland windows marked in their title (sway-helpers.nix adds to it)
+      # mark XWayland windows in the title
       for_window [shell="xwayland"] title_format "%title [XWayland]"
     '';
   };

@@ -1,8 +1,4 @@
-//! msqu-ui: the Super+Shift+A menu for msqu's tools, in the floating
-//! terminal. A home screen (what's running, starting something new,
-//! presets, recent), and a short form per tool. The tools themselves
-//! (alarms, sounds) are the msqu-TOOL scripts and the bar blocks are
-//! msqu-bar; this only asks and then runs the scripts.
+//! msqu-ui: the Super+Shift+A menu. Asks, then runs the msqu-TOOL commands.
 //!
 //! Usage: msqu-ui --config FILE [timer|repeat|alarm|drink]
 //!   FILE: "color NAME HEX", "preset LABEL|EVERY|WINDOW" and
@@ -334,9 +330,8 @@ impl App {
             .unwrap_or(45 * 60)
     }
 
-    /// starting another `tool` now: replaces the running one (most tools),
-    /// or can't, all its slots being in use (timer, alarm). None if it
-    /// just starts.
+    /// what starting another `tool` would do: replace the running one, or
+    /// fail with all slots in use. None if it just starts.
     fn blocked(&self, running: &[Running], tool: &str) -> Option<String> {
         let n = running.iter().filter(|r| r.tool == tool).count();
         match self.slots.get(tool) {

@@ -1,9 +1,5 @@
-//! The wallpaper picker: finds images in the wallpaper folders, makes
-//! thumbnails in the background, and puts the picked image where sway
-//! loads it from (~/.config/theme/wallpaper, one fixed name).
-//!
-//! sway's swaybg reads PNG and JPEG by their contents, so those are
-//! copied as they are; anything else (WebP) is converted to PNG first.
+//! The wallpaper picker: thumbnails in the background, and the pick copied
+//! to ~/.config/theme/wallpaper (non-PNG/JPEG converted to PNG).
 
 use eframe::egui;
 use std::path::{Path, PathBuf};
@@ -15,10 +11,8 @@ const ENDINGS: [&str; 4] = ["png", "jpg", "jpeg", "webp"];
 /// thumbnails are made this wide or high at most, in pixels
 const THUMB: u32 = 320;
 
-/// The folders to look in, with a label each: walls/ next to theme.nix,
-/// Wallpaper and Wallpapers in the Pictures folder (from
-/// ~/.config/user-dirs.dirs), then the ones added. Only folders that
-/// exist, each once.
+/// Folders to look in, labelled: walls/, Pictures/Wallpaper(s), then added
+/// ones. Existing ones only, each once.
 pub fn folders(theme_nix: &Path, added: &[String]) -> Vec<(String, PathBuf)> {
     let home = PathBuf::from(std::env::var_os("HOME").unwrap_or_default());
     let mut out = Vec::new();
@@ -94,9 +88,7 @@ fn parse_pictures(text: &str, home: &Path) -> Option<PathBuf> {
 const DEPTH: usize = 4;
 const MOST: usize = 300;
 
-/// The groups the picker shows: each folder's own images, then each of
-/// its subfolders that has some (labelled folder / sub), each folder
-/// once. A folder with no images anywhere in it is shown, empty.
+/// Groups to show: each folder, then its subfolders with images.
 pub fn groups(folders: &[(String, PathBuf)]) -> Vec<(String, Vec<PathBuf>)> {
     let mut seen: Vec<PathBuf> = Vec::new();
     let mut out = Vec::new();
@@ -230,9 +222,7 @@ pub fn copy_path(colors_json: &Path) -> PathBuf {
     colors_json.with_file_name("wallpaper")
 }
 
-/// Puts `from` at `to` in one go (a temporary file, then a rename, so
-/// sway never sees half an image): PNG and JPEG as they are, anything
-/// else converted to PNG.
+/// Atomically copies `from` to `to`, converting non-PNG/JPEG to PNG.
 pub fn install(from: &Path, to: &Path) -> Result<(), String> {
     let dir = to.parent().ok_or("no folder")?;
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;

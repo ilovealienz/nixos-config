@@ -1,6 +1,5 @@
-# Super+Shift+Tab: every window in fuzzel, grouped by workspace. Enter goes
-# to it (or to the workspace, on a header), Shift+Enter opens an action menu
-# (bring here, float, scratchpad, close, force kill).
+# Super+Shift+Tab: window picker, grouped by workspace. Shift+Enter for
+# actions (bring here, float, scratchpad, close, kill).
 # Source: ../pkgs/window-picker/main.go
 { config, pkgs, lib, ... }:
 let

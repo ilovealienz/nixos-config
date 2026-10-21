@@ -1,22 +1,8 @@
-//! app-group puts related apps into tabbed groups when they open.
+//! app-group: a window from a group joins that group's tab group when it
+//! opens. Paused while $XDG_STATE_HOME/app-group/off exists.
 //!
-//! Each group is a list of apps. When a window from a group opens tiled,
-//! it is moved into the tabbed group the other windows of that group are
-//! in (on whatever workspace that is). If another window from the group is
-//! open but not grouped yet, a tabbed group is made around it first. This
-//! only happens when a window opens; after that the windows are left alone,
-//! so they can be dragged out of the group.
-//!
-//! APP is a Wayland app_id or XWayland class, matched case-insensitively.
-//! Grouping is paused while $XDG_STATE_HOME/app-group/off exists (toggled
-//! by app-group-toggle).
-//!
-//! Sway sends the "new" event before it applies floating and for_window
-//! rules and before it focuses the window, so whether the window ended up
-//! tiled and focused is read from the tree fetched afterwards.
-//!
-//! The same thread runs open-beside (see open_beside.rs), so it sees the
-//! same tree and knows whether app-group took the window.
+//! Sway sends "new" before applying rules and focus, so tiling and focus are
+//! read from the tree fetched afterwards. Shares its thread with open-beside.
 
 use crate::ipc::{Sway, BINDING_EVENT, WINDOW_EVENT};
 use crate::json::{binding_command, Node, WindowEvent};

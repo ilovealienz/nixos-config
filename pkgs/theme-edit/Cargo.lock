@@ -2317,7 +2317,7 @@ dependencies = [
 
 [[package]]
 name = "theme-edit"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "eframe",
  "egui_extras",

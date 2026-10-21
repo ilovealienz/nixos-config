@@ -1,33 +1,27 @@
-# The desktop's colours. System modules read config.theme.colors.<name>;
-# home-manager modules read osConfig.theme.colors.<name>, and
-# osConfig.theme.variant ("dark" or "light") for the GTK, icon and Qt
-# themes that have to match, osConfig.theme.icon (the icon theme's
-# package and name, for that variant) and osConfig.theme.wallpaperMode.
+# The desktop's colours, variant, icons and wallpaper: config.theme.* in
+# system modules, osConfig.theme.* in home-manager.
 #
-# The two palettes below are the defaults. Your own colours, which
-# variant you use, your icon set and wallpaper live in
-# ~/.config/theme/colors.json (edit them with theme-edit). nxrebuild
-# copies that file here as local-theme.json, staged but never committed
-# (like hardware-configuration.nix), so each machine keeps its own and it
-# stays out of nxpush. Without it, the dark defaults are used.
+# The palettes below are the defaults (the Copper preset). Your own choices
+# are in ~/.config/theme/colors.json (theme-edit); nxrebuild copies it here
+# as local-theme.json, staged but never committed.
 { lib, config, ... }:
 let
   palettes = {
     dark = {
       # backgrounds: change these four together to shift the tint
-      bgDark  = "1d1b16";  # kitty inactive tabs
-      bg      = "24221c";  # main background everywhere
-      bgAlt   = "2f2c24";  # raised: gtk views/cards/popovers
-      surface = "473f31";  # borders, inactive windows, launcher selection
+      bgDark  = "1d1916";  # kitty inactive tabs
+      bg      = "2b201a";  # main background everywhere
+      bgAlt   = "35241c";  # raised: gtk views/cards/popovers
+      surface = "473c31";  # borders, inactive windows, launcher selection
 
       # text
-      fg       = "d4b07b";  # main text
+      fg       = "d4a97b";  # main text
       fgBright = "ede0c8";  # bright text
-      muted    = "87765d";  # dim text, labels
+      muted    = "8d744a";  # dim text, labels
 
       # accent: change this one line to recolour everything
-      # original amber: e5a440
-      accent = "e5a440";
+      # Desert Night's amber (a preset): e5a440
+      accent = "c86f42";
 
       # text on the accent and on red: tab titles, urgent workspace, buttons
       onAccent = "24221c";
@@ -69,8 +63,18 @@ let
     };
   };
 
-  # Worked out from the others, so they follow them automatically.
-  # To hand-pick one instead, set it anywhere (e.g. a host file):
+  # The defaults above, as theme-edit's presets show them
+  defaultPreset = "Copper";
+
+  # Colour presets in theme-edit, dark and light. The name after # is shown.
+  presets = {
+    desert-night = {  # Desert Night
+      dark = { bgDark = "1d1b16"; bg = "24221c"; bgAlt = "2f2c24"; surface = "473f31"; fg = "d4b07b"; fgBright = "ede0c8"; muted = "87765d"; accent = "e5a440"; onAccent = "24221c"; selectionFg = "ede0c8"; red = "e56b55"; orange = "e18245"; yellow = "bfab36"; green = "99b05f"; blue = "949fb4"; magenta = "d261a5"; };
+      light = { bgDark = "e8dfcb"; bg = "f4eee0"; bgAlt = "fbf8f0"; surface = "ddd0b5"; fg = "4a3b28"; fgBright = "2a2017"; muted = "76634a"; accent = "9c5a08"; onAccent = "fbf8f0"; selectionFg = "2a2017"; red = "ac3a26"; orange = "a34f14"; yellow = "7a6c0c"; green = "4f6e1c"; blue = "455a80"; magenta = "983874"; };
+    };
+  };
+
+  # Worked out from the others. To override, set one anywhere:
   #   theme.colors.selectionBg = "a17938";
   derived = c: {
     selectionBg = mix c.accent c.bg 0.67;  # selected files/rows, terminal selection
@@ -86,11 +90,9 @@ let
         (builtins.floor (ch a i * t + ch b i * (1.0 - t) + 0.5))));
     in one 0 + one 2 + one 4;
 
-  # Icon sets theme-edit offers: the package, any packages it borrows
-  # icons from (also, space-separated), the theme names it installs for
-  # dark and light (the case differs between sets), and its web page, to
-  # see what it looks like. The name after # is what theme-edit shows.
-  # Only the set in use is installed.
+  # Icon sets in theme-edit: package, borrowed packages (also), theme names
+  # for dark and light, and web page. The name after # is shown. Only the
+  # set in use is installed.
   iconSets = {
     gruvbox-plus = { package = "gruvbox-plus-icons"; dark = "Gruvbox-Plus-Dark"; light = "Gruvbox-Plus-Light"; page = "https://github.com/SylEleuth/gruvbox-plus-icon-pack"; };  # Gruvbox Plus
     gruvbox-dark = { package = "gruvbox-dark-icons-gtk"; dark = "oomox-gruvbox-dark"; light = "oomox-gruvbox-dark"; page = "https://github.com/jmattheis/gruvbox-dark-icons-gtk"; };  # Gruvbox Dark
@@ -111,12 +113,10 @@ let
   };
   iconDefault = "gruvbox-plus";
 
-  # ~/.config/theme/colors.json, copied here by nxrebuild:
+  # local-theme.json (colors.json), e.g.:
   #   { "variant": "light", "dark": { "accent": "4fa3e0" }, "light": { },
   #     "icons": "papirus", "wallpaper": { "from": "/path/x.jpg", "mode": "fill" } }
-  # Colours are checked to be 6-digit hex, the icon set to be one of
-  # iconSets and the wallpaper's mode to be one of wallpaperModes; anything
-  # else in it is ignored (the wallpaper's "from" is only for theme-edit).
+  # Invalid values fall back with a warning; unknown fields are ignored.
   local =
     if builtins.pathExists ./local-theme.json
     then builtins.fromJSON (builtins.readFile ./local-theme.json)
@@ -133,8 +133,7 @@ let
     if builtins.isString mySet && iconSets ? ${mySet} then mySet
     else lib.warn "local-theme.json: unknown icon set ${builtins.toJSON mySet}, using ${iconDefault}" iconDefault;
 
-  # how sway fits the wallpaper (sway-output(5)); theme-edit copies the
-  # picked image to ~/.config/theme/wallpaper
+  # sway's wallpaper modes (sway-output(5))
   wallpaperModes = [ "fill" "fit" "center" "tile" "stretch" ];
   myWall = local.wallpaper or null;
   wallMode =
@@ -184,5 +183,9 @@ in
   config.assertions = [{
     assertion = lib.attrNames palettes.dark == lib.attrNames palettes.light;
     message = "theme.nix: the dark and light palettes must have the same colours";
-  }];
+  }] ++ lib.concatLists (lib.mapAttrsToList (key: p: map (v: {
+    assertion = p ? ${v} && lib.attrNames p.${v} == lib.attrNames palettes.dark
+      && lib.all (c: builtins.match "[0-9a-fA-F]{6}" c != null) (lib.attrValues p.${v});
+    message = "theme.nix: preset ${key}: ${v} must have every colour of the palettes, as 6-digit hex";
+  }) [ "dark" "light" ]) presets);
 }

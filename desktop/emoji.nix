@@ -1,18 +1,13 @@
-# Super+;: emoji picker (bemoji in fuzzel), recent emoji first.
-# Enter puts the emoji into the focused window, Shift+Enter only copies
-# it. It's pasted rather than typed: wtype types emoji as the wrong
-# characters in Electron apps and XWayland windows, but a Ctrl+V
-# keypress works everywhere (sent with xdotool to XWayland windows).
-# Uses the pickers' fuzzel config (menus.nix), where Shift+Enter is custom-1.
-# The emoji list is built from Unicode's data file, so bemoji never downloads
-# (a failed download leaves an empty list it never retries).
+# Super+;: emoji picker. Enter pastes into the focused window (Ctrl+V:
+# typing breaks in Electron and XWayland), Shift+Enter copies.
+# The list is built from Unicode's data, so bemoji never downloads.
 { config, pkgs, lib, ... }:
 let
   emojiDb = pkgs.runCommand "bemoji-emoji-list" { } ''
     mkdir -p $out
     sed -ne 's/^.*; fully-qualified.*# \(\S*\) \S* \(.*$\)/\1 \2/gp' \
       ${pkgs.unicode-emoji}/share/unicode/emoji/emoji-test.txt > $out/emojis.txt
-    [ -s $out/emojis.txt ]   # fail the build rather than ship an empty list
+    [ -s $out/emojis.txt ]   # fail on an empty list
   '';
 
   emojiPicker = pkgs.writeShellApplication {
@@ -22,8 +17,7 @@ let
       export BEMOJI_DB_LOCATION=${emojiDb}
       # grep . drops the blank line bemoji adds before the recent list
       export BEMOJI_PICKER_CMD="grep . | fuzzel --dmenu --config ${config.my.pickerFuzzel} --prompt 'emoji: ' --width 50 --placeholder 'enter: type · shift+enter: copy'"
-      # bemoji copies on fuzzel's custom-1 (Shift+Enter); make that print
-      # the emoji with a "copy:" prefix instead, so this script handles it
+      # Shift+Enter: prefix with copy: so this script handles it
       export BEMOJI_CLIP_CMD="sed s/^/copy:/"
       export BEMOJI_TYPE_CMD=true   # bemoji's own typing (Alt+2): no-op
 
@@ -33,7 +27,6 @@ let
       printf '%s' "$emoji" | wl-copy
 
       if [ "$out" != "$emoji" ]; then   # Shift+Enter
-        # osd category: not kept in mako's history
         notify-send -c osd -h string:x-canonical-private-synchronous:osd \
           -t 1500 "copied" "$emoji"
         exit 0
@@ -43,12 +36,10 @@ let
       read -r shell app < <(swaymsg -t get_tree | jq -r '
         first(.. | objects | select(.focused == true))
         | "\(.shell // "-") \(.app_id // .window_properties.class // "-")"') || true
-      # let keyboard focus return from fuzzel; XWayland takes a moment
-      # longer to hand X focus back to the window
+      # let focus return from fuzzel
       sleep 0.15
       if [ "$shell" = xwayland ]; then
-        # X11 windows (Proton, Bottles/Wine, Brave): send the key through
-        # the X server; wtype's keys don't reliably reach XWayland
+        # wtype doesn't reliably reach XWayland
         xdotool key --clearmodifiers ctrl+v
       else
         case "$app" in

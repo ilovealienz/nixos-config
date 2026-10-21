@@ -70,10 +70,8 @@ pub fn hms(s: i64) -> String {
     }
 }
 
-/// something running (or paused), from its tool's state file. left: what
-/// the bar shows (time left; the stopwatch's time so far; until the
-/// alarm); total: the timer's length or how often (repeat, drink); at:
-/// the alarm's unix time.
+/// something running or paused, from its state file. left: what the bar
+/// shows; total: length or interval; at: the alarm's unix time.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Running {
     pub tool: &'static str,
@@ -293,9 +291,8 @@ pub fn rough(s: i64) -> String {
     }
 }
 
-/// a sum typed into the menu: "1024x8", "4+4", "(3+4)*2^3", "10/3",
-/// "17%5" (remainder). x, × and * multiply; / and ÷ divide; ^ is a power.
-/// None if it isn't one (a plain number, a time, words) or has no answer.
+/// a sum typed into the menu ("1024x8", "(3+4)*2^3", "17%5"); None if it
+/// isn't one or has no answer.
 pub fn calc(s: &str) -> Option<f64> {
     let toks = calc_tokens(s)?;
     // a sum: some operator after the start (not just "-5" or "(5)")

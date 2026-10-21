@@ -1,7 +1,5 @@
-# The wallpaper: walls/1.png, or the one picked in theme-edit, which copies
-# it to ~/.config/theme/wallpaper. That one is set by wallpaper-set at
-# startup and on reload, not by an output line in the config: sway checks
-# the config while building, and the build can't see files in your home.
+# Wallpaper: walls/1.png, or theme-edit's pick (~/.config/theme/wallpaper),
+# set by wallpaper-set at startup since the build can't see your home.
 { pkgs, lib, osConfig, ... }:
 let
   c = osConfig.theme.colors;
@@ -20,7 +18,7 @@ let
   };
 in
 {
-  # no wallpaper picked: walls/1.png, by an output line (sway runs swaybg)
+  # the default wallpaper
   wayland.windowManager.sway.config.output = lib.mkIf (wallMode == null) { "*".bg = "${../walls/1.png} fill"; };
 
   wayland.windowManager.sway.config.startup =

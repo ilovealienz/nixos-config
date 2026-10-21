@@ -19,9 +19,7 @@ extern "C" fn on_winch(_: libc::c_int) {
     }
 }
 
-/// True once after each resize. The terminal can start at one size and be
-/// resized straight away (sway sizing the menu's window), so a resize
-/// wakes the wait for keys and is drawn at once, not at the next second.
+/// True once after each resize (sway resizes the window right after start).
 pub fn resized() -> bool {
     RESIZED.swap(false, Ordering::SeqCst)
 }

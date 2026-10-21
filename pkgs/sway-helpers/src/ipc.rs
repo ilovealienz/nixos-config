@@ -1,8 +1,5 @@
 //! sway's IPC socket: "i3-ipc" + u32 length + u32 type + JSON payload.
-//!
-//! Losing sway's socket means sway exited or restarted (with a new socket
-//! path), so any read or write error ends the whole program and systemd
-//! starts it again.
+//! Any socket error ends the program; systemd restarts it.
 
 use crate::json::{self, Node};
 use crate::die;
@@ -123,9 +120,7 @@ impl Events {
         }
     }
 
-    /// Something that closes this stream when dropped, so a reader thread
-    /// blocked in `next()` ends when the feature that started it stops
-    /// (or panics).
+    /// Closes the stream when dropped, ending a reader blocked in `next()`.
     pub fn closer(&self) -> Closer {
         Closer {
             s: self.closer.s.try_clone().unwrap_or_else(|e| die(self.sway.name, &format!("socket: {e}"))),

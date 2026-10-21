@@ -1,5 +1,4 @@
-# Warmer screen colours after sunset (wlsunset), where location.nix says
-# you are. Runs with the sway session.
+# Warmer screen after sunset (wlsunset).
 { config, lib, ... }:
 {
   services.wlsunset = {

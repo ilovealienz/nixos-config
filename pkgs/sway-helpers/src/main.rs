@@ -7,12 +7,7 @@
 //!               (runs in app-group's thread)
 //!   attention   XWayland attention requests are counted in the title
 //!
-//! Each runs in its own thread with its own sway connections. If one
-//! panics it is started again (after 1s, then longer if it keeps failing)
-//! and the others carry on. Losing sway itself ends the program, so
-//! systemd can start it again for the new sway.
-//!
-//! Standard library only.
+//! Each runs in its own thread, restarted with backoff if it panics.
 //!
 //! Usage: sway-helpers [--group NAME=APP,APP...]... [--title-suffix TEXT]
 //!                     [--no-group-drag] [--no-app-group] [--no-group-end]

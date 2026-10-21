@@ -1,20 +1,7 @@
-"""Make sure our Thunar custom actions exist in ~/.config/Thunar/uca.xml,
-without taking the file away from Thunar.
-
-Run by home-manager on every rebuild. The file stays a normal file, so
-Thunar's "Configure custom actions" window keeps working and your own
-actions and edits are kept. For each action we manage (matched by its
-unique-id):
-  - missing       -> it's added
-  - present       -> left as you have it, except:
-                     <command>  updated while it still points at our program
-                                (a new Nix store path after a rebuild) or at
-                                the old default we replace
-                     <patterns> updated while they still look like ours
-                                (so new file types show up), never if edited
-If uca.xml isn't valid XML it's left untouched with a warning, so a broken
-file can never make a rebuild fail.
-Usage: uca_merge.py <actions.json>
+"""uca_merge.py <actions.json>: add our Thunar custom actions to
+~/.config/Thunar/uca.xml if missing, keeping their commands (and our
+patterns) current. Your own actions and edits are kept; invalid XML is left
+alone with a warning.
 """
 import json
 import os

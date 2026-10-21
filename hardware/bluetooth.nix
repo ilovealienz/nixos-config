@@ -4,7 +4,7 @@
   hardware.bluetooth.powerOnBoot = true;
   hardware.bluetooth.settings = {
     General = {
-      Experimental = true;   # enables battery % reporting for supported devices
+      Experimental = true;   # device battery levels
     };
   };
 }

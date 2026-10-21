@@ -1,11 +1,5 @@
-# Super+a: audio menu. The current output and mic get their own
-# section at the top. Enter on another output or mic makes it the
-# default (playing audio moves with it); Enter on the current mic
-# toggles its mute; Shift+Enter opens hide / rename / reset name.
-# Reopens after each change. Settings in ~/.config/uwuaudio, both written
-# by the menu: hidden (one device name per line) and names
-# ("device.name = Nickname").
-# Uses the pickers' fuzzel config (menus.nix) for Shift+Enter (custom-1).
+# Super+a: audio menu. Enter switches output/mic (current mic: mute),
+# Shift+Enter hides or renames. Settings in ~/.config/uwuaudio.
 { config, pkgs, lib, ... }:
 let
   audioMenu = pkgs.writeShellApplication {
@@ -16,8 +10,7 @@ let
       hidden="$cfg/hidden" names="$cfg/names"
       mkdir -p "$cfg"; touch "$hidden"
 
-      # nickname from the names file, else the device's own description
-      # names file: "device.name = Nickname", split at the first "="
+      # names file: "device.name = Nickname"
       nickname() {
         [ -f "$names" ] || return 0
         awk -v k="$1" '{ i = index($0, "="); n = substr($0, 1, i - 1); v = substr($0, i + 1)
@@ -34,7 +27,6 @@ let
         n=$(nickname "$1")
         printf '%s' "''${n:-$2}"
       }
-      # fuzzel's output is a row number only if a row was picked
       valid() { [[ $1 =~ ^[0-9]+$ ]] && (( $1 < $2 )); }
       menu() {
         fuzzel --dmenu --index --config ${config.my.pickerFuzzel} --width 60 \
@@ -108,16 +100,14 @@ let
         fi
         case "$kind" in
           sink)
-            # move what was playing on the old default, so calls and videos
-            # switch too; streams routed elsewhere on purpose stay put
+            # move streams that were on the old default
             old=$(jq -r --arg n "$sink" '.[] | select(.name == $n) | .index' <<< "$sinks")
             pactl set-default-sink "$name"
             pactl list short sink-inputs | while read -r id on _; do
               if [ "$on" = "$old" ]; then pactl move-sink-input "$id" "$name" || true; fi
             done ;;
           source)
-            # same for recording: only streams on the old default mic, so a
-            # screen recorder capturing desktop audio isn't moved to a mic
+            # same for recording streams on the old mic
             old=$(jq -r --arg n "$source" '.[] | select(.name == $n) | .index' <<< "$sources")
             pactl set-default-source "$name"
             pactl list short source-outputs | while read -r id on _; do

@@ -3,9 +3,8 @@
 let
   c = config.theme.colors;
 
-  # Browser chooser. xdg-open falls back to scanning for generic binary
-  # names when no desktop handler matches, so the shims provide those
-  # names and route them here.
+  # browser chooser; the shims catch generic browser names xdg-open falls
+  # back to
   urlopen = pkgs.writeShellScriptBin "urlopen" (builtins.replaceStrings
     [ "@bg@" "@fg@" "@accent@" "@onAccent@" ] [ c.bg c.fg c.accent c.onAccent ]
     (builtins.readFile ../scripts/urlopen));

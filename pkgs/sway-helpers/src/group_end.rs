@@ -1,27 +1,10 @@
-//! group-end ends a tab group that is left with one window.
+//! group-end: a tab group down to one window is removed (`split none`): at
+//! once after a close, after GRACE if the window was moved out. Splits left
+//! with one window after a close go too. Groups made with one window on
+//! purpose wait until they've had two.
 //!
-//! When a tabbed or stacked container (however it was made: app-group,
-//! group-drag, Super+g) goes from two or more windows down to one, the
-//! container is removed and its window put in its place (`split none`):
-//! it acts like any other, and new windows open beside it rather than as
-//! tabs. If the other was closed (Super+q) that happens at once; if it was
-//! moved out or floated (Super+Shift+hjkl, a drag, Super+v, another
-//! workspace), the group is kept for GRACE first, so it can be put back.
-//! Floating groups are left alone.
-//!
-//! A side-by-side or one-above-the-other container left with one window
-//! after a close is removed the same way, at once: it would only get in
-//! the way of moving that window. (One made on purpose, with Super+s, is
-//! left alone until it has had two.)
-//!
-//! A group made with one window on purpose (Super+g, to open windows into)
-//! is left alone until it has had two. Sway reports no event when a group
-//! is made, so the tree is also read shortly after each key binding, which
-//! is how groups made by Super+g are seen.
-//!
-//! Sway handles a run_command request completely before the next request,
-//! so a tree read never shows another program's commands half done
-//! (app-group or group-drag building a group, say).
+//! Sway has no event for a new group, so the tree is also read after each
+//! binding.
 
 use crate::ipc::{Sway, BINDING_EVENT, WINDOW_EVENT};
 use crate::json::{Node, WindowEvent};
@@ -112,9 +95,7 @@ impl State {
         if groups.is_empty() {
             return;
         }
-        // `split none` on a container's only child removes the container;
-        // a plain `layout splith` would leave it there, wrapped around the
-        // one window, and the next move would only take it out of that
+        // `split none` on the only child removes the container
         let c: Vec<String> = groups.iter().map(|(_, tab)| format!("[con_id={tab}] split none")).collect();
         for (id, _) in &groups {
             self.ends.remove(id);

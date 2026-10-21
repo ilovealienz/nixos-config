@@ -5,7 +5,7 @@
 
   home-manager.users.pc.imports = [ ../desktop/monitors/pc.nix ];
 
-  # streaming games from here (Sunshine, programs/gaming.nix)
+  # Sunshine game streaming
   services.sunshine.openFirewall = true;
 
   fileSystems."/mnt/Shared" = {

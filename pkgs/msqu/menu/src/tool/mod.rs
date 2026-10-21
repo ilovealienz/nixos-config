@@ -1,19 +1,9 @@
-//! The tools (timer, stopwatch, alarm, repeat, drink), one module each,
-//! and what they share (once lib.sh): the state directory and its lock,
-//! writing state files in one go, slots (for tools that run several at
-//! once), the alarm that runs a tool's "ring" at a set time (`arm`,
-//! `disarm`, `stale`), the bell, a ringing notification (`ring`), and
-//! running the programs they use (notify-send, systemd-run, systemctl,
-//! pw-play, makoctl, fuzzel).
+//! The tools, one module each with a `main`, and what they share: the
+//! locked state directory, slots, alarms (`arm`, `disarm`, `stale`), the
+//! bell and ringing notifications.
 //!
-//! desktop/msqu.nix runs each tool through a launcher that sets MSQU_TOOL,
-//! MSQU_BELL, MSQU_SELF (the launcher itself, which an alarm runs again)
-//! and, for tools that have them, MSQU_SLOTS and MSQU_ALARM.
-//!
-//! Each tool is a module here with a `main` taking its arguments and
-//! returning the exit code; msqu-tool (src/bin/msqu-tool.rs) picks one.
-//! Their commands, exit codes and state files are the same as the shell
-//! scripts' they replaced. sway.rs talks to sway for repeat.
+//! Env from desktop/msqu.nix: MSQU_TOOL, MSQU_BELL, MSQU_SELF, and
+//! MSQU_SLOTS / MSQU_ALARM where used.
 
 pub mod alarm;
 pub mod drink;
@@ -32,14 +22,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-/// A tool's state directory, $XDG_RUNTIME_DIR/msqu/TOOL, held locked.
-///
-/// One command of a tool at a time: two clicks close together (or a click
-/// while an alarm goes off) would otherwise interleave. The lock is held
-/// until the command ends, or `unlock` before anything slow. It's a file
-/// beside the directory (msqu/TOOL.lock), so taking it doesn't wake the
-/// bar blocks watching the directory. Programs the tool runs don't get it
-/// (close-on-exec), so one left running can't hold it.
+/// A tool's state directory, $XDG_RUNTIME_DIR/msqu/TOOL, locked for one
+/// command at a time (until the end, or `unlock`). The lock file sits
+/// beside the directory so it doesn't wake the bar, and is close-on-exec.
 pub struct State {
     pub tool: &'static str,
     pub dir: PathBuf,
@@ -140,25 +125,16 @@ impl State {
         if self.slot.is_empty() { format!("msqu-{}", self.tool) } else { format!("msqu-{}-{}", self.tool, self.slot) }
     }
 
-    /// Stops this tool's (or slot's) alarm, if it has one. Only the timers:
-    /// a "ring" that arms the next alarm (drink) runs inside the last
-    /// alarm's service, and stopping that would kill it halfway.
+    /// Stops this tool's (or slot's) alarm timer. Not the service: a ring
+    /// that re-arms runs inside it.
     pub fn disarm(&self) {
         let u = self.unit();
         quiet("systemctl", &["--user", "stop", &format!("{u}.timer"), &format!("{u}-*.timer")]);
     }
 
-    /// The alarm: runs this tool's "ring" (with the slot, if any) at unix
-    /// time `at`, as a systemd user timer, so it survives reloading sway or
-    /// waybar. A calendar time rather than "in N seconds": time suspended
-    /// counts, and one that came due while suspended goes off on resume.
-    ///
-    /// Each alarm is its own unit, msqu-TOOL[-SLOT]-AT-NANOSECONDS (new
-    /// even when re-armed for the same second, before systemd has dropped
-    /// the old one), with MSQU_AT set to its time for `stale`. --collect
-    /// and RemainAfterElapse=no: the units go once it has rung.
-    ///
-    /// Err(exit code) if systemd-run failed (its message is on stderr).
+    /// Runs this tool's "ring" at unix time `at` as a systemd user timer
+    /// (calendar time, so suspend counts). Unique unit per arm, MSQU_AT for
+    /// `stale`, removed once rung. Err(exit code) if systemd-run failed.
     pub fn arm(&self, at: i64) -> Result<(), i32> {
         self.disarm();
         let u = self.unit();
@@ -206,19 +182,15 @@ fn ring_limit() -> Duration {
 }
 
 impl State {
-    /// A notification that stays until it's closed, with the alarm sound
-    /// (MSQU_ALARM) playing over and over until then. The sound gives up
-    /// after 10 minutes, leaving the notification up. If the notification
-    /// can't be shown (no notification daemon), the sound plays once.
-    /// Unlocks first: this takes as long as you leave it.
+    /// A notification with the alarm sound looping until it's closed (10
+    /// minutes at most; once if there's no notification daemon). Unlocks
+    /// first.
     pub fn ring(&mut self, summary: &str, body: &str) {
         self.unlock();
         let sound = std::env::var_os("MSQU_ALARM").filter(|s| !s.is_empty());
         let stop = Arc::new(AtomicBool::new(false));
-        // the pw-play playing now. The player thread waits for it to end
-        // without reaping it (WNOWAIT), then reaps it with the lock held, so
-        // the main thread can stop it (under the lock) without its pid ever
-        // having been reused
+        // the current pw-play; reaped only under the lock, so its pid can't
+        // be reused before it's signalled
         let playing: Arc<Mutex<Option<Child>>> = Arc::default();
         let player = sound.clone().map(|sound| {
             let (stop, playing) = (stop.clone(), playing.clone());
@@ -286,10 +258,8 @@ impl State {
             }
         };
 
-        // stop the sound: TERM, as the shell's kill did (pw-play ends its
-        // stream cleanly); the player thread reaps it. `stop` is set before
-        // taking the lock, so one starting just now is stopped by the
-        // player thread instead
+        // TERM the sound; `stop` is set first so one just starting is
+        // stopped by the player thread
         stop.store(true, Ordering::SeqCst);
         if let Some(c) = playing.lock().unwrap().as_ref() {
             unsafe { libc::kill(c.id() as i32, libc::SIGTERM) };
@@ -307,9 +277,7 @@ impl State {
     }
 }
 
-/// Waits until child `pid` has ended, without reaping it: until it's
-/// reaped (Child::wait) its pid can't be reused, so it's still safe to
-/// signal.
+/// Waits for child `pid` to end without reaping it (still safe to signal).
 fn wait_exit(pid: u32) {
     loop {
         let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
@@ -328,10 +296,8 @@ pub fn hm(at: i64) -> String {
     format!("{:02}:{:02}", tm.tm_hour, tm.tm_min)
 }
 
-/// In "ring": true if this ring's alarm isn't the one in the state file
-/// any more (it's not running, or it's armed for another time): it went
-/// off just as a click replaced it. Rings without MSQU_AT (armed by the
-/// first versions) are never stale.
+/// In "ring": true if the state file no longer has this alarm (replaced as
+/// it went off). Rings without MSQU_AT are never stale.
 pub fn stale(mode: &str, t: &str) -> bool {
     match std::env::var("MSQU_AT") {
         Ok(at) if !at.is_empty() => (mode != "run" && mode != "at") || t != at,
@@ -359,9 +325,8 @@ pub fn screen_locked() -> bool {
     })
 }
 
-/// A state file's line split as the scripts' `read -r a b c ...` split it
-/// into `n` variables: a word each, the last getting the rest of the line
-/// as it is (spaces inside kept, the ends trimmed); "" for any missing.
+/// A line split like `read -r a b c`: `n` fields, the last taking the rest;
+/// "" for any missing.
 pub fn fields(line: &str, n: usize) -> Vec<String> {
     let ws = |c: char| c == ' ' || c == '\t' || c == '\n';
     let mut rest = line.trim_matches(ws);

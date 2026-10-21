@@ -1,5 +1,4 @@
-# Locking: Super+Shift+x, after 10 minutes idle (screens off at 15), and
-# before sleep. No idle lock while a window is fullscreen.
+# Locking: Super+Shift+x, 10 minutes idle (screens off at 15), before sleep.
 { pkgs, osConfig, ... }:
 let c = osConfig.theme.colors; in
 {
@@ -21,8 +20,7 @@ let c = osConfig.theme.colors; in
         resumeCommand = "${pkgs.sway}/bin/swaymsg 'output * power on'";
       }
     ];
-    # lock before suspending (lid close), and on `loginctl lock-session`;
-    # swayidle runs with -w, so sleep waits until the lock is up
+    # lock before sleep and on loginctl lock-session
     events = {
       before-sleep = "${pkgs.swaylock}/bin/swaylock -f";
       lock = "${pkgs.swaylock}/bin/swaylock -f";

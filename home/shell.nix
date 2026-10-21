@@ -29,7 +29,7 @@
     };
 
     initContent = ''
-      # ── prompt (robbyrussell-equivalent, no framework) ──
+      # ── prompt (like robbyrussell) ──
       setopt PROMPT_SUBST
 
       git_prompt() {
@@ -43,17 +43,14 @@
       PROMPT='%(?:%F{green}➜:%F{red}➜)%f %F{cyan}%c%f $(git_prompt) '
 
       # ── functions ──
-      # hardware-configuration.nix is per machine: never committed, but kept
-      # staged, because a flake only sees files git knows about
+      # hardware-configuration.nix: staged so the flake sees it, never committed
       nxrebuild() {
         rm -f ~/.gtkrc-2.0.backup
         nxtheme || return
         sudo git -C /etc/nixos add -f hardware-configuration.nix &&
           sudo nixos-rebuild switch --flake "/etc/nixos#$(hostname)"
       }
-      # your colours (theme-edit's ~/.config/theme/colors.json) go to
-      # /etc/nixos/local-theme.json, staged but never committed, like
-      # hardware-configuration.nix; no file there: theme.nix's defaults
+      # colors.json to local-theme.json: staged, never committed
       nxtheme() {
         local src=~/.config/theme/colors.json dst=/etc/nixos/local-theme.json
         if [ -f "$src" ]; then
@@ -64,8 +61,7 @@
           sudo rm -f "$dst"
         fi
       }
-      # pull and rebuild. flake.lock comes from the repo: one changed here
-      # (an nxupdate that wasn't pushed) is dropped first
+      # pull and rebuild; an unpushed local flake.lock is dropped
       nxpull() {
         local g=(sudo -E git -C /etc/nixos)
         if ! "''${g[@]}" diff --quiet -- flake.lock; then
@@ -78,8 +74,7 @@
         fi
         nxrebuild
         local rc=$?
-        # a new weather key / birthdays from another machine (after the
-        # rebuild's output, so it's seen)
+        # secrets changed on another machine
         nxsecrets unpack --if-changed
         return $rc
       }
@@ -98,8 +93,7 @@
           nix eval "$flake#nixosConfigurations" --apply builtins.attrNames 2>&1 | tail -20
           return 1
         fi
-        # all hosts at once: about as long as the slowest one. In a subshell
-        # so the background jobs don't show up in the terminal's job list
+        # all hosts in parallel (subshell: no job list noise)
         tmp=$(mktemp -d)
         (
           for h in $hosts; do
@@ -120,19 +114,15 @@
         rm -rf "$tmp"
         return $fail
       }
-      # nxpush [--no-check] [message]: commit everything except
-      # hardware-configuration.nix and .gitignore'd files, then push (also
-      # earlier unpushed commits). Every host is checked first.
+      # nxpush [--no-check] [message]: check every host, commit, push
       nxpush() {
         local g=(sudo -E git -C /etc/nixos)
         local skip=(-- . ':(exclude)hardware-configuration.nix' ':(exclude)local-theme.json')
         local check=1
         if [ "''${1:-}" = --no-check ]; then check=0; shift; fi
-        # the weather key and birthdays into secrets.age when they've
-        # changed (no passphrase); stops if the repo's copy is newer
+        # changed secrets into secrets.age; stops if the repo's is newer
         nxsecrets pack --if-changed || { echo "nxpush: not pushed"; return 1; }
         "''${g[@]}" add -A || return
-        # nothing new and nothing unpushed: no need to check
         if "''${g[@]}" diff --cached --quiet "''${skip[@]}" &&
            [ "$("''${g[@]}" rev-list --count '@{u}..HEAD' 2>/dev/null)" = 0 ]; then
           echo "nxpush: nothing to push"

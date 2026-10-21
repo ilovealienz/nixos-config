@@ -1,7 +1,5 @@
-# nxshortcuts: searchable list of the desktop's shortcuts, in the terminal
-# (`nxshortcuts`) or as a popup on Super+/. The list below is the one place
-# they're written down; when you add or change a binding, update it here.
-# `nxshortcuts | grep …` prints plain text.
+# nxshortcuts (Super+/): searchable shortcuts list. Update it when bindings
+# change.
 # Source: ../pkgs/nxshortcuts/main.go
 { pkgs, lib, osConfig, ... }:
 let
@@ -150,7 +148,7 @@ in
 {
   home.packages = [ nxshortcuts ];
 
-  # popup in a floating foot (the foot-float rule in sway.nix)
+  # popup in a floating foot
   wayland.windowManager.sway.config.keybindings."Mod4+slash" =
     "exec foot --app-id foot-float ${lib.getExe nxshortcuts}";
 }

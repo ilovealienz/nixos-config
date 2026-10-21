@@ -1,15 +1,12 @@
-# The laptops (hosts/laptop.nix, hosts/x1carbon.nix): Intel graphics and a
-# battery charge limit.
+# Laptops: Intel graphics and the battery charge limit.
 { pkgs, ... }:
 {
-  # battery charge limit (on/off in the power menu): start charging below
-  # 85%, stop at 90%. Mostly unplugged, so close to a full charge.
+  # charge limit (toggled in the power menu): charge below 85%, stop at 90%
   services.udev.extraHwdb = ''
     battery:*:*:dmi:*
      CHARGE_LIMIT=85,90
   '';
 
-  # VAAPI video encode/decode on Intel graphics; mesa only covers AMD.
-  # iHD is for Broadwell and newer, i965 for older chips.
+  # Intel video acceleration: iHD (Broadwell and newer), i965 (older)
   hardware.graphics.extraPackages = [ pkgs.intel-media-driver pkgs.intel-vaapi-driver ];
 }

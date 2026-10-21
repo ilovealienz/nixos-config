@@ -1,6 +1,6 @@
 { pkgs, ... }:
 {
-  # root GUI apps (gparted etc) get a red-tinted Desert Night theme
+  # red-tinted theme for root GUI apps (gparted etc.)
   environment.systemPackages = [ pkgs.adw-gtk3 ];
 
   environment.etc."root-gtk/settings.ini".text = ''

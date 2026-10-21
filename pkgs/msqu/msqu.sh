@@ -1,13 +1,10 @@
-# msqu (my sway quick utils): small tools with a menu on Super+Shift+A and,
-# if they want one, a block on the bar.
+# msqu (my sway quick utils)
 #
-#   msqu                     the menu, in a floating terminal
-#   msqu menu [TOOL]         the menu, open on that tool's form (timer,
-#                            alarm, repeat or drink)
-#   msqu TOOL [args]         run a tool, e.g. msqu stopwatch stop
+#   msqu               the menu
+#   msqu menu [TOOL]   the menu, on that tool's form
+#   msqu TOOL [args]   run a tool, e.g. msqu stopwatch stop
 #
-# The menu and the tools are menu/ (Rust: msqu-ui, and msqu-tool behind
-# each msqu-TOOL). MSQU_TOOLS and MSQU_MENU are set by desktop/msqu.nix.
+# MSQU_TOOLS and MSQU_MENU come from desktop/msqu.nix.
 
 usage() {
   echo "usage: msqu [menu [TOOL] | TOOL [args]]   tools: $MSQU_TOOLS" >&2
@@ -17,7 +14,7 @@ usage() {
 case "${1:-menu}" in
   menu)
     shift || true
-    # its own app_id, so sway floats and sizes it (desktop/msqu.nix)
+    # own app_id for sway's float rule
     exec foot --app-id msqu "$MSQU_MENU" "$@"
     ;;
 esac

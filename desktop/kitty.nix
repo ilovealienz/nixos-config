@@ -11,11 +11,10 @@ in
       size = 12;
     };
     settings = {
-      # DesertNight by sainnhe
       foreground = "#${c.fg}";
       background = "#${c.bg}";
 
-      # black: on a light background it's the dark text
+      # black: dark text on a light background
       color0  = "#${if dark then c.surface else c.fgBright}";  color8  = "#${if dark then c.surface else c.muted}";
       color1  = "#${c.red}";  color9  = "#${c.red}";
       color2  = "#${c.green}";  color10 = "#${c.green}";
@@ -31,7 +30,7 @@ in
       inactive_tab_background = "#${c.bgDark}";
 
       cursor = "#${c.fg}";
-      # the same as selected rows in GTK apps
+      # same as GTK's selection
       selection_background = "#${c.selectionBg}";
       selection_foreground = "#${c.selectionFg}";
     };

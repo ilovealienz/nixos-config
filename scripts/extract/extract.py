@@ -1,20 +1,10 @@
 #!/usr/bin/env python3
-"""extract: pick a destination for an archive from a fuzzel menu, then
-extract it with a zenity progress bar.
+"""extract <archive>: pick a destination in fuzzel, extract with a zenity
+progress bar. Extracts to a temp folder first, so nothing is overwritten
+(name-2 instead) and a cancel leaves nothing. Several top-level entries get
+wrapped in a folder named after the archive.
 
-Usage: extract <archive>
-
-Everything is extracted into a hidden temporary folder next to the
-destination first, then moved into place, so nothing is ever overwritten
-(an existing name gets -2, -3, ...) and a cancelled or failed extraction
-leaves nothing behind.
-
-"Smart" destination follows file-roller's extract-here rule: an archive
-with a single top-level entry is extracted as-is, one with several
-top-level entries is wrapped in a folder named after the archive. So no
-foo/foo/ and no archive spilling files everywhere.
-
-Backends (all with a progress bar):
+Backends:
   zip family   Python zipfile   exact, restores Unix permissions + symlinks
   tar (+gz/bz2/xz/lzma)  Python tarfile  exact, "data" safety filter
   7z, rar, encrypted zip   7-Zip (7zz)   its own overall percentage

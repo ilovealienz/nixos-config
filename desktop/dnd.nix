@@ -1,5 +1,5 @@
-# Do not disturb: the bell block in waybar. Click for missed notifications,
-# right-click to turn do not disturb on / off (mako's dnd mode, mako.nix).
+# Do not disturb (waybar bell): click for missed notifications, right-click
+# to toggle.
 { config, pkgs, osConfig, ... }:
 let
   c = osConfig.theme.colors;
@@ -30,7 +30,6 @@ in
 {
   home.packages = [ dnd ];
 
-  # where it sits in the bar: modules-right in waybar.nix
   programs.waybar.settings.mainBar."custom/dnd" = {
     return-type = "json";
     interval = 5;

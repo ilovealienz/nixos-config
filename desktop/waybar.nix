@@ -12,16 +12,14 @@ let c = osConfig.theme.colors; in
 
       modules-left = [ "sway/workspaces" ];
       modules-center = [ "sway/window" ];
-      # left to right, after the blocks msqu.nix and birthdays.nix put first;
-      # custom/rec, custom/weather and custom/dnd are in screenrec.nix,
-      # weather.nix and dnd.nix
+      # msqu.nix and birthdays.nix add theirs first
       modules-right = [ "custom/rec" "tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "custom/dnd" "custom/awake" ];
 
       "sway/workspaces" = {
         disable-scroll = true;
         all-outputs = true;
         format = "{icon}";
-        # empty list = show on every output
+        # empty: every output
         persistent-workspaces = {
           "1" = [];
         };
@@ -86,7 +84,7 @@ let c = osConfig.theme.colors; in
         };
       };
 
-      # left-click stay awake, right-click game mode (desktop/awake.nix)
+      # awake.nix
       "custom/awake" = {
         return-type = "json";
         exec = "awake status";
@@ -94,8 +92,7 @@ let c = osConfig.theme.colors; in
         signal = 10;
         on-click = "awake left";
         on-click-right = "awake right";
-        # the click script refreshes the bar itself; waybar's own refresh
-        # on click raced it and showed the old state
+        # the script refreshes the bar itself (waybar's raced it)
         exec-on-event = false;
       };
     };
@@ -149,8 +146,7 @@ let c = osConfig.theme.colors; in
         color: #${c.fg};
       }
 
-      /* thin toggle sliver — dim = idle on, amber = staying awake,
-         green = game mode */
+      /* awake sliver: amber = staying awake, green = game mode */
       #custom-awake {
         min-width: 3px;
         margin: 0 0 0 4px;

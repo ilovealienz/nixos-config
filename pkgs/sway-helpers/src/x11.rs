@@ -1,8 +1,5 @@
-//! Just enough of the X11 protocol to hear attention requests from
-//! XWayland windows.
-//!
-//! Every packet from the server is 32 bytes, except replies and generic
-//! events, which say how much more follows.
+//! Just enough X11 to hear XWayland attention requests. Packets are 32
+//! bytes, except replies and generic events, which give their length.
 
 use std::env;
 use std::io::{self, Read, Write};

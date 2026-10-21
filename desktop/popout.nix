@@ -1,12 +1,6 @@
-# Super+Alt+V: pop the focused window out into a small window in the
-# bottom-right corner that stays on top and follows you to every workspace
-# on that monitor (a video, a call). Press it again on the popout to put it
-# back in the tiling; if it's drifted out of the corner, the press puts
-# it back in the corner first.
-# Brave's and LibreWolf's own picture-in-picture windows are popped out the
-# same way when they open.
-# Sway draws it over everything except a fullscreen window on the same
-# monitor; fullscreen on another monitor is fine.
+# Super+Alt+V: pop the window out to a small sticky window in the bottom-right
+# corner; again to put it back (or back in the corner if it drifted).
+# Browser picture-in-picture windows pop out automatically.
 { pkgs, lib, ... }:
 let
   popout = pkgs.writeShellApplication {
@@ -14,10 +8,8 @@ let
     runtimeInputs = with pkgs; [ sway jq ];
     text = ''
       tree=$(swaymsg -t get_tree)
-      # a window the picture-in-picture rule just marked, else the focused
-      # one, and the workspace you're on (where it goes: Brave's picture-in-
-      # picture is assigned to Brave's workspace, which can be on another
-      # monitor)
+      # a just-marked picture-in-picture window, else the focused one, and
+      # the current workspace
       read -r id type sticky marked x y w h wx wy ww wh wsname < <(jq -r '
         def wins: .. | objects | select(.type? == "workspace") as $ws
           | $ws | .. | objects | {c: ., ws: $ws};
@@ -35,10 +27,7 @@ let
       if [ "$marked" = true ]; then
         swaymsg -q "[con_id=$id] unmark _popout_new, move container to workspace \"$wsname\""
       elif [ "$type" = floating_con ] && [ "$sticky" = true ]; then
-        # already popped out: back to the tiling if it's in the corner,
-        # else back to the corner (an X11 window that resizes itself, like
-        # Brave's picture-in-picture when the video changes shape, gets
-        # re-centred by sway)
+        # popped out: back to tiling if in the corner, else to the corner
         dx=$((wx + ww - m - x - w)); dy=$((wy + wh - m - y - h))
         if [ "''${dx#-}" -le 4 ] && [ "''${dy#-}" -le 4 ]; then
           swaymsg -q "[con_id=$id] sticky disable, floating disable"
@@ -47,7 +36,7 @@ let
         fi
         exit 0
       fi
-      # a quarter of the screen wide, 16:9, 16px from the corner
+      # quarter screen width, 16:9
       w=$((ww / 4)); h=$((w * 9 / 16))
       swaymsg -q "[con_id=$id] fullscreen disable, floating enable, sticky enable, resize set $w px $h px, $(corner "$w" "$h")"
     '';
@@ -57,8 +46,7 @@ in
   home.packages = [ popout ];
   wayland.windowManager.sway.config = {
     keybindings."Mod4+Alt+v" = "exec ${lib.getExe popout}";
-    # picture-in-picture windows: Brave's "Picture in picture", LibreWolf's
-    # "Picture-in-Picture"
+    # picture-in-picture windows (Brave, LibreWolf)
     window.commands = [{
       criteria.title = "^Picture[ -]in[ -][Pp]icture$";
       command = "floating enable, sticky enable, mark --add _popout_new, exec ${lib.getExe popout}";

@@ -1,22 +1,10 @@
-//! attention shows how many times XWayland windows asked for attention in
-//! their title, and can mark them urgent in sway.
+//! attention: sway ignores X11 _NET_WM_STATE_DEMANDS_ATTENTION, so this
+//! hears it on the XWayland root window and shows "(N) <title>"; with
+//! $XDG_STATE_HOME/xwayland-attention/urgent it also marks the window urgent.
+//! Focusing resets it.
 //!
-//! Wine (and other X11 apps) request attention by sending a _NET_WM_STATE
-//! client message that adds _NET_WM_STATE_DEMANDS_ATTENTION. Sway ignores
-//! that, so this listens for it on the XWayland root window and instead:
-//!   - sets the title to "(N) <title>", counting requests like Discord does
-//!   - if $XDG_STATE_HOME/xwayland-attention/urgent exists (toggled by
-//!     attention-urgent-toggle), also runs sway's `urgent enable`
-//!
-//! Focusing the window resets the count and the title. Requests from the
-//! window you're already looking at are ignored.
-//!
-//! XWayland is left free to exit when no X11 apps are open: this only
-//! connects to it once sway reports an X11 window, and tells it not to
-//! stay running on this connection's account (XFixes disconnect mode).
-//! Connecting with no X11 app open would start XWayland and keep it
-//! running, so it only connects while XWayland is running with an X11
-//! window open, and checks again once connected.
+//! Only connects while an X11 window is open, with XFixes disconnect mode,
+//! so XWayland can still exit.
 
 use crate::ipc::{Sway, WINDOW_EVENT};
 use crate::json::{Node, WindowEvent};
@@ -93,8 +81,7 @@ impl State {
         }
     }
 
-    /// Connects to XWayland if it isn't already, as long as an X11 window
-    /// is open.
+    /// Connects to XWayland while an X11 window is open.
     /// Whether sway has an XWayland window open; also notes which one
     /// has focus.
     fn any_x_windows(&mut self) -> bool {

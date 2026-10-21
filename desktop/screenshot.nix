@@ -1,9 +1,8 @@
-# Screenshots. Print: freeze the screen, select, then annotate, upload,
-# copy, save, open or delete. Super+Shift+s: select straight to the clipboard.
+# Screenshots. Print: select, then annotate/upload/copy/save. Super+Shift+s:
+# select to the clipboard.
 { config, pkgs, ... }:
 let
-  # helper that runs INSIDE the freeze; separate script so we don't
-  # have to self-reference via $0
+  # runs inside the freeze
   screenshot-capture = pkgs.writeShellScriptBin "screenshot-capture" ''
     out=$1
     geom=$(${pkgs.slurp}/bin/slurp -d 2>/dev/null)
@@ -22,7 +21,7 @@ let
     mkdir -p "$dir"
     file="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
 
-    # freeze the screen so nothing moves while you select
+    # freeze the screen while selecting
     ${pkgs.wayfreeze}/bin/wayfreeze --hide-cursor \
       --after-freeze-cmd "${screenshot-capture}/bin/screenshot-capture '$file'" \
       >/dev/null 2>&1
@@ -50,8 +49,7 @@ $actions"
         --output-filename "$file" --early-exit \
         --copy-command ${pkgs.wl-clipboard}/bin/wl-copy
       after=$(stat -c %Y "$file" 2>/dev/null)
-      # ctrl+s writes the file; ctrl+c only copies and exits without
-      # touching it — so recover the annotated image from the clipboard
+      # ctrl+c in satty only copies: take it from the clipboard
       if [ "$before" = "$after" ]; then
         tmp=$(mktemp -t satty-XXXXXX.png)
         if ${pkgs.wl-clipboard}/bin/wl-paste --type image/png > "$tmp" 2>/dev/null \

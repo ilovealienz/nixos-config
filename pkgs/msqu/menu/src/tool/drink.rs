@@ -1,10 +1,5 @@
-//! msqu drink: a reminder to drink water every so often, until stopped,
-//! with repeat's bell. On the bar in magenta, showing the minutes to the
-//! next one. Skipped while the screen is locked, so you don't come back to
-//! a pile of them; the next one still comes on time. Each stays up until
-//! it's clicked away, and a new one takes the place of one still showing
-//! (mako's x-canonical-private-synchronous hint: the one with the same
-//! tag is replaced, and nothing else can be).
+//! msqu drink: a drink reminder every so often, skipped while locked. A new
+//! one replaces one still showing (x-canonical-private-synchronous).
 //!
 //!   msqu drink start SECONDS
 //!   msqu drink toggle   pause / resume (clicking the block)
@@ -17,9 +12,7 @@ use super::{notify, num, screen_locked, stale, words, State};
 use crate::model::{hms, now};
 
 const FILE: &str = "drink";
-/// where the shell version kept the last notification's id, to replace
-/// it; an id can belong to another app's notification after mako
-/// restarts, so it's not used any more
+/// the old shell version's notification id file, no longer used
 const OLD_LAST: &str = ".notify";
 
 struct Drink {

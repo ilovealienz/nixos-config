@@ -1,17 +1,10 @@
-//! The palettes in theme.nix (read only) and your colours in
-//! ~/.config/theme/colors.json (read and written).
-//!
-//! theme.nix gives the layout: the colour names with their comments, the
-//! dark and light defaults, and the worked-out colours
-//! (`name = mix c.a c.b 0.67;`). colors.json holds the variant in use and
-//! only the colours that differ from the defaults:
+//! theme.nix (read only: palettes, derived colours, iconSets, presets) and
+//! colors.json (read and written: variant, changed colours, icons,
+//! wallpaper; unknown keys kept):
 //!
 //!   { "variant": "light", "dark": { "accent": "4fa3e0" }, "light": {},
 //!     "icons": "papirus",
 //!     "wallpaper": { "from": "/path/to/the/picked.png", "mode": "fill" } }
-//!
-//! The icon sets come from theme.nix's `iconSets`, one per line. Keys in
-//! colors.json this doesn't know are kept as they are when saving.
 
 pub type Rgb = [u8; 3];
 
@@ -55,6 +48,14 @@ pub struct IconSet {
     pub page: Option<String>,
 }
 
+/// a colour preset: every colour, dark and light
+pub struct Preset {
+    pub key: String,
+    /// shown in the picker: the comment after it, or the key
+    pub label: String,
+    pub colours: [Vec<(String, Rgb)>; 2],
+}
+
 /// how sway fits the wallpaper to a screen (sway-output(5))
 pub const MODES: [&str; 5] = ["fill", "fit", "center", "tile", "stretch"];
 
@@ -85,6 +86,8 @@ pub struct Theme {
     pub saved_wall_folders: Vec<String>,
     /// keys of colors.json this doesn't know, kept as JSON text
     pub extra: Vec<(String, String)>,
+    /// the defaults first, then theme.nix's presets
+    pub presets: Vec<Preset>,
 }
 
 pub fn parse_hex(s: &str) -> Option<Rgb> {
@@ -244,6 +247,87 @@ fn icon_sets(lines: &[&str]) -> Result<(Vec<IconSet>, String), String> {
     Ok((sets, default))
 }
 
+/// `  dark = { bg = "24221c"; fg = "d4b07b"; };` -> (0, [("bg", ..), ("fg", ..)])
+fn preset_variant(l: &str) -> Option<(usize, Vec<(String, Rgb)>)> {
+    let (v, rest) = l.split_once('=')?;
+    let v = VARIANTS.iter().position(|n| *n == v.trim())?;
+    let body = rest
+        .trim()
+        .strip_prefix('{')?
+        .strip_suffix(';')?
+        .trim_end()
+        .strip_suffix('}')?;
+    let mut out = Vec::new();
+    for field in body.split(';').map(str::trim).filter(|f| !f.is_empty()) {
+        let (k, c) = field.split_once('=')?;
+        let (k, c) = (k.trim(), c.trim().strip_prefix('"')?.strip_suffix('"')?);
+        if !is_ident(k) || c.len() != 6 {
+            return None;
+        }
+        out.push((k.to_string(), parse_hex(c)?));
+    }
+    Some((v, out))
+}
+
+/// theme.nix's presets: `key = {  # Label`, a dark and a light line,
+/// `};`; none if it has no presets
+fn parse_presets(lines: &[&str]) -> Result<Vec<Preset>, String> {
+    let Some(start) = lines.iter().position(|l| l.trim() == "presets = {") else {
+        return Ok(Vec::new());
+    };
+    let mut out = Vec::new();
+    let mut cur: Option<(Preset, [bool; 2])> = None;
+    for (i, l) in lines.iter().enumerate().skip(start + 1) {
+        let t = l.trim();
+        if t.is_empty() || t.starts_with('#') {
+            continue;
+        }
+        let bad = || format!("line {}: not a preset line:\n{t}", i + 1);
+        if t == "};" {
+            match cur.take() {
+                Some((p, [true, true])) => out.push(p),
+                Some((p, _)) => {
+                    return Err(format!("preset {}: needs a dark and a light line", p.key));
+                }
+                None => return Ok(out),
+            }
+            continue;
+        }
+        match &mut cur {
+            None => {
+                let (code, label) = match t.split_once('#') {
+                    Some((c, m)) => (c.trim(), m.trim()),
+                    None => (t, ""),
+                };
+                let key = code
+                    .strip_suffix('{')
+                    .and_then(|c| c.trim_end().strip_suffix('='))
+                    .map(str::trim)
+                    .filter(|k| is_ident(k))
+                    .ok_or_else(bad)?;
+                let label = if label.is_empty() { key } else { label };
+                cur = Some((
+                    Preset {
+                        key: key.to_string(),
+                        label: label.to_string(),
+                        colours: Default::default(),
+                    },
+                    [false; 2],
+                ));
+            }
+            Some((p, seen)) => {
+                let (v, colours) = preset_variant(t).ok_or_else(bad)?;
+                if seen[v] {
+                    return Err(format!("preset {}: two {} lines", p.key, VARIANTS[v]));
+                }
+                seen[v] = true;
+                p.colours[v] = colours;
+            }
+        }
+    }
+    Err("presets = { ... }; isn't closed".into())
+}
+
 /// `  name = mix c.accent c.bg 0.67;  # comment`
 fn derived_line(l: &str) -> Option<Derived> {
     let (code, comment) = match l.split_once('#') {
@@ -355,6 +439,42 @@ pub fn parse(text: &str) -> Result<Theme, String> {
             .collect();
     }
     let (icon_sets, icon_default) = icon_sets(&lines)?;
+
+    // the defaults, then the presets, each with exactly the palette's colours
+    let default_label = lines
+        .iter()
+        .find_map(|l| {
+            l.trim()
+                .strip_prefix("defaultPreset = \"")?
+                .strip_suffix("\";")
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "defaults".into());
+    let mut presets = vec![Preset {
+        key: String::new(),
+        label: default_label,
+        colours: [0, 1].map(|v| {
+            sections
+                .iter()
+                .flat_map(|s| s.entries.iter())
+                .map(|e| (e.name.clone(), e.default[v]))
+                .collect()
+        }),
+    }];
+    for p in parse_presets(&lines)? {
+        for (v, colours) in p.colours.iter().enumerate() {
+            let mut have: Vec<&str> = colours.iter().map(|(n, _)| n.as_str()).collect();
+            have.sort();
+            if have != dn {
+                return Err(format!(
+                    "preset {}: {} must have every colour of the palettes, once",
+                    p.key, VARIANTS[v]
+                ));
+            }
+        }
+        presets.push(p);
+    }
+
     let theme = Theme {
         sections,
         derived,
@@ -369,6 +489,7 @@ pub fn parse(text: &str) -> Result<Theme, String> {
         wall_folders: Vec::new(),
         saved_wall_folders: Vec::new(),
         extra: Vec::new(),
+        presets,
     };
     for d in &theme.derived {
         if theme.get(&d.a).is_none() || theme.get(&d.b).is_none() {
@@ -437,6 +558,32 @@ impl Theme {
         self.icons = self.saved_icons.clone();
         self.wallpaper = self.saved_wallpaper.clone();
         self.wall_folders = self.saved_wall_folders.clone();
+    }
+
+    /// every colour, dark and light, set to preset i's (unsaved)
+    pub fn apply_preset(&mut self, i: usize) {
+        let colours = self.presets[i].colours.clone();
+        for e in self.entries_mut() {
+            for (v, list) in colours.iter().enumerate() {
+                if let Some((_, c)) = list.iter().find(|(n, _)| *n == e.name) {
+                    e.color[v] = *c;
+                }
+            }
+        }
+    }
+
+    /// the preset whose colours, dark and light, these are, if any (two
+    /// presets can share a variant: Copper's light is Desert Night's)
+    pub fn preset_now(&self) -> Option<usize> {
+        self.presets.iter().position(|p| {
+            self.entries().all(|e| {
+                (0..2).all(|v| {
+                    p.colours[v]
+                        .iter()
+                        .any(|(n, c)| *n == e.name && *c == e.color[v])
+                })
+            })
+        })
     }
 
     pub fn icon_set(&self, key: &str) -> Option<&IconSet> {
@@ -529,11 +676,7 @@ pub struct Local {
     pub extra: Vec<(String, String)>,
 }
 
-/// Reads colors.json: an object with "variant" (a string), "dark"/"light"
-/// (objects of 6-digit hex strings), "icons" (a string) and "wallpaper"
-/// (an object: "from", a path, and "mode", one of MODES) and
-/// "wallpaperFolders" (a list of folders). Other keys are kept as they
-/// are (strings, objects and lists only).
+/// Reads colors.json; unknown keys are kept (strings, objects and lists).
 pub fn parse_local(text: &str) -> Result<Local, String> {
     let mut p = Json {
         s: text.as_bytes(),
@@ -742,7 +885,7 @@ mod tests {
         let names: Vec<_> = t.entries().map(|e| e.name.as_str()).collect();
         assert_eq!(names.len(), 16);
         assert_eq!(names[0], "bgDark");
-        assert_eq!(t.c("accent"), [0xe5, 0xa4, 0x40]);
+        assert_eq!(t.c("accent"), [0xc8, 0x6f, 0x42]);
         let acc = t.entries().find(|e| e.name == "accent").unwrap();
         assert_eq!(hex(acc.default[1]), "9c5a08");
         assert_eq!(
@@ -754,7 +897,7 @@ mod tests {
             .iter()
             .find(|s| s.entries.iter().any(|e| e.name == "accent"))
             .unwrap();
-        assert_eq!(s.notes, ["original amber: e5a440"]);
+        assert_eq!(s.notes, ["Desert Night's amber (a preset): e5a440"]);
         assert_eq!(t.derived.len(), 2);
     }
 
@@ -762,8 +905,8 @@ mod tests {
     fn derived_matches_nix() {
         // from nix-instantiate --eval of theme.nix
         let mut t = parse(FILE).unwrap();
-        assert_eq!(hex(t.c("selectionBg")), "a57934");
-        assert_eq!(hex(t.c("accentDim")), "4e3f24");
+        assert_eq!(hex(t.c("selectionBg")), "945535");
+        assert_eq!(hex(t.c("accentDim")), "4e3123");
         t.load_local(&parse_local(r#"{"variant":"light","light":{"accent":"115599"}}"#).unwrap());
         assert_eq!(hex(t.c("bg")), "f4eee0");
         assert_eq!(hex(t.c("selectionBg")), "5c87b0");
@@ -943,6 +1086,80 @@ mod tests {
         ] {
             assert!(icon_line(bad).is_none(), "{bad}");
         }
+    }
+
+    #[test]
+    fn presets_from_theme_nix() {
+        let mut t = parse(FILE).unwrap();
+        let labels: Vec<_> = t.presets.iter().map(|p| p.label.as_str()).collect();
+        assert_eq!(labels, ["Copper", "Desert Night"]);
+        assert_eq!(t.presets[1].key, "desert-night");
+        assert_eq!(t.preset_now(), Some(0));
+        // Desert Night: the old defaults, dark and light
+        t.apply_preset(1);
+        assert_eq!(hex(t.c("accent")), "e5a440");
+        assert_eq!(hex(t.c("bg")), "24221c");
+        assert_eq!(hex(t.c("selectionBg")), "a57934");
+        assert_eq!(t.preset_now(), Some(1));
+        // the seven dark colours that differ from Copper; light is the same
+        assert_eq!(t.changed(), 7);
+        let json = t.to_json();
+        assert!(json.contains("\"accent\": \"e5a440\"") && json.contains("\"light\": {}"));
+        // saved and read back, it's still Desert Night
+        let mut again = parse(FILE).unwrap();
+        again.load_local(&parse_local(&json).unwrap());
+        assert_eq!(again.preset_now(), Some(1));
+        // undo, or picking the default, goes back
+        t.undo_all();
+        assert_eq!((t.changed(), t.preset_now()), (0, Some(0)));
+        t.apply_preset(1);
+        t.apply_preset(0);
+        assert_eq!(t.changed(), 0);
+        // one colour changed by hand: no preset matches
+        t.entries_mut().find(|e| e.name == "red").unwrap().color[0] = [1, 2, 3];
+        assert_eq!(t.preset_now(), None);
+        // dark and light are both matched: in light, Desert Night is still
+        // Desert Night though its light colours are Copper's
+        t.undo_all();
+        t.apply_preset(1);
+        t.variant = 1;
+        assert_eq!(t.preset_now(), Some(1));
+        t.entries_mut().find(|e| e.name == "red").unwrap().color[0] = [1, 2, 3];
+        assert_eq!(t.preset_now(), None);
+    }
+
+    #[test]
+    fn bad_presets() {
+        let with = |old: &str, new: &str| {
+            assert!(FILE.contains(old), "{old}");
+            parse(&FILE.replacen(old, new, 1))
+        };
+        // a colour missing, unknown, twice, or not hex
+        assert!(with("bg = \"24221c\"; ", "").is_err());
+        assert!(with("bg = \"24221c\"; ", "bg = \"24221c\"; nope = \"123456\"; ").is_err());
+        assert!(with("bg = \"24221c\"; ", "bg = \"24221c\"; bg = \"24221c\"; ").is_err());
+        assert!(with("bg = \"24221c\"; ", "bg = \"24221g\"; ").is_err());
+        // no light line, two dark lines, not closed
+        let light = FILE
+            .lines()
+            .find(|l| l.trim_start().starts_with("light = { bgDark"))
+            .unwrap();
+        assert!(with(&format!("{light}\n"), "").is_err());
+        let dark = FILE
+            .lines()
+            .find(|l| l.trim_start().starts_with("dark = { bgDark"))
+            .unwrap();
+        assert!(with(&format!("{light}\n"), &format!("{dark}\n")).is_err());
+        assert!(with("    };\n  };\n\n  # Worked out", "    };\n\n  # Worked out").is_err());
+        // a bad name
+        assert!(with("desert-night = {  # Desert Night", "desert night = {").is_err());
+        // a theme.nix without presets still reads: just the defaults
+        let s = FILE.find("  presets = {").unwrap();
+        let e = FILE[s..].find("\n  };\n").unwrap() + s + 5;
+        let old = format!("{}{}", &FILE[..s], &FILE[e..]);
+        let t = parse(&old).unwrap();
+        assert_eq!(t.presets.len(), 1);
+        assert_eq!(t.presets[0].label, "Copper");
     }
 
     #[test]

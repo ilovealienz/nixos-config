@@ -31,8 +31,7 @@
   # Bootloader
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  # the last 10 NixOS generations in the boot menu, so the boot partition
-  # can't fill up between cleanups (Windows' entry isn't affected)
+  # keep the last 10 generations in the boot menu
   boot.loader.systemd-boot.configurationLimit = 10;
 
   # SFTP support
@@ -41,8 +40,7 @@
   # Networking
   networking.networkmanager.enable = true;
 
-  # GitHub's host key (nxpush, nxpull), from GitHub's docs; fingerprint
-  # SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU
+  # GitHub's SSH host key (nxpush, nxpull)
   programs.ssh.knownHosts."github.com".publicKey =
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
 
@@ -93,7 +91,7 @@
     ELECTRON_OZONE_PLATFORM_HINT = "auto";
   };
 
-  # in a terminal: the default browser, and Brave for what wants Chromium
+  # browser names some terminal programs look for
   environment.shellAliases = {
     chromium-browser = "brave";
     x-www-browser = "librewolf";
@@ -116,11 +114,10 @@
 
   # Flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  # identical files in /nix/store are stored once (hard links)
+  # hard-link identical store files
   nix.settings.auto-optimise-store = true;
 
-  # weekly: old system generations and user profiles (the last 3 of each
-  # kept), then whatever nothing uses any more; nxclean does it now
+  # weekly cleanup, keeping the last 3 generations (nxclean runs it now)
   programs.nh = {
     enable = true;
     clean = {

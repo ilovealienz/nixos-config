@@ -1,8 +1,7 @@
 { ... }:
 {
   imports = [
-    # sway itself, then its tools (each with its keys); the monitors are
-    # per machine, imported by hosts/<host>.nix
+    # sway, then its tools; monitors come from hosts/<host>.nix
     ./sway.nix
     ./menus.nix
     ./wallpaper.nix

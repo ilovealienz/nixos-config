@@ -1,7 +1,5 @@
-# Right-click "Extract…" for archives in Thunar.
-# A fuzzel menu picks where it goes, zenity shows progress. Never
-# overwrites (name-2 instead), and a cancel or failure leaves nothing.
-# Script: ../scripts/extract/extract.py, Thunar menu entry: ../scripts/extract/uca_merge.py
+# Thunar's right-click "Extract…" for archives. Never overwrites.
+# Script: ../scripts/extract/extract.py, menu entry: ../scripts/extract/uca_merge.py
 { pkgs, lib, ... }:
 let
   extract = pkgs.runCommand "extract" {
@@ -13,13 +11,13 @@ let
       --add-flags $out/libexec/extract.py \
       --prefix PATH : ${lib.makeBinPath (with pkgs; [
         fuzzel zenity libnotify wl-clipboard
-        _7zz-rar   # 7z, rar, encrypted zips (unfree: includes the RAR decoder)
+        _7zz-rar   # 7z, rar, encrypted zips
         libarchive # bsdtar: tar.zst, tar.lz, tar.lz4, cpio, deb, rpm
-        zstd lz4 lzip gzip  # single .zst/.lz4/.lz/.Z files (lz4 also for tar.lz4)
+        zstd lz4 lzip gzip  # single .zst/.lz4/.lz/.Z files
       ])}
   '';
 
-  # Thunar matches these case-sensitively, so list upper case too
+  # Thunar is case-sensitive: upper case too
   exts = [
     # common
     "zip" "7z" "rar" "tar" "tar.gz" "tgz" "tar.bz2" "tbz2" "tar.xz" "txz"
@@ -37,11 +35,8 @@ let
   patterns = lib.concatStringsSep ";"
     (lib.concatMap (e: [ "*.${e}" "*.${lib.toUpper e}" ]) exts);
 
-  # Thunar custom actions, kept in Thunar's own (editable) uca.xml.
-  # On every rebuild these are added if missing; afterwards they're yours
-  # to edit in Thunar's "Configure custom actions" window. Only the command
-  # is kept pointing at the current Nix store path (or replaced if it's
-  # still the old default). Your own actions are never touched.
+  # Thunar custom actions: added to uca.xml if missing, commands kept current,
+  # otherwise editable in Thunar
   ucaActions = [
     {
       name = "Open Terminal Here";

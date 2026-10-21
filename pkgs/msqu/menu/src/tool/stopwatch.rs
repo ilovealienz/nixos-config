@@ -1,4 +1,4 @@
-//! msqu stopwatch: counts up on the bar (green).
+//! msqu stopwatch: counts up.
 //!
 //!   msqu stopwatch start    from 0 (a running one starts again)
 //!   msqu stopwatch toggle   pause / resume (clicking the block)

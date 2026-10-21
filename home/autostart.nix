@@ -1,6 +1,5 @@
 { pkgs, lib, ... }:
 let
-  # toggle
   autostart = {
     spotify = true;
     signal  = true;

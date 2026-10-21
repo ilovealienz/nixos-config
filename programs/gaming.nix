@@ -1,13 +1,7 @@
 { pkgs, ... }:
 let
-  # While a game runs, GameMode asks power-profiles-daemon to hold the
-  # performance profile; when the hold ends, power-profiles-daemon goes
-  # back to the profile you picked. The hold ends when the game does, if
-  # GameMode stops, or if you pick a profile yourself meanwhile.
-  # GameMode doesn't change the CPU governor or platform profile itself:
-  # that needs the gamemode group, which you're not in, so
-  # power-profiles-daemon stays in charge of the CPU.
-  # Games use GameMode through Steam's launch options: gamemoderun %command%
+  # performance profile while a game runs (Steam launch option:
+  # gamemoderun %command%), back to your profile after
   gamemodeHold = pkgs.writeShellScript "gamemode-power-hold" ''
     # gamemoded's service has only pkexec on its PATH
     export PATH=${pkgs.lib.makeBinPath (with pkgs; [ coreutils gnugrep gawk util-linux bash power-profiles-daemon ])}
@@ -22,8 +16,7 @@ let
     case "$1" in
       start)
         release   # one left over from a crash
-        # GameMode runs this through sh -c: it's the parent, or the
-        # grandparent if sh didn't replace itself with this script
+        # gamemoded is the parent or grandparent (via sh -c)
         wait="${pkgs.coreutils}/bin/sleep infinity"
         for gm in "$PPID" "$(${pkgs.gawk}/bin/awk '/^PPid:/ { print $2 }' "/proc/$PPID/status")"; do
           if ${pkgs.gnugrep}/bin/grep -qs gamemode "/proc/$gm/comm"; then
@@ -31,7 +24,7 @@ let
             break
           fi
         done
-        # fully detached: GameMode waits for this script's output to close
+        # detached: GameMode waits for this script's output to close
         ${pkgs.util-linux}/bin/setsid -f ${pkgs.bash}/bin/bash -c '
           echo $$ > "$1"
           exec ${pkgs.power-profiles-daemon}/bin/powerprofilesctl launch \
@@ -52,12 +45,11 @@ in
       start = "${gamemodeHold} start";
       end = "${gamemodeHold} end";
     };
-    # nothing provides org.freedesktop.ScreenSaver on sway; fullscreen
-    # windows keep the screen awake through sway's inhibit_idle instead
+    # no screensaver service on sway; inhibit_idle covers fullscreen
     settings.general.inhibit_screensaver = 0;
   };
 
-  # its ports are opened on the pc only (hosts/pc.nix)
+  # ports opened in hosts/pc.nix
   services.sunshine = {
     enable = true;
     autoStart = false;

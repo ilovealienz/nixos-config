@@ -1,50 +1,23 @@
-# Window and group helpers.
+# Window and group helpers, one Rust program (../pkgs/sway-helpers/src/):
 #
-# Small additions to sway, in one Rust program (standard library only,
-# ~2.5MB of RAM in total). Each runs in its own thread and is restarted on
-# its own if it crashes.
+#   group-drag   Super+Shift+drag moves a whole tab group
+#   app-group    related apps open as one tab group (Super+Alt+g toggles)
+#   group-end    a tab group of one becomes a plain window
+#   open-beside  new windows open beside, not below (Super+s/t to override)
+#   attention    XWayland attention requests shown as a count in the title
+#                (Super+u also marks them urgent)
 #
-#   group-drag  Super+Shift+drag moves a whole tab group: drag any window
-#               of the group and the rest follows it once it's dropped, in
-#               the same order. Super+drag still moves a single window.
-#   app-group   related apps join one tabbed group when they open; after
-#               that they're left alone. Super+Alt+g pauses/resumes it.
-#   group-end   a tab group down to one window is removed, leaving a plain
-#               window, so new windows open beside it rather than as tabs:
-#               at once if the other was closed (Super+q), 10 seconds
-#               later if it was moved out or floated, so it can be put back.
-#               A split left with one window after a close is removed too.
-#   open-beside new windows never open underneath another: one that lands
-#               in a vertical split (after Super+Shift+j/k, say) is moved
-#               to the right of it. Super+s or Super+t first lets the next
-#               one open below.
-#   attention   XWayland apps (Wine/IMVU, Steam chats...) ask for attention
-#               in a way sway ignores; the count is shown in the title,
-#               e.g. "(3) the rock - IMVU", reset when you focus the window.
-#               Super+U toggles also marking them urgent (red border + red
-#               workspace). XWayland can still exit when no X11 app is open.
-#
-# Source: ../pkgs/sway-helpers/src/
-#
-# And two scripts:
-#
-#   fullscreen-toggle  Super+f; Proton games revert fullscreen while tiled,
-#                      so they're floated first
-#   sway-cycle-group   Super+Tab cycles the tabs of a group; Super+g groups
-#                      a window with the ones beside it, or ungroups it;
-#                      Super+Shift+j/k move up / down, out of a group if
-#                      it's in one
+# Scripts: fullscreen-toggle (Super+f) and sway-cycle-group (Super+Tab,
+# Super+g, Super+Shift+j/k).
 { pkgs, lib, ... }:
 let
-  # group name -> apps (Wayland app_id or XWayland class, case-insensitive).
-  # To check a window: swaymsg -t get_tree | grep -E '"(app_id|class)"'
+  # group -> app_ids or XWayland classes (any case)
   groups = {
     chat = [ "vesktop" "signal" "ferdium" "org.telegram.desktop" "TelegramDesktop" ];
     minecraft = [ "org.prismlauncher.PrismLauncher" "com.mojang.minecraft" ];
   };
 
-  # added after the title in every title attention sets; keep it the same
-  # as the `title_format "%title [XWayland]"` rule in sway.nix
+  # must match the title_format rule in sway.nix
   titleSuffix = " [XWayland]";
 
   swayHelpers = pkgs.rustPlatform.buildRustPackage {
@@ -54,7 +27,7 @@ let
     cargoLock.lockFile = ../pkgs/sway-helpers/Cargo.lock;   # no dependencies
   };
 
-  # flag files the program checks; each toggle flips one
+  # each toggle flips a flag file
   toggle = name: flag: on: off: title: pkgs.writeShellApplication {
     inherit name;
     runtimeInputs = [ pkgs.coreutils pkgs.libnotify ];
@@ -70,12 +43,10 @@ let
         -t 1500 "${title}" "$state"
     '';
   };
-  # the file pauses grouping, so creating it turns grouping off
   groupToggle = toggle "app-group-toggle" "app-group/off" "off" "on" "app grouping";
   urgentToggle = toggle "attention-urgent-toggle" "xwayland-attention/urgent" "on" "off" "xwayland urgent";
 
-  # ── Super+f: Proton games revert fullscreen while tiled, so float
-  # them first; pressing again returns them to tiling ──
+  # ── Super+f: Proton games are floated first (they revert fullscreen tiled) ──
   fsToggle = pkgs.writeShellApplication {
     name = "fullscreen-toggle";
     runtimeInputs = [ pkgs.jq pkgs.sway ];
@@ -90,14 +61,12 @@ let
       esac
 
       if [ "$fs" != 0 ]; then
-        # one step at a time: Wine ignores size changes that arrive while
-        # it is still handling the fullscreen state change
+        # one step at a time: Wine drops changes mid-transition
         swaymsg -q "[con_id=$id] fullscreen disable"
         sleep 0.2
         swaymsg -q "[con_id=$id] floating disable"
         sleep 0.2
-        # resend the tile size in case Wine missed it: a border change
-        # makes sway configure the window again
+        # a border change resends the size
         [ "$border" = none ] && other=pixel || other=none
         case "$border" in normal|pixel) restore="$border $width" ;; *) restore=$border ;; esac
         swaymsg -q "[con_id=$id] border $other"
@@ -142,8 +111,7 @@ let
               fi ;;
             group)
               if ingroup; then
-                # ungroup: always side by side (a toggle would bring back
-                # whatever split the group was made from)
+                # ungroup side by side
                 swaymsg -q 'layout splith'
               elif [[ $tgt != - && $sibs != - ]]; then
                 cmds="[con_id=$tgt] mark --add __grp"
@@ -205,7 +173,7 @@ in
     "Mod4+Shift+j" = "exec ${lib.getExe cycleGroup} down";
   };
 
-  # group-drag: Super then Shift, or Shift then Super (either side)
+  # group-drag: Super and Shift in either order
   wayland.windowManager.sway.extraConfig = ''
     bindsym --no-repeat Mod4+Shift_L nop group-drag
     bindsym --no-repeat Mod4+Shift_R nop group-drag
