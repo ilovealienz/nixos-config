@@ -7,6 +7,8 @@ REPO="https://github.com/ilovealienz/nixos-config"
 NIXOS_DIR="/etc/nixos"
 TMP_CLONE="/tmp/nixos-config-clone"
 USER_NAME="pc"
+# installed from Flathub on a new machine (more later: flatpak install flathub <id>)
+FLATPAKS=(org.vinegarhq.Sober com.usebottles.bottles)
 
 # flakes are off on a fresh install
 export NIX_CONFIG="experimental-features = nix-command flakes"
@@ -88,11 +90,11 @@ EOF
   say "creating xdg user directories..."
   sudo -u "$USER_NAME" xdg-user-dirs-update 2>/dev/null || true
 
+  local s
   # the weather key and birthday list, from the repo's encrypted copy
   if [ -f "$NIXOS_DIR/secrets.age" ]; then
     echo
     say "put the weather key and birthdays in place? (passphrase in Bitwarden)"
-    local s
     read -rp "   [Y/n] " s
     if [[ ! "$s" =~ ^[Nn] ]]; then
       until sudo -u "$USER_NAME" -i nxsecrets unpack; do
@@ -100,6 +102,15 @@ EOF
         [[ "$s" =~ ^[Nn] ]] && { warn "skipped: nxsecrets unpack later"; break; }
       done
     fi
+  fi
+
+  echo
+  say "add Flathub and install ${FLATPAKS[*]}?"
+  read -rp "   [Y/n] " s
+  if [[ "$s" =~ ^[Nn] ]]; then
+    warn "skipped: repair → 6 later"
+  else
+    flatpaks
   fi
 
   echo
@@ -158,6 +169,27 @@ github_push() {
 }
 
 # ─────────────────────────────────────────────────────────────────────
+# Flathub and the flatpaks above (needs the network)
+# ─────────────────────────────────────────────────────────────────────
+flatpaks() {
+  local fp=/run/current-system/sw/bin/flatpak
+  if [ ! -x "$fp" ]; then
+    err "flatpak isn't installed yet: run the install first"
+    return 1
+  fi
+  if ! "$fp" remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo; then
+    err "couldn't add Flathub (offline?)"
+    return 1
+  fi
+  ok "Flathub added"
+  if "$fp" install --system --noninteractive flathub "${FLATPAKS[@]}"; then
+    ok "installed ${FLATPAKS[*]}"
+  else
+    err "not all installed: repair → 6 to try again"
+  fi
+}
+
+# ─────────────────────────────────────────────────────────────────────
 # repair
 # ─────────────────────────────────────────────────────────────────────
 repair() {
@@ -169,6 +201,7 @@ ${B}repair${X}
   3) fix ownership + stage files       ${Y}("not tracked by Git" errors)${X}
   4) roll back to previous generation  ${Y}(rebuild broke the system)${X}
   5) set up pushing to GitHub          ${Y}(nxpush can't push)${X}
+  6) add Flathub + flatpaks            ${Y}(flatpak can't find flathub)${X}
   b) back
 MENU
   read -rp "> " c
@@ -214,6 +247,7 @@ MENU
       [[ "$a" =~ ^[Yy]$ ]] && nixos-rebuild switch --rollback && ok "rolled back"
       ;;
     5) github_push ;;
+    6) flatpaks ;;
     b|B) return ;;
     *) echo "?" ;;
   esac
@@ -236,8 +270,8 @@ ${B}─────────────────────────�
      chmod 600 ~/.config/weather/key
    (new keys take up to 2h to activate)
 
- ${C}sober / roblox${X}
-     flatpak install flathub org.vinegarhq.Sober
+ ${C}flatpaks${X}   Flathub is added during install (or repair → 6)
+     flatpak install flathub <app id>
 
  ${C}check your displays${X}   modes are hardcoded per host
      swaymsg -t get_outputs
