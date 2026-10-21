@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # nixos-config bootstrap
 # usage: chmod +x bootstrap.sh && sudo ./bootstrap.sh
+#    or: curl -fsSL <url> | sudo bash
 set -uo pipefail
 
 REPO="https://github.com/ilovealienz/nixos-config"
@@ -20,7 +21,7 @@ ok()   { echo "${G} ok${X} $*"; }
 warn() { echo "${Y} !!${X} $*"; }
 err()  { echo "${R}!!!${X} $*"; }
 
-[ "$EUID" -ne 0 ] && { err "run with sudo: sudo ./bootstrap.sh"; exit 1; }
+[ "$EUID" -ne 0 ] && { err "run it with sudo"; exit 1; }
 
 # ─────────────────────────────────────────────────────────────────────
 # install
@@ -204,7 +205,7 @@ ${B}repair${X}
   5) set up pushing to GitHub          ${Y}(nxpush can't push)${X}
   b) back
 MENU
-  read -rp "> " c
+  read -rp "> " c || return
   case "$c" in
     1)
       id "$USER_NAME" >/dev/null 2>&1 || { err "'$USER_NAME' doesn't exist yet"; return; }
@@ -282,8 +283,9 @@ NOTE
 }
 
 # ─────────────────────────────────────────────────────────────────────
-while true; do
-  cat <<MENU
+main() {
+  while true; do
+    cat <<MENU
 
 ${B}nixos-config${X}   $(hostname)
 
@@ -293,14 +295,26 @@ ${B}nixos-config${X}   $(hostname)
   4) post-install notes
   q) quit
 MENU
-  read -rp "> " c
-  case "$c" in
-    1) install ;;
-    2) repair ;;
-    3) flatpaks ;;
-    4) notes ;;
-    q|Q) exit 0 ;;
-    *) echo "?" ;;
-  esac
-  echo; read -rp "press enter..."
-done
+    read -rp "> " c || exit 1   # no input left
+    case "$c" in
+      1) install ;;
+      2) repair ;;
+      3) flatpaks ;;
+      4) notes ;;
+      q|Q) exit 0 ;;
+      *) echo "?" ;;
+    esac
+    echo; read -rp "press enter..." || exit 1
+  done
+}
+
+# piped in (curl ... | sudo bash) the script is stdin, so answers come from
+# the terminal instead
+if [ -t 0 ]; then
+  main
+elif (: </dev/tty) 2>/dev/null; then
+  main </dev/tty
+else
+  err "no terminal to answer on: download it and run sudo ./bootstrap.sh"
+  exit 1
+fi
