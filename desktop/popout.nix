@@ -3,8 +3,8 @@
 # on that monitor (a video, a call). Press it again on the popout to put it
 # back in the tiling; if it's drifted out of the corner, the press puts
 # it back in the corner first.
-# Brave's own picture-in-picture window is popped out the same way when it
-# opens.
+# Brave's and LibreWolf's own picture-in-picture windows are popped out the
+# same way when they open.
 # Sway draws it over everything except a fullscreen window on the same
 # monitor; fullscreen on another monitor is fine.
 { pkgs, lib, ... }:
@@ -57,8 +57,8 @@ in
   home.packages = [ popout ];
   wayland.windowManager.sway.config = {
     keybindings."Mod4+Alt+v" = "exec ${lib.getExe popout}";
-    # Brave/Chromium's picture-in-picture window (Firefox's is titled
-    # Picture-in-Picture)
+    # picture-in-picture windows: Brave's "Picture in picture", LibreWolf's
+    # "Picture-in-Picture"
     window.commands = [{
       criteria.title = "^Picture[ -]in[ -][Pp]icture$";
       command = "floating enable, sticky enable, mark --add _popout_new, exec ${lib.getExe popout}";

@@ -5,6 +5,9 @@
 
   home-manager.users.pc.imports = [ ../desktop/monitors/pc.nix ];
 
+  # streaming games from here (Sunshine, programs/gaming.nix)
+  services.sunshine.openFirewall = true;
+
   fileSystems."/mnt/Shared" = {
     device = "/dev/disk/by-label/Shared";
     fsType = "auto";

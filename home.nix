@@ -1,8 +1,7 @@
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 {
   imports = [
     ./home/shell.nix
-    ./home/packages.nix
     ./home/autostart.nix
     ./home/fastfetch.nix
     ./home/local-apps.nix
@@ -25,8 +24,11 @@
   };
 
   home.activation.mpvConfig = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    # offline: no mpv config yet, and the next rebuild tries again (a
+    # failure here would stop the rest of home-manager)
     if [ ! -d "$HOME/.config/mpv" ]; then
-      ${pkgs.git}/bin/git clone https://github.com/ilovealienz/my-mpv-config "$HOME/.config/mpv"
+      run ${pkgs.git}/bin/git clone https://github.com/ilovealienz/my-mpv-config "$HOME/.config/mpv" \
+        || echo "mpv config: not cloned (offline?), the next rebuild tries again" >&2
     fi
   '';
 }

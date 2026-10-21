@@ -1,11 +1,10 @@
-# Warmer screen colours after sunset (wlsunset), for Blackpool. Runs with
-# the sway session.
-{ lib, ... }:
+# Warmer screen colours after sunset (wlsunset), where location.nix says
+# you are. Runs with the sway session.
+{ config, lib, ... }:
 {
   services.wlsunset = {
     enable = true;
-    latitude = "53.8";
-    longitude = "-3.0";
+    inherit (config.my.location) latitude longitude;
   };
 
   systemd.user.services.wlsunset = {

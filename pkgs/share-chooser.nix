@@ -4,7 +4,7 @@
 # one share (preview + stream). Each one runs the picker, and all of them
 # must get the same answer or the stream never loads. This shows fuzzel
 # for the first request, remembers the pick, and answers follow-up
-# requests within 60s with the same monitor/window (if it's still on
+# requests within 10s with the same monitor/window (if it's still on
 # offer). Windows are matched by their id, not their title, so a title
 # that changes in the meantime (e.g. an unread count) still matches.
 # Cancelling (Escape) declines any request that was already waiting.

@@ -8,6 +8,7 @@
     ./wallpaper.nix
     ./lock.nix
     ./nightlight.nix
+    ./location.nix
     ./osd.nix
     ./emoji.nix
     ./audio-menu.nix

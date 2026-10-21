@@ -2,6 +2,47 @@
 let
   c = osConfig.theme.colors;
   dark = osConfig.theme.variant == "dark";
+  # adw-gtk3's colours, for GTK 3 and 4 alike
+  palette = ''
+    /* ── Desert Night palette (recolours adw-gtk3 like Stylix did) ── */
+    @define-color window_bg_color #${c.bg};
+    @define-color window_fg_color #${c.fg};
+    @define-color view_bg_color #${c.bgAlt};
+    @define-color view_fg_color #${c.fg};
+    @define-color headerbar_bg_color #${c.bg};
+    @define-color headerbar_fg_color #${c.fg};
+    @define-color headerbar_border_color #${c.surface};
+    @define-color headerbar_backdrop_color #${c.bgAlt};
+    @define-color popover_bg_color #${c.bgAlt};
+    @define-color popover_fg_color #${c.fg};
+    @define-color card_bg_color #${c.bgAlt};
+    @define-color card_fg_color #${c.fg};
+    @define-color dialog_bg_color #${c.bg};
+    @define-color dialog_fg_color #${c.fg};
+    @define-color sidebar_bg_color #${c.bgAlt};
+    @define-color sidebar_fg_color #${c.fg};
+    @define-color sidebar_border_color #${c.surface};
+    @define-color sidebar_backdrop_color #${c.bg};
+    @define-color accent_color #${c.accent};
+    @define-color accent_bg_color #${c.accent};
+    @define-color accent_fg_color #${c.onAccent};
+    @define-color destructive_color #${c.red};
+    @define-color destructive_bg_color #${c.red};
+    @define-color success_color #${c.green};
+    @define-color warning_color #${c.orange};
+    @define-color error_color #${c.red};
+    /* legacy gtk3 names */
+    @define-color theme_bg_color #${c.bg};
+    @define-color theme_fg_color #${c.fg};
+    @define-color theme_base_color #${c.bgAlt};
+    @define-color theme_text_color #${c.fg};
+    @define-color theme_selected_bg_color #${c.selectionBg};
+    @define-color theme_selected_fg_color #${c.selectionFg};
+    @define-color insensitive_bg_color #${c.bgAlt};
+    @define-color insensitive_fg_color #${c.muted};
+    @define-color borders #${c.surface};
+    @define-color menu_color #${c.bgAlt};
+    @define-color popup_bg_color #${c.bgAlt};'';
   # the icon set picked in theme-edit (theme.nix's iconSets)
   icons = osConfig.theme.icon.name;
   iconPkg = pkgs.${osConfig.theme.icon.package};
@@ -28,45 +69,7 @@ in
       package = iconPkg;
     };
     gtk3.extraCss = ''
-      /* ── Desert Night palette (recolours adw-gtk3 like Stylix did) ── */
-      @define-color window_bg_color #${c.bg};
-      @define-color window_fg_color #${c.fg};
-      @define-color view_bg_color #${c.bgAlt};
-      @define-color view_fg_color #${c.fg};
-      @define-color headerbar_bg_color #${c.bg};
-      @define-color headerbar_fg_color #${c.fg};
-      @define-color headerbar_border_color #${c.surface};
-      @define-color headerbar_backdrop_color #${c.bgAlt};
-      @define-color popover_bg_color #${c.bgAlt};
-      @define-color popover_fg_color #${c.fg};
-      @define-color card_bg_color #${c.bgAlt};
-      @define-color card_fg_color #${c.fg};
-      @define-color dialog_bg_color #${c.bg};
-      @define-color dialog_fg_color #${c.fg};
-      @define-color sidebar_bg_color #${c.bgAlt};
-      @define-color sidebar_fg_color #${c.fg};
-      @define-color sidebar_border_color #${c.surface};
-      @define-color sidebar_backdrop_color #${c.bg};
-      @define-color accent_color #${c.accent};
-      @define-color accent_bg_color #${c.accent};
-      @define-color accent_fg_color #${c.onAccent};
-      @define-color destructive_color #${c.red};
-      @define-color destructive_bg_color #${c.red};
-      @define-color success_color #${c.green};
-      @define-color warning_color #${c.orange};
-      @define-color error_color #${c.red};
-      /* legacy gtk3 names */
-      @define-color theme_bg_color #${c.bg};
-      @define-color theme_fg_color #${c.fg};
-      @define-color theme_base_color #${c.bgAlt};
-      @define-color theme_text_color #${c.fg};
-      @define-color theme_selected_bg_color #${c.selectionBg};
-      @define-color theme_selected_fg_color #${c.selectionFg};
-      @define-color insensitive_bg_color #${c.bgAlt};
-      @define-color insensitive_fg_color #${c.muted};
-      @define-color borders #${c.surface};
-      @define-color menu_color #${c.bgAlt};
-      @define-color popup_bg_color #${c.bgAlt};
+      ${palette}
       /* ── selected files/rows: readable highlight (Thunar etc.) ── */
       .view:selected, .view:selected:focus, .view row:selected,
       treeview.view:selected, iconview:selected,
@@ -116,45 +119,7 @@ in
       gtk-application-prefer-dark-theme = if dark then 1 else 0;
     };
     gtk4.extraCss = ''
-      /* ── Desert Night palette (recolours adw-gtk3 like Stylix did) ── */
-      @define-color window_bg_color #${c.bg};
-      @define-color window_fg_color #${c.fg};
-      @define-color view_bg_color #${c.bgAlt};
-      @define-color view_fg_color #${c.fg};
-      @define-color headerbar_bg_color #${c.bg};
-      @define-color headerbar_fg_color #${c.fg};
-      @define-color headerbar_border_color #${c.surface};
-      @define-color headerbar_backdrop_color #${c.bgAlt};
-      @define-color popover_bg_color #${c.bgAlt};
-      @define-color popover_fg_color #${c.fg};
-      @define-color card_bg_color #${c.bgAlt};
-      @define-color card_fg_color #${c.fg};
-      @define-color dialog_bg_color #${c.bg};
-      @define-color dialog_fg_color #${c.fg};
-      @define-color sidebar_bg_color #${c.bgAlt};
-      @define-color sidebar_fg_color #${c.fg};
-      @define-color sidebar_border_color #${c.surface};
-      @define-color sidebar_backdrop_color #${c.bg};
-      @define-color accent_color #${c.accent};
-      @define-color accent_bg_color #${c.accent};
-      @define-color accent_fg_color #${c.onAccent};
-      @define-color destructive_color #${c.red};
-      @define-color destructive_bg_color #${c.red};
-      @define-color success_color #${c.green};
-      @define-color warning_color #${c.orange};
-      @define-color error_color #${c.red};
-      /* legacy gtk3 names */
-      @define-color theme_bg_color #${c.bg};
-      @define-color theme_fg_color #${c.fg};
-      @define-color theme_base_color #${c.bgAlt};
-      @define-color theme_text_color #${c.fg};
-      @define-color theme_selected_bg_color #${c.accent};
-      @define-color theme_selected_fg_color #${c.onAccent};
-      @define-color insensitive_bg_color #${c.bgAlt};
-      @define-color insensitive_fg_color #${c.muted};
-      @define-color borders #${c.surface};
-      @define-color menu_color #${c.bgAlt};
-      @define-color popup_bg_color #${c.bgAlt};
+      ${palette}
       headerbar {
           min-height: 10px;
           padding: 0px;

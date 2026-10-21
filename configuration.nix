@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
 {
   imports = [
@@ -48,6 +48,7 @@
 
   # Firewall
   networking.firewall = {
+    # LocalSend (53317), Minecraft (25567)
     allowedTCPPorts = [ 53317 25567 ];
     allowedUDPPorts = [ 53317 25567 ];
   };
@@ -102,7 +103,7 @@
   users.users.pc = {
     isNormalUser = true;
     description = "pc";
-    extraGroups = [ "networkmanager" "wheel" "ydotool" ];
+    extraGroups = [ "networkmanager" "wheel" ];
     shell = pkgs.zsh;
   };
 
@@ -117,6 +118,17 @@
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   # identical files in /nix/store are stored once (hard links)
   nix.settings.auto-optimise-store = true;
+
+  # weekly: old system generations and user profiles (the last 3 of each
+  # kept), then whatever nothing uses any more; nxclean does it now
+  programs.nh = {
+    enable = true;
+    clean = {
+      enable = true;
+      dates = "weekly";
+      extraArgs = "--keep 3";
+    };
+  };
 
   # firmware updates: fwupdmgr refresh && fwupdmgr update
   services.fwupd.enable = true;

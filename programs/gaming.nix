@@ -57,11 +57,11 @@ in
     settings.general.inhibit_screensaver = 0;
   };
 
+  # its ports are opened on the pc only (hosts/pc.nix)
   services.sunshine = {
     enable = true;
     autoStart = false;
     capSysAdmin = true;
-    openFirewall = true;
   };
 
   services.udev.extraRules = ''

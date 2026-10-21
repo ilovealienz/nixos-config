@@ -1,4 +1,4 @@
-{ pkgs, osConfig, ... }:
+{ config, pkgs, osConfig, ... }:
 let c = osConfig.theme.colors; in
 {
   programs.waybar.settings.mainBar."custom/weather" = {
@@ -10,8 +10,8 @@ let c = osConfig.theme.colors; in
     escape = false;
     exec = "${pkgs.writeShellScript "weather" ''
       # ── settings ──────────────────────────────────
-      LAT=53.8179442
-      LON=-3.0509812
+      LAT=${config.my.location.latitude}     # location.nix
+      LON=${config.my.location.longitude}
       UNITS=metric          # metric | imperial | standard
       DEGREE="°C"           # °C | °F | K  (match UNITS)
       SEP="   "             # spacing between icon and temp

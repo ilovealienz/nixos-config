@@ -1,10 +1,11 @@
 { config, pkgs, ... }:
 
 let
+  c = config.theme.colors;
+
   # Browser chooser. xdg-open falls back to scanning for generic binary
   # names when no desktop handler matches, so the shims provide those
   # names and route them here.
-  c = config.theme.colors;
   urlopen = pkgs.writeShellScriptBin "urlopen" (builtins.replaceStrings
     [ "@bg@" "@fg@" "@accent@" "@onAccent@" ] [ c.bg c.fg c.accent c.onAccent ]
     (builtins.readFile ../scripts/urlopen));
@@ -36,7 +37,6 @@ in
     bat
     fd
     tealdeer
-    unzip
     fastfetch
     alsa-utils
     (brave.override { commandLineArgs = "--ozone-platform=x11"; })
@@ -45,8 +45,6 @@ in
     neovim
     mission-center
     gnome-disk-utility
-    wl-clipboard
-    libnotify
     proton-vpn
     xdg-utils
     fzf
@@ -57,6 +55,7 @@ in
     localsend
     urlopen
     urlopenDesktop
+    qrencode   # the chooser's "qr"
     (browserShim "chromium-browser")
     (browserShim "x-www-browser")
   ];

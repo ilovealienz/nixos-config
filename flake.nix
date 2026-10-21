@@ -10,7 +10,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, ... }:
+  outputs = { nixpkgs, home-manager, ... }:
   let
     system = "x86_64-linux";
 
@@ -38,7 +38,7 @@
         hostname = "laptop";
         extraModules = [ ./hosts/laptop.nix ];
       };
-      
+
       x1carbon = mkHost {
         hostname = "x1carbon";
         extraModules = [ ./hosts/x1carbon.nix ];

@@ -2,7 +2,7 @@
 let
   video   = "mpv.desktop";
   audio   = "mpv.desktop";
-  image   = "feh.desktop";
+  image   = "imv.desktop";
   browser = "urlopen.desktop";
   pdf     = "librewolf.desktop";
   editor  = "codium.desktop";
