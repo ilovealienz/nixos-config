@@ -72,12 +72,16 @@ let
       (k [ "Super" "Shift" "E" ] "Session menu" "shut down, reboot, log out, suspend, lock")
       (k [ "Super" "Shift" "C" ] "Reload sway" "")
     ]; }
-    { name = "msqu"; note = "timer, stopwatch, alarm, repeat, drink reminder"; items = [
+    { name = "msqu"; note = "timer, stopwatch, alarm, repeat, drink, countdown, clock, notes"; items = [
       (k [ "Super" "Shift" "A" ] "msqu: quick utils" "start one, or pick from recents")
-      (k [ "Click a block" ] "Pause / resume" "")
-      (k [ "Right-click a block" ] "Stop or cancel it" "")
-      (k [ "Middle-click timer" ] "More or less time" "pick in fuzzel, or type +3, -2, 90s, 1:30")
-      (k [ "Middle-click repeat" ] "Start the wait over" "")
+      (k [ "c xmas 25/12" ] "Countdown to a date" "in the menu; 25/12 19:30 for a time")
+      (k [ "tz tokyo" ] "Add a world clock" "in the menu")
+      (k [ "n bins 7pm" ] "Add a note" "in the menu; a time at the end reminds you")
+      (k [ "Click a block" ] "Open msqu" "")
+      (k [ "Right-click a block" ] "Its options" "pause, more time, hide, pin; on the one block: everything open")
+      (k [ "Middle-click a block" ] "Cancel, stop or remove it" "notes: the next reminder")
+      (k [ "Ctrl" "P" ] "Pin to the bar" "in the menu, with the bar set to one block")
+      (k [ "Ctrl" "S" ] "Hide from the bar / show" "in the menu: countdown, clock, notes")
     ]; }
     { name = "Media keys"; items = [
       (k [ "Vol +/-" ] "Volume" "with on-screen level")

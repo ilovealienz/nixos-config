@@ -84,12 +84,19 @@ pub struct Running {
     /// which one, for tools that run several at once ("1", "2", ...);
     /// empty for the others
     pub slot: String,
+    /// clock: the time zone ("Asia/Tokyo")
+    pub zone: String,
+    /// countdown: a time of day was given, not just a date
+    pub timed: bool,
 }
 
-/// every tool, in the bar's order
-pub const TOOLS: [&str; 5] = ["timer", "stopwatch", "alarm", "repeat", "drink"];
+/// every tool with running ones, in the bar's order (notes have a block of
+/// their own, besides these)
+pub const TOOLS: [&str; 7] = ["timer", "stopwatch", "alarm", "repeat", "drink", "countdown", "clock"];
 /// the tools that run several at once (`slots` in desktop/msqu.nix)
-pub const SLOTTED: [&str; 2] = ["timer", "alarm"];
+pub const SLOTTED: [&str; 4] = ["timer", "alarm", "countdown", "clock"];
+/// the tools whose state outlives a reboot
+pub const LASTING: [&str; 3] = ["countdown", "clock", "notes"];
 
 /// where the tools keep their state: $XDG_RUNTIME_DIR/msqu/TOOL/ (/tmp if
 /// it's unset or empty, like the scripts' ${XDG_RUNTIME_DIR:-/tmp})
@@ -98,17 +105,60 @@ pub fn state_dir() -> PathBuf {
     PathBuf::from(run.unwrap_or_else(|| "/tmp".into())).join("msqu")
 }
 
+/// what outlives a reboot: $XDG_STATE_HOME/msqu (~/.local/state/msqu)
+pub fn lasting_dir() -> PathBuf {
+    let base = std::env::var_os("XDG_STATE_HOME")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".local/state"));
+    base.join("msqu")
+}
+
+/// a tool's state files: countdowns, clocks and notes last, the rest go
+/// with the session
+pub fn tool_dir(tool: &str) -> PathBuf {
+    if LASTING.contains(&tool) { lasting_dir().join(tool) } else { state_dir().join(tool) }
+}
+
 /// the state files:
 ///   timer      "run END TOTAL LABEL" / "pause LEFT TOTAL LABEL"
 ///   repeat     "run END EVERY WINDOW LABEL" / "pause LEFT EVERY WINDOW LABEL"
 ///   drink      "run END EVERY" / "pause LEFT EVERY"
 ///   stopwatch  "run START SO_FAR" / "pause SO_FAR"
 ///   alarm      "at UNIXTIME LABEL"
+///   countdown  "at UNIXTIME TIMED NOTIFIED LABEL" (TIMED, NOTIFIED: 0 or 1)
+///   clock      "zone ZONE LABEL"
 pub fn read_running(tool: &'static str, text: &str) -> Option<Running> {
     let now = now();
     let num = |s: Option<&str>| s?.parse::<i64>().ok();
-    let mut r = Running { tool, paused: false, left: 0, total: 0, at: 0, window: "-".into(), label: String::new(), slot: String::new() };
+    let mut r = Running {
+        tool,
+        paused: false,
+        left: 0,
+        total: 0,
+        at: 0,
+        window: "-".into(),
+        label: String::new(),
+        slot: String::new(),
+        zone: String::new(),
+        timed: false,
+    };
     match tool {
+        "countdown" => {
+            let mut w = text.trim().splitn(5, ' ');
+            (w.next()? == "at").then_some(())?;
+            r.at = num(w.next())?;
+            r.timed = w.next()? == "1";
+            w.next()?;
+            r.label = w.next().unwrap_or("").to_string();
+            r.left = r.at - now;
+        }
+        "clock" => {
+            let mut w = text.trim().splitn(3, ' ');
+            (w.next()? == "zone").then_some(())?;
+            r.zone = w.next()?.to_string();
+            r.label = w.next().unwrap_or("").to_string();
+        }
         "stopwatch" => {
             let mut w = text.split_whitespace();
             match w.next()? {
@@ -162,7 +212,7 @@ pub fn read_running(tool: &'static str, text: &str) -> Option<Running> {
 pub fn running() -> Vec<Running> {
     let mut out = Vec::new();
     for tool in TOOLS {
-        let dir = state_dir().join(tool);
+        let dir = tool_dir(tool);
         let mut files: Vec<(String, String)> = match std::fs::read_dir(&dir) {
             Ok(rd) => rd
                 .flatten()
@@ -289,6 +339,299 @@ pub fn rough(s: i64) -> String {
             if m % 60 == 0 { format!("{}h", m / 60) } else { format!("{}h {}m", m / 60, m % 60) }
         }
     }
+}
+
+unsafe extern "C" {
+    // (not in the libc crate) rereads TZ
+    fn tzset();
+}
+
+pub fn local_tm(at: i64) -> libc::tm {
+    let t = at as libc::time_t;
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    unsafe { libc::localtime_r(&t, &mut tm) };
+    tm
+}
+
+/// y-m-d h:mi in local time as a unix time; None if there's no such day
+pub fn local_time(y: i32, mo: u32, d: u32, h: u32, mi: u32) -> Option<i64> {
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    tm.tm_year = y - 1900;
+    tm.tm_mon = mo as i32 - 1;
+    tm.tm_mday = d as i32;
+    tm.tm_hour = h as i32;
+    tm.tm_min = mi as i32;
+    tm.tm_isdst = -1;
+    let at = unsafe { libc::mktime(&mut tm) } as i64;
+    // mktime moves a day that doesn't exist (31/2) on: refuse those
+    (tm.tm_year == y - 1900 && tm.tm_mon == mo as i32 - 1 && tm.tm_mday == d as i32).then_some(at)
+}
+
+/// a unix time's local date: (year, month, day)
+pub fn ymd(at: i64) -> (i32, u32, u32) {
+    let tm = local_tm(at);
+    (tm.tm_year + 1900, tm.tm_mon as u32 + 1, tm.tm_mday as u32)
+}
+
+/// calendar days from one time's date to another's (0: the same day)
+pub fn days_between(from: i64, to: i64) -> i64 {
+    let midnight = |t: i64| {
+        let (y, m, d) = ymd(t);
+        local_time(y, m, d, 0, 0).unwrap_or(t)
+    };
+    // rounded: a day with a clock change isn't 86400s
+    ((midnight(to) - midnight(from)) as f64 / 86400.0).round() as i64
+}
+
+/// just after the midnight that ends `at`'s day
+pub fn day_after(at: i64) -> i64 {
+    let (y, m, d) = ymd(at);
+    let start = local_time(y, m, d, 0, 0).unwrap_or(at);
+    // 30h on: into the next day whatever the clocks do
+    let (y, m, d) = ymd(start + 30 * 3600);
+    local_time(y, m, d, 0, 0).unwrap_or(start + 86400) + 1
+}
+
+/// "25/12" "25/12/26" "25/12/2026" -> (y, m, d); without a year, the next
+/// time that date comes round (today included)
+pub fn date(s: &str) -> Option<(i32, u32, u32)> {
+    let parts: Vec<&str> = s.split('/').collect();
+    if !(2..=3).contains(&parts.len()) || parts.iter().any(|p| p.is_empty() || !p.bytes().all(|b| b.is_ascii_digit())) {
+        return None;
+    }
+    let (d, m): (u32, u32) = (parts[0].parse().ok()?, parts[1].parse().ok()?);
+    if parts[0].len() > 2 || parts[1].len() > 2 {
+        return None;
+    }
+    let (this_year, ..) = ymd(now());
+    let y = match parts.get(2) {
+        Some(y) if y.len() == 2 => 2000 + y.parse::<i32>().ok()?,
+        Some(y) if y.len() == 4 => y.parse().ok()?,
+        Some(_) => return None,
+        None => {
+            let this = local_time(this_year, m, d, 0, 0);
+            // 29/02 in a year without one: the next leap year's
+            let mut y = this_year;
+            if this.is_none_or(|t| days_between(now(), t) < 0) {
+                y += 1;
+                while local_time(y, m, d, 0, 0).is_none() && y < this_year + 8 {
+                    y += 1;
+                }
+            }
+            y
+        }
+    };
+    local_time(y, m, d, 0, 0).map(|_| (y, m, d))
+}
+
+/// "xmas 25/12", "gig 14/11/2026 19:30", "25/12 7pm party" -> (unix time,
+/// whether a time was given, label); None without a date still to come
+pub fn parse_countdown(s: &str) -> Option<(i64, bool, String)> {
+    let words: Vec<&str> = s.split_whitespace().collect();
+    let i = words.iter().position(|w| date(w).is_some())?;
+    let (y, m, d) = date(words[i])?;
+    let mut used = vec![i];
+    let mut hm = None;
+    if let Some(next) = words.get(i + 1) {
+        let ampm = words.get(i + 2).filter(|w| matches!(w.to_lowercase().as_str(), "am" | "pm"));
+        if let Some(c) = ampm.and_then(|ap| clock(&format!("{next}{ap}"))) {
+            hm = Some(c);
+            used.extend([i + 1, i + 2]);
+        } else if next.contains(':') || next.to_lowercase().ends_with("am") || next.to_lowercase().ends_with("pm") {
+            if let Some(c) = clock(next) {
+                hm = Some(c);
+                used.push(i + 1);
+            }
+        }
+    }
+    let (h, mi) = hm.unwrap_or((0, 0));
+    let at = local_time(y, m, d, h, mi)?;
+    let gone = if hm.is_some() { at <= now() } else { days_between(now(), at) < 0 };
+    if gone {
+        return None;
+    }
+    let label = words.iter().enumerate().filter(|(n, _)| !used.contains(n)).map(|(_, w)| *w).collect::<Vec<_>>().join(" ");
+    Some((at, hm.is_some(), label))
+}
+
+/// what a countdown's block says: "63d", "1d", "5h", "40m", "today"; None
+/// once its day is over
+pub fn countdown_text(at: i64, timed: bool) -> Option<String> {
+    let now = now();
+    let days = days_between(now, at);
+    if days < 0 {
+        return None;
+    }
+    let left = at - now;
+    if timed && left > 0 && left < 86400 {
+        return Some(if left >= 3600 { format!("{}h", left / 3600) } else { format!("{}m", (left + 59) / 60) });
+    }
+    Some(if days == 0 { "today".into() } else { format!("{days}d") })
+}
+
+/// unix time -> "Thu 25 Dec", with the year if it isn't this one
+pub fn date_text(at: i64) -> String {
+    let tm = local_tm(at);
+    let day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][tm.tm_wday.clamp(0, 6) as usize];
+    let mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][tm.tm_mon.clamp(0, 11) as usize];
+    let year = if tm.tm_year == local_tm(now()).tm_year { String::new() } else { format!(" {}", tm.tm_year + 1900) };
+    format!("{day} {} {mon}{year}", tm.tm_mday)
+}
+
+/// the time zone files: $TZDIR, /etc/zoneinfo or /usr/share/zoneinfo
+pub fn zoneinfo() -> PathBuf {
+    std::env::var_os("TZDIR")
+        .map(PathBuf::from)
+        .into_iter()
+        .chain(["/etc/zoneinfo".into(), "/usr/share/zoneinfo".into()])
+        .find(|d| d.join("Europe").is_dir())
+        .unwrap_or_else(|| "/usr/share/zoneinfo".into())
+}
+
+/// every "Region/City" zone, and UTC
+pub fn zones() -> Vec<String> {
+    let root = zoneinfo();
+    let mut out = vec!["UTC".to_string()];
+    let mut todo = vec![PathBuf::new()];
+    while let Some(rel) = todo.pop() {
+        let Ok(rd) = std::fs::read_dir(root.join(&rel)) else { continue };
+        for e in rd.flatten() {
+            let name = e.file_name().to_string_lossy().into_owned();
+            // regions start with a capital; skip the posix/right copies and Etc
+            if rel.as_os_str().is_empty() && (!name.starts_with(|c: char| c.is_ascii_uppercase()) || name == "Etc") {
+                continue;
+            }
+            let path = rel.join(&name);
+            match e.file_type() {
+                Ok(t) if t.is_dir() => todo.push(path),
+                Ok(_) if !rel.as_os_str().is_empty() => out.push(path.to_string_lossy().into_owned()),
+                _ => {}
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// "tokyo", "new york", "la paz" -> the best matching zones (up to 5)
+pub fn find_zones(all: &[String], q: &str) -> Vec<String> {
+    let q = q.trim().to_lowercase().replace([' ', '-'], "_");
+    if q.is_empty() {
+        return Vec::new();
+    }
+    let mut hits: Vec<(u8, &String)> = all
+        .iter()
+        .filter_map(|z| {
+            let full = z.to_lowercase();
+            let city = full.rsplit('/').next().unwrap_or(&full);
+            let rank = if city == q {
+                0
+            } else if city.starts_with(&q) {
+                1
+            } else if city.contains(&q) {
+                2
+            } else if full.contains(&q) {
+                3
+            } else {
+                return None;
+            };
+            Some((rank, z))
+        })
+        .collect();
+    hits.sort();
+    hits.into_iter().take(5).map(|(_, z)| z.clone()).collect()
+}
+
+/// "America/New_York" -> "New York"
+pub fn zone_city(zone: &str) -> String {
+    zone.rsplit('/').next().unwrap_or(zone).replace('_', " ")
+}
+
+/// the time in a zone: (hour, minute, weekday 0-6, offset from UTC in
+/// seconds); None if there's no such zone
+pub fn zone_time(zone: &str, at: i64) -> Option<(u32, u32, u32, i64)> {
+    let file = zoneinfo().join(zone);
+    if zone.contains("..") || !file.is_file() {
+        return None;
+    }
+    let old = std::env::var_os("TZ");
+    // glibc reads TZ=":/path/to/zone" as that file
+    unsafe { std::env::set_var("TZ", format!(":{}", file.display())) };
+    unsafe { tzset() };
+    let tm = local_tm(at);
+    match old {
+        Some(v) => unsafe { std::env::set_var("TZ", v) },
+        None => unsafe { std::env::remove_var("TZ") },
+    }
+    unsafe { tzset() };
+    Some((tm.tm_hour as u32, tm.tm_min as u32, tm.tm_wday as u32, tm.tm_gmtoff))
+}
+
+/// a zone's offset from here: "+9h", "-5h", "+5h 30m", "same time"
+pub fn offset_text(zone_off: i64) -> String {
+    let d = zone_off - local_tm(now()).tm_gmtoff;
+    if d == 0 {
+        return "same time".into();
+    }
+    let sign = if d > 0 { "+" } else { "-" };
+    let (h, m) = (d.abs() / 3600, d.abs() % 3600 / 60);
+    if m == 0 { format!("{sign}{h}h") } else { format!("{sign}{h}h {m}m") }
+}
+
+/// a note: its number, reminder time (0: none) and text
+#[derive(Debug, Clone, PartialEq)]
+pub struct Note {
+    pub id: u64,
+    pub at: i64,
+    pub text: String,
+}
+
+/// the notes file: "ID\tAT\tTEXT" lines
+pub fn notes_file() -> PathBuf {
+    tool_dir("notes").join("notes")
+}
+
+pub fn parse_notes(text: &str) -> Vec<Note> {
+    text.lines()
+        .filter_map(|l| {
+            let mut f = l.splitn(3, '\t');
+            Some(Note { id: f.next()?.parse().ok()?, at: f.next()?.parse().ok()?, text: f.next()?.to_string() })
+        })
+        .collect()
+}
+
+pub fn load_notes() -> Vec<Note> {
+    parse_notes(&std::fs::read_to_string(notes_file()).unwrap_or_default())
+}
+
+/// "call mum 6pm", "bins at 7:30" -> ("call mum", reminder): a time at the
+/// end is a reminder (with a colon or am/pm, so "chapter 7" stays a note)
+pub fn split_note(s: &str) -> (String, Option<i64>) {
+    let (text, at) = split_note_time(s);
+    match (text.strip_suffix(" at"), at) {
+        (Some(t), Some(at)) => (t.to_string(), Some(at)),
+        _ => (text, at),
+    }
+}
+
+fn split_note_time(s: &str) -> (String, Option<i64>) {
+    let words: Vec<&str> = s.split_whitespace().collect();
+    let is_time = |w: &str| {
+        let l = w.to_lowercase();
+        (l.contains(':') || l.ends_with("am") || l.ends_with("pm")) && clock(w).is_some()
+    };
+    let n = words.len();
+    if n >= 3 && matches!(words[n - 1].to_lowercase().as_str(), "am" | "pm") {
+        if let Some((h, m)) = clock(&format!("{}{}", words[n - 2], words[n - 1])) {
+            return (words[..n - 2].join(" "), Some(next_at(h, m)));
+        }
+    }
+    if n >= 2 && is_time(words[n - 1]) {
+        if let Some((h, m)) = clock(words[n - 1]) {
+            return (words[..n - 1].join(" "), Some(next_at(h, m)));
+        }
+    }
+    (words.join(" "), None)
 }
 
 /// a sum typed into the menu ("1024x8", "(3+4)*2^3", "17%5"); None if it
@@ -463,21 +806,19 @@ pub fn parse_config(text: &str) -> Config {
 }
 
 /// things started from the menu, newest first: "timer\tSECS\tLABEL",
-/// "repeat\tSECS\tWINDOW\tLABEL", "alarm\tHH:MM\tLABEL", "drink\tSECS"
+/// "repeat\tSECS\tWINDOW\tLABEL", "alarm\tHH:MM\tLABEL", "drink\tSECS",
+/// "clock\tZONE\tLABEL"
 #[derive(Debug, Clone, PartialEq)]
 pub enum Recent {
     Timer { secs: i64, label: String },
     Repeat { secs: i64, window: String, label: String },
     Alarm { h: u32, m: u32, label: String },
     Drink { secs: i64 },
+    Clock { zone: String, label: String },
 }
 
 fn recent_path() -> PathBuf {
-    let base = std::env::var_os("XDG_STATE_HOME")
-        .filter(|v| !v.is_empty())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".local/state"));
-    base.join("msqu/recent")
+    lasting_dir().join("recent")
 }
 
 pub fn parse_recent(text: &str) -> Vec<Recent> {
@@ -494,6 +835,7 @@ pub fn parse_recent(text: &str) -> Vec<Recent> {
                     Some(Recent::Alarm { h, m, label: label.to_string() })
                 }
                 ["drink", s] => Some(Recent::Drink { secs: s.parse().ok()? }),
+                ["clock", z, label] => Some(Recent::Clock { zone: z.to_string(), label: label.to_string() }),
                 _ => None,
             }
         })
@@ -506,6 +848,7 @@ fn recent_line(r: &Recent) -> String {
         Recent::Repeat { secs, window, label } => format!("repeat\t{secs}\t{window}\t{label}"),
         Recent::Alarm { h, m, label } => format!("alarm\t{h:02}:{m:02}\t{label}"),
         Recent::Drink { secs } => format!("drink\t{secs}"),
+        Recent::Clock { zone, label } => format!("clock\t{zone}\t{label}"),
     }
 }
 
@@ -540,6 +883,95 @@ fn save_recent(list: &[Recent]) {
     }
     let text: String = list.iter().map(|r| recent_line(r) + "\n").collect();
     let _ = std::fs::write(path, text);
+}
+
+/// how msqu shows on the bar: a block each, or one block (`one`) with the
+/// pinned ones beside it; and the hidden ones. The file: "mode one",
+/// "pin TOOL NAME" and "hide TOOL NAME" lines (NAME: the slot, or the
+/// tool's own name)
+#[derive(Debug, Default, PartialEq)]
+pub struct Bar {
+    pub one: bool,
+    pub marks: Vec<(String, String, String)>,
+}
+
+impl Bar {
+    pub fn has(&self, kind: &str, tool: &str, name: &str) -> bool {
+        self.marks.iter().any(|(k, t, n)| k == kind && t == tool && n == name)
+    }
+
+    /// it gets a block of its own
+    pub fn shown(&self, tool: &str, name: &str) -> bool {
+        !self.has("hide", tool, name) && (!self.one || self.has("pin", tool, name))
+    }
+}
+
+/// a running one's NAME in the bar file
+pub fn bar_name(r: &Running) -> String {
+    if r.slot.is_empty() { r.tool.to_string() } else { r.slot.clone() }
+}
+
+pub fn bar_file() -> PathBuf {
+    lasting_dir().join("bar")
+}
+
+pub fn parse_bar(text: &str) -> Bar {
+    let mut b = Bar::default();
+    for l in text.lines() {
+        match l.split_whitespace().collect::<Vec<_>>().as_slice() {
+            ["mode", "one"] => b.one = true,
+            [k @ ("pin" | "hide"), t, n] => b.marks.push((k.to_string(), t.to_string(), n.to_string())),
+            _ => {}
+        }
+    }
+    b
+}
+
+pub fn load_bar() -> Bar {
+    parse_bar(&std::fs::read_to_string(bar_file()).unwrap_or_default())
+}
+
+/// written in one go, so a block never reads half of it
+fn save_bar(b: &Bar) {
+    let path = bar_file();
+    let _ = std::fs::create_dir_all(lasting_dir());
+    let mut text = if b.one { "mode one\n".to_string() } else { String::new() };
+    for (k, t, n) in &b.marks {
+        text += &format!("{k} {t} {n}\n");
+    }
+    let tmp = lasting_dir().join(".bar.tmp");
+    if std::fs::write(&tmp, text).is_ok() {
+        let _ = std::fs::rename(&tmp, path);
+    }
+}
+
+pub fn set_bar_one(on: bool) {
+    let mut b = load_bar();
+    b.one = on;
+    save_bar(&b);
+}
+
+/// pins or hides (`kind`) one, or stops
+pub fn set_mark(kind: &str, tool: &str, name: &str, on: bool) {
+    let mut b = load_bar();
+    if b.has(kind, tool, name) == on {
+        return;
+    }
+    b.marks.retain(|(k, t, n)| !(k == kind && t == tool && n == name));
+    if on {
+        b.marks.push((kind.into(), tool.into(), name.into()));
+    }
+    save_bar(&b);
+}
+
+/// it's gone: no longer pinned or hidden, so the next in its slot isn't
+pub fn unmark(tool: &str, name: &str) {
+    let mut b = load_bar();
+    let n = b.marks.len();
+    b.marks.retain(|(_, t, m)| !(t == tool && m == name));
+    if b.marks.len() != n {
+        save_bar(&b);
+    }
 }
 
 /// app ID / X11 class -> the name in its .desktop file ("Sober")
@@ -768,5 +1200,63 @@ mod tests {
     fn desktop_files() {
         let (n, w) = desktop_name("[Desktop Entry]\nName=Sober\nStartupWMClass=sober\n[Desktop Action x]\nName=Other\n");
         assert_eq!((n.as_deref(), w.as_deref()), (Some("Sober"), Some("sober")));
+    }
+
+    #[test]
+    fn dates_and_countdowns() {
+        let (y, m, d) = ymd(now());
+        // without a year: the next time it comes round, today included
+        assert_eq!(date(&format!("{d}/{m}")), Some((y, m, d)));
+        assert_eq!(date("31/2"), None);
+        assert_eq!(date("25/12/26").map(|t| t.0), Some(2026));
+        assert_eq!(date("chapter"), None);
+        let (at, timed, label) = parse_countdown(&format!("gig {d}/{m}/{} 23:59 at the hall", y + 1)).unwrap();
+        assert_eq!((timed, label.as_str()), (true, "gig at the hall"));
+        assert_eq!(days_between(now(), at), days_between(now(), local_time(y + 1, m, d, 12, 0).unwrap()));
+        let (_, timed, label) = parse_countdown(&format!("xmas 25/12/{} 7 pm", y + 1)).unwrap();
+        assert_eq!((timed, label.as_str()), (true, "xmas"));
+        assert_eq!(parse_countdown(&format!("1/1/{}", y - 1)), None);
+        assert_eq!(parse_countdown("no date"), None);
+        // today, with no time: still to come all day
+        let (today, ..) = parse_countdown(&format!("{d}/{m}")).unwrap();
+        assert_eq!(countdown_text(today, false).as_deref(), Some("today"));
+        assert_eq!(countdown_text(now() + 3 * 86400 + 60, false).as_deref(), Some("3d"));
+        assert_eq!(countdown_text(now() + 90 * 60, true).as_deref().map(|s| s.ends_with('h') || s.ends_with('m')), Some(true));
+        assert_eq!(countdown_text(now() - 3 * 86400, false), None);
+        let after = day_after(now());
+        assert!(after > now() && after - now() <= 25 * 3600 && days_between(now(), after) == 1);
+    }
+
+    #[test]
+    fn zones_and_notes() {
+        let all = vec!["America/New_York".to_string(), "Asia/Tokyo".into(), "Europe/London".into(), "UTC".into()];
+        assert_eq!(find_zones(&all, "tokyo"), ["Asia/Tokyo"]);
+        assert_eq!(find_zones(&all, "new york"), ["America/New_York"]);
+        assert_eq!(find_zones(&all, "europe"), ["Europe/London"]);
+        assert!(find_zones(&all, "").is_empty());
+        assert_eq!(zone_city("America/New_York"), "New York");
+        if zoneinfo().join("Asia/Tokyo").is_file() {
+            // Tokyo has no summer time: 9 hours ahead of UTC
+            let (h, m, _, off) = zone_time("Asia/Tokyo", 0).unwrap();
+            assert_eq!((h, m, off), (9, 0, 32400));
+            assert!(zones().iter().any(|z| z == "Europe/London"));
+        }
+        assert_eq!(zone_time("../../etc/passwd", 0), None);
+        assert_eq!(split_note("call mum 6pm").0, "call mum");
+        assert!(split_note("call mum 6 pm").1.is_some());
+        assert_eq!(split_note("bins 7:30").0, "bins");
+        assert_eq!(split_note("call mum at 6pm").0, "call mum");
+        assert_eq!(split_note("look at"), ("look at".into(), None));
+        assert_eq!(split_note("read chapter 7"), ("read chapter 7".into(), None));
+        assert_eq!(split_note("7pm").1, None);
+        assert_eq!(
+            parse_notes("1\t0\tmilk\n2\t99\tcall\tmum\nbad\n"),
+            [Note { id: 1, at: 0, text: "milk".into() }, Note { id: 2, at: 99, text: "call\tmum".into() }]
+        );
+        assert_eq!(parse_recent("clock\tAsia/Tokyo\tTokyo\n"), [Recent::Clock { zone: "Asia/Tokyo".into(), label: "Tokyo".into() }]);
+        let b = parse_bar("mode one\npin timer 1\nhide clock 2\nbad line\n");
+        assert!(b.one && b.shown("timer", "1") && !b.shown("timer", "2") && !b.shown("clock", "2"));
+        let each = parse_bar("hide clock 2\npin timer 1\n");
+        assert!(!each.one && each.shown("timer", "2") && !each.shown("clock", "2"));
     }
 }

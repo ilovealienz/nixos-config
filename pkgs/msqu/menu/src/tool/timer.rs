@@ -1,12 +1,12 @@
 //! msqu timer: countdowns, up to MSQU_SLOTS at once.
 //!
 //!   msqu timer start SECONDS [LABEL]   in the first free slot
-//!   msqu timer toggle SLOT   pause / resume (clicking its block)
-//!   msqu timer cancel SLOT   (right-clicking its block)
+//!   msqu timer toggle SLOT   pause / resume
+//!   msqu timer reset SLOT    back to the full time
+//!   msqu timer cancel SLOT   (middle-clicking its block)
 //!   msqu timer add SLOT AMOUNT   more time, or less: +5m, -1m, 90s, 1:30
 //!                            (a plain number is minutes)
-//!   msqu timer more SLOT     pick how much in fuzzel (middle-clicking its
-//!                            block)
+//!   msqu timer more SLOT     pick how much in fuzzel
 //!   msqu timer running       exit 0 if any timer is set
 //!
 //! state file per slot ("1", "2", ...): "run END TOTAL LABEL" or
@@ -142,6 +142,18 @@ pub fn main(args: &[String]) -> i32 {
                 st.put(&st.slot, &format!("run {end} {} {}", tm.total, tm.label));
             }
         }
+        "reset" => {
+            // the full time again: from now if running, or for when it's resumed
+            slot!(arg(1));
+            let Some(tm) = Timer::read(&st) else { return 0 };
+            if tm.mode == "run" {
+                let end = now().saturating_add(tm.total);
+                ok!(st.arm(end));
+                st.put(&st.slot, &format!("run {end} {} {}", tm.total, tm.label));
+            } else {
+                st.put(&st.slot, &format!("pause {} {} {}", tm.total, tm.total, tm.label));
+            }
+        }
         "cancel" | "right-click" => {
             slot!(arg(1));
             st.disarm();
@@ -198,7 +210,7 @@ pub fn main(args: &[String]) -> i32 {
             st.ring("timer", &msg);
         }
         _ => {
-            eprintln!("usage: msqu timer [start SECONDS [LABEL]|toggle SLOT|cancel SLOT|add SLOT AMOUNT|more SLOT|running]");
+            eprintln!("usage: msqu timer [start SECONDS [LABEL]|toggle SLOT|reset SLOT|cancel SLOT|add SLOT AMOUNT|more SLOT|running]");
             return 2;
         }
     }

@@ -6,7 +6,11 @@
 //! MSQU_SLOTS / MSQU_ALARM where used.
 
 pub mod alarm;
+pub mod clock;
+pub mod countdown;
 pub mod drink;
+pub mod notes;
+pub mod pick;
 pub mod repeat;
 pub mod stopwatch;
 pub mod sway;
@@ -22,9 +26,10 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-/// A tool's state directory, $XDG_RUNTIME_DIR/msqu/TOOL, locked for one
-/// command at a time (until the end, or `unlock`). The lock file sits
-/// beside the directory so it doesn't wake the bar, and is close-on-exec.
+/// A tool's state directory (model::tool_dir), locked for one command at a
+/// time (until the end, or `unlock`). The lock file is in
+/// $XDG_RUNTIME_DIR/msqu, apart from the directory so it doesn't wake the
+/// bar, and is close-on-exec.
 pub struct State {
     pub tool: &'static str,
     pub dir: PathBuf,
@@ -37,8 +42,8 @@ pub struct State {
 impl State {
     pub fn open(tool: &'static str) -> State {
         let base = crate::model::state_dir();
-        let dir = base.join(tool);
-        if let Err(e) = fs::create_dir_all(&dir) {
+        let dir = crate::model::tool_dir(tool);
+        if let Err(e) = fs::create_dir_all(&dir).and_then(|_| fs::create_dir_all(&base)) {
             die(tool, &format!("can't make {}: {e}", dir.display()));
         }
         let path = base.join(format!("{tool}.lock"));
@@ -82,11 +87,13 @@ impl State {
         }
     }
 
+    /// Removes a state file, and its pin or hide on the bar.
     pub fn remove(&self, name: &str) {
         match fs::remove_file(self.dir.join(name)) {
             Err(e) if e.kind() != std::io::ErrorKind::NotFound => die(self.tool, &format!("can't remove {name}: {e}")),
             _ => {}
         }
+        crate::model::unmark(self.tool, name);
     }
 
     /// How many this tool runs at once (MSQU_SLOTS; 1 if it isn't set, as
@@ -136,12 +143,17 @@ impl State {
     /// (calendar time, so suspend counts). Unique unit per arm, MSQU_AT for
     /// `stale`, removed once rung. Err(exit code) if systemd-run failed.
     pub fn arm(&self, at: i64) -> Result<(), i32> {
+        self.arm_as(at, "ring")
+    }
+
+    /// `arm`, running `cmd` (as "ring" would be) in place of "ring".
+    pub fn arm_as(&self, at: i64, cmd: &str) -> Result<(), i32> {
         self.disarm();
         let u = self.unit();
         quiet("systemctl", &["--user", "reset-failed", &format!("{u}-*")]);
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(0);
-        let mut cmd = Command::new("systemd-run");
-        cmd.args(["--user", "--quiet", "--collect"])
+        let mut run = Command::new("systemd-run");
+        run.args(["--user", "--quiet", "--collect"])
             .arg(format!("--unit={u}-{at}-{nanos:09}"))
             .arg(format!("--setenv=MSQU_AT={at}"))
             // a unix time: systemd reads "@SECONDS" as that moment
@@ -150,14 +162,14 @@ impl State {
         // the launcher, so the ring gets the same environment; run
         // straight from msqu-tool (testing), msqu-tool TOOL
         match std::env::var_os("MSQU_SELF").filter(|v| !v.is_empty()) {
-            Some(me) => cmd.arg(me),
-            None => cmd.arg(std::env::current_exe().unwrap_or_else(|_| "msqu-tool".into())).arg(self.tool),
+            Some(me) => run.arg(me),
+            None => run.arg(std::env::current_exe().unwrap_or_else(|_| "msqu-tool".into())).arg(self.tool),
         };
-        cmd.arg("ring");
+        run.arg(cmd);
         if !self.slot.is_empty() {
-            cmd.arg(&self.slot);
+            run.arg(&self.slot);
         }
-        match status(&mut cmd) {
+        match status(&mut run) {
             0 => Ok(()),
             code => Err(code),
         }

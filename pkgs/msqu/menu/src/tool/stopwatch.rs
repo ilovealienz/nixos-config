@@ -1,8 +1,9 @@
 //! msqu stopwatch: counts up.
 //!
 //!   msqu stopwatch start    from 0 (a running one starts again)
-//!   msqu stopwatch toggle   pause / resume (clicking the block)
-//!   msqu stopwatch stop     stop, and show the time (right-clicking)
+//!   msqu stopwatch toggle   pause / resume
+//!   msqu stopwatch reset    back to 0
+//!   msqu stopwatch stop     stop, and show the time (middle-clicking)
 //!   msqu stopwatch running  exit 0 if one is going
 //!
 //! state file "stopwatch": "run START SO_FAR" or "pause SO_FAR" (seconds;
@@ -44,6 +45,11 @@ pub fn main(args: &[String]) -> i32 {
                 st.put(FILE, &format!("run {} {}", now(), s.t));
             }
         }
+        // back to 0, still running or paused
+        "reset" => {
+            let Some(s) = Stopwatch::read(&st) else { return 0 };
+            st.put(FILE, &if s.mode == "run" { format!("run {} 0", now()) } else { "pause 0".to_string() });
+        }
         "stop" | "cancel" | "right-click" => {
             let Some(s) = Stopwatch::read(&st) else { return 0 };
             let total = s.elapsed();
@@ -53,7 +59,7 @@ pub fn main(args: &[String]) -> i32 {
         "running" => return if Stopwatch::read(&st).is_some() { 0 } else { 1 },
         "middle-click" => {}
         _ => {
-            eprintln!("usage: msqu stopwatch [start|toggle|stop|running]");
+            eprintln!("usage: msqu stopwatch [start|toggle|reset|stop|running]");
             return 2;
         }
     }

@@ -2,8 +2,9 @@
 //! one replaces one still showing (x-canonical-private-synchronous).
 //!
 //!   msqu drink start SECONDS
-//!   msqu drink toggle   pause / resume (clicking the block)
-//!   msqu drink stop     (right-clicking the block)
+//!   msqu drink toggle   pause / resume
+//!   msqu drink reset    start the wait over
+//!   msqu drink stop     (middle-clicking the block)
 //!   msqu drink running  exit 0 if it's on
 //!
 //! state file "drink": "run END EVERY" or "pause LEFT EVERY"
@@ -67,6 +68,17 @@ pub fn main(args: &[String]) -> i32 {
                 st.put(FILE, &format!("run {end} {}", d.every));
             }
         }
+        "reset" => {
+            // the full wait again: from now if running, or for when it's resumed
+            let Some(d) = Drink::read(&st) else { return 0 };
+            if d.mode == "run" {
+                let end = now().saturating_add(d.every);
+                arm!(st, end);
+                st.put(FILE, &format!("run {end} {}", d.every));
+            } else {
+                st.put(FILE, &format!("pause {} {}", d.every, d.every));
+            }
+        }
         "stop" | "cancel" | "right-click" => {
             st.disarm();
             st.remove(FILE);
@@ -100,7 +112,7 @@ pub fn main(args: &[String]) -> i32 {
         }
         "middle-click" => {}
         _ => {
-            eprintln!("usage: msqu drink [start SECONDS|toggle|stop|running]");
+            eprintln!("usage: msqu drink [start SECONDS|toggle|reset|stop|running]");
             return 2;
         }
     }

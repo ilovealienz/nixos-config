@@ -101,6 +101,8 @@ pub enum Key {
     CtrlU,
     CtrlW,
     CtrlX,
+    CtrlP,
+    CtrlS,
     Quit,
 }
 
@@ -203,6 +205,14 @@ pub fn parse(b: &[u8]) -> Vec<Key> {
             }
             0x18 => {
                 keys.push(Key::CtrlX);
+                i += 1;
+            }
+            0x10 => {
+                keys.push(Key::CtrlP);
+                i += 1;
+            }
+            0x13 => {
+                keys.push(Key::CtrlS);
                 i += 1;
             }
             0x03 | 0x04 => {
@@ -315,6 +325,7 @@ mod tests {
         assert_eq!(parse("é→".as_bytes()), [Key::Char('é'), Key::Char('→')]);
         assert_eq!(parse(b"\x1b[1;5C x"), [Key::Char(' '), Key::Char('x')]);
         assert_eq!(parse(b"\x7f\x15\x17\x18\x03"), [Key::Backspace, Key::CtrlU, Key::CtrlW, Key::CtrlX, Key::Quit]);
+        assert_eq!(parse(b"\x10\x13"), [Key::CtrlP, Key::CtrlS]);
     }
 
     #[test]

@@ -2,7 +2,7 @@
 //!
 //!   msqu alarm start UNIXTIME [LABEL [SLOT]]
 //!                            in the first free slot, or in place of SLOT's
-//!   msqu alarm cancel SLOT   (right-clicking its block)
+//!   msqu alarm cancel SLOT   (middle-clicking its block)
 //!   msqu alarm running       exit 0 if any alarm is set
 //!
 //! state file per slot ("1", "2", ...): "at UNIXTIME LABEL"

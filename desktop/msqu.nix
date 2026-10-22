@@ -1,5 +1,6 @@
 # msqu (my sway quick utils), Super+Shift+A: timer, stopwatch, alarm,
-# repeat and drink reminder, with bar blocks. Source: ../pkgs/msqu/
+# repeat, drink reminder, countdown to a date, world clock and notes, with
+# bar blocks. Source: ../pkgs/msqu/
 #
 # Adding a tool: menu/src/tool/NAME.rs, bin/msqu-tool.rs and `tools` below,
 # plus model.rs (state), main.rs (menu) and bin/msqu-bar.rs (block).
@@ -38,10 +39,26 @@ let
       deps = with pkgs; [ systemd libnotify pipewire mako ];
       bar = true;
     };
+    # kept across reboots, like clock and notes (~/.local/state/msqu)
+    countdown = {
+      deps = with pkgs; [ systemd libnotify pipewire mako ];
+      bar = true;
+      slots = 3;
+    };
+    clock = {
+      deps = [ ];
+      bar = true;
+      slots = 3;
+    };
+    # a block only while a reminder is set
+    notes = {
+      deps = with pkgs; [ systemd libnotify pipewire mako ];
+      bar = true;
+    };
   };
 
   # block order on the bar
-  order = [ "timer" "stopwatch" "alarm" "repeat" "drink" ];
+  order = [ "timer" "stopwatch" "alarm" "repeat" "drink" "notes" "countdown" "clock" ];
 
   # repeat and drink bell, as FLAC for pw-play
   bellSound = pkgs.runCommand "msqu-bell.flac" { nativeBuildInputs = [ pkgs.ffmpeg-headless ]; } ''
@@ -70,7 +87,7 @@ let
   } ''
     makeWrapper ${msquUi}/bin/msqu-tool $out/bin/msqu-${name} \
       --add-flags ${name} \
-      --prefix PATH : ${lib.makeBinPath t.deps} \
+      ${lib.optionalString (t.deps != [ ]) "--prefix PATH : ${lib.makeBinPath t.deps}"} \
       ${lib.concatStringsSep " " (lib.mapAttrsToList (k: v: "--set ${k} \"${v}\"") (toolEnv name t))}
   '';
   toolPkgs = lib.mapAttrs tool tools;
@@ -84,7 +101,7 @@ let
   # msqu-ui, msqu-bar and msqu-tool
   msquUi = pkgs.rustPlatform.buildRustPackage {
     pname = "msqu-ui";
-    version = "1.1.0";
+    version = "1.2.0";
     src = ../pkgs/msqu/menu;
     cargoLock.lockFile = ../pkgs/msqu/menu/Cargo.lock;
     meta.mainProgram = "msqu-ui";
@@ -115,7 +132,17 @@ let
     then map (i: { name = "${n}-${toString i}"; tool = n; arg = " ${toString i}"; }) (lib.range 1 tools.${n}.slots)
     else [{ name = n; tool = n; arg = ""; }]) barTools;
 
-  colours = [ "accent" "red" "orange" "yellow" "green" "blue" "magenta" ];
+  colours = [ "accent" "fg" "red" "orange" "yellow" "green" "blue" "magenta" ];
+
+  # right-click on any block: its options in fuzzel (the one block: what's
+  # open, each with its options)
+  pick = pkgs.runCommand "msqu-pick" { nativeBuildInputs = [ pkgs.makeBinaryWrapper ]; } ''
+    makeWrapper ${msquUi}/bin/msqu-tool $out/bin/msqu-pick \
+      --add-flags pick \
+      --prefix PATH : ${lib.makeBinPath ([ pkgs.fuzzel pkgs.libnotify ] ++ lib.attrValues toolPkgs)}
+  '';
+  # middle-click: cancel, stop or remove it (notes: the next reminder)
+  middle = tool: if tool == "notes" then "right-click" else "cancel";
 in
 {
   home.packages = [ msqu ];
@@ -125,6 +152,22 @@ in
   services.mako.settings."category=msqu-drink".history = false;
   # ringing shows even in do-not-disturb (closing it stops the sound)
   services.mako.settings."mode=dnd category=msqu-ring".invisible = false;
+  # at login: countdown and note reminders armed again (their timers don't
+  # outlive a reboot), and any missed meanwhile sent
+  systemd.user.services.msqu-rearm = {
+    Unit = {
+      Description = "Arm msqu's countdown and note reminders again";
+      After = [ "sway-session.target" ];
+    };
+    Service = {
+      Type = "oneshot";
+      # mako up first, for the missed ones
+      ExecStartPre = "${pkgs.coreutils}/bin/sleep 5";
+      ExecStart = [ "${run "countdown"} rearm" "${run "notes"} rearm" ];
+    };
+    Install.WantedBy = [ "sway-session.target" ];
+  };
+
   wayland.windowManager.sway.config = {
     keybindings."Mod4+Shift+a" = "exec ${lib.getExe msqu}";
     window.commands = [{
@@ -133,17 +176,28 @@ in
     }];
   };
 
+  # custom/msqu-all: the one block, when the menu has the bar set to that
+  # (the others then show only if pinned). Every block: click opens msqu,
+  # right-click its options, middle-click cancels it
   programs.waybar.settings.mainBar = {
-    modules-right = lib.mkBefore (map (b: "custom/msqu-${b.name}") blocks);
+    modules-right = lib.mkBefore ([ "custom/msqu-all" ] ++ map (b: "custom/msqu-${b.name}") blocks);
+    "custom/msqu-all" = {
+      exec = "${bar} all";
+      exec-on-event = false;
+      restart-interval = 5;
+      return-type = "json";
+      on-click = lib.getExe msqu;
+      on-click-right = "${pick}/bin/msqu-pick all";
+    };
   } // lib.listToAttrs (map (b: lib.nameValuePair "custom/msqu-${b.name}" {
     # long-running; prints only on change
     exec = "${bar} ${b.tool}${b.arg}";
     exec-on-event = false;
     restart-interval = 5;
     return-type = "json";
-    on-click = "${run b.tool} click${b.arg}";
-    on-click-right = "${run b.tool} right-click${b.arg}";
-    on-click-middle = "${run b.tool} middle-click${b.arg}";
+    on-click = lib.getExe msqu;
+    on-click-right = "${pick}/bin/msqu-pick ${b.tool}${b.arg}";
+    on-click-middle = "${run b.tool} ${middle b.tool}${b.arg}";
   }) blocks);
 
   # paused: dimmer with a red underline; tabular digits

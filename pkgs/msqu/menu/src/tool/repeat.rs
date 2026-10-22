@@ -4,9 +4,9 @@
 //!   msqu repeat start SECONDS WINDOW [LABEL]
 //!                         WINDOW: app_id=ID, class=CLASS or - for none
 //!   msqu repeat windows   the open windows, one per app: "WINDOW<tab>title"
-//!   msqu repeat toggle    pause / resume (clicking the block)
-//!   msqu repeat reset     start the wait over, from now (middle-clicking)
-//!   msqu repeat cancel    stop (right-clicking the block)
+//!   msqu repeat toggle    pause / resume
+//!   msqu repeat reset     start the wait over, from now
+//!   msqu repeat cancel    stop (middle-clicking the block)
 //!
 //! state file "repeat": "run END EVERY WINDOW LABEL" or
 //! "pause LEFT EVERY WINDOW LABEL" (seconds; END is a unix time; WINDOW is
