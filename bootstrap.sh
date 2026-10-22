@@ -8,6 +8,8 @@ REPO="https://github.com/ilovealienz/nixos-config"
 NIXOS_DIR="/etc/nixos"
 TMP_CLONE="/tmp/nixos-config-clone"
 USER_NAME="pc"
+# what install says and the build's output, kept for after a failed build
+LOG="/var/log/nixos-bootstrap.log"
 # installed from Flathub on a new machine, also named in the main menu
 # (more later: flatpak install flathub <id>)
 FLATPAKS=(org.vinegarhq.Sober com.usebottles.bottles io.github.kolunmi.Bazaar)
@@ -16,24 +18,58 @@ FLATPAKS=(org.vinegarhq.Sober com.usebottles.bottles io.github.kolunmi.Bazaar)
 export NIX_CONFIG="experimental-features = nix-command flakes"
 
 B=$'\e[1m'; R=$'\e[31m'; G=$'\e[32m'; Y=$'\e[33m'; C=$'\e[36m'; X=$'\e[0m'
-say()  { echo "${C}==>${X} $*"; }
-ok()   { echo "${G} ok${X} $*"; }
-warn() { echo "${Y} !!${X} $*"; }
-err()  { echo "${R}!!!${X} $*"; }
+log()  { { echo "$*" >> "$LOG"; } 2>/dev/null; }
+say()  { echo "${C}==>${X} $*"; log "==> $*"; }
+ok()   { echo "${G} ok${X} $*"; log " ok $*"; }
+warn() { echo "${Y} !!${X} $*"; log " !! $*"; }
+err()  { echo "${R}!!!${X} $*"; log "!!! $*"; }
 
 [ "$EUID" -ne 0 ] && { err "run it with sudo"; exit 1; }
 
 # ─────────────────────────────────────────────────────────────────────
 # install
 # ─────────────────────────────────────────────────────────────────────
+# git as root on the pc-owned checkout
+rgit() {
+  nix-shell -p git --run "git -c safe.directory='$NIXOS_DIR' -C '$NIXOS_DIR' $*"
+}
+
+# every file staged, so the flake sees them, and the hardware config too
+# (git-ignored, never committed)
+stage() {
+  rgit add -A 2>/dev/null || true
+  rgit add -f hardware-configuration.nix 2>/dev/null || true
+}
+
+# online, and GitHub and the Nix cache reachable (no curl on a fresh install)
+online() {
+  local h
+  for h in github.com cache.nixos.org; do
+    if ! timeout 5 bash -c ": </dev/tcp/$h/443" 2>/dev/null; then
+      err "can't reach $h: check the network (nmtui), then try again"
+      return 1
+    fi
+  done
+}
+
 install() {
-  # don't clobber an existing checkout
+  log ""
+  log "──── install $(date '+%F %T') ────"
+  online || return 1
+
+  # an existing checkout: carry on with it (after a failed build), or start
+  # again from GitHub
+  local fresh=1
   if [ -d "$NIXOS_DIR/.git" ]; then
     warn "$NIXOS_DIR is already a git repo"
-    echo "   'full install' would move it aside and re-clone,"
-    echo "   losing anything uncommitted."
-    read -rp "   continue anyway? [y/N] " a
-    [[ "$a" =~ ^[Yy]$ ]] || return 0
+    echo "   c) carry on with it        (pick the host and build)"
+    echo "   r) re-clone from GitHub    (moves it aside: uncommitted changes go with it)"
+    read -rp "   [c/r, anything else cancels] " a
+    case "$a" in
+      c|C) fresh=0 ;;
+      r|R) ;;
+      *) return 0 ;;
+    esac
   fi
 
   # warn if the account this config manages isn't the one you're using
@@ -46,9 +82,11 @@ install() {
     [[ "$a" =~ ^[Yy]$ ]] || return 0
   fi
 
-  say "cloning config..."
-  local backup="/etc/nixos-backup-$(date +%s)"
-  nix-shell -p git --run "bash -s" <<EOF || { err "clone failed"; return 1; }
+  if [ "$fresh" = 1 ]; then
+    say "cloning config..."
+    local backup
+    backup="/etc/nixos-backup-$(date +%s)"
+    nix-shell -p git --run "bash -s" <<EOF || { err "clone failed"; return 1; }
 set -euo pipefail
 shopt -s dotglob
 rm -rf '$TMP_CLONE'
@@ -59,40 +97,60 @@ mv '$TMP_CLONE'/* '$NIXOS_DIR'/
 rmdir '$TMP_CLONE'
 git config --global --add safe.directory '$NIXOS_DIR'
 EOF
-  ok "cloned (old config backed up to $backup)"
+    ok "cloned (old config backed up to $backup)"
+  fi
+
+  # what's about to be built, and any changes not committed
+  echo
+  say "config at: $(rgit log -1 --format="'%h %s (%cr)'" 2>/dev/null)"
+  local changed
+  # (not the hardware config or local theme: staged, never committed)
+  changed=$(rgit status --porcelain 2>/dev/null | grep -vcE '(hardware-configuration\.nix|local-theme\.json)$')
+  [ "$changed" -gt 0 ] && echo "   plus uncommitted changes (files: $changed)"
 
   # pick a host from what's actually in the repo
   local hosts=()
-  mapfile -t hosts < <(ls "$NIXOS_DIR/hosts" 2>/dev/null | sed 's/\.nix$//')
+  mapfile -t hosts < <(find "$NIXOS_DIR/hosts" -maxdepth 1 -name '*.nix' -printf '%f\n' 2>/dev/null | sed 's/\.nix$//' | sort)
   [ ${#hosts[@]} -eq 0 ] && { err "no host files in $NIXOS_DIR/hosts"; return 1; }
   echo
   say "which machine is this?"
   local HOST
   select HOST in "${hosts[@]}"; do [ -n "${HOST:-}" ] && break; done
+  # no input left
+  [ -n "${HOST:-}" ] || return 1
 
   say "generating hardware config..."
   nixos-generate-config --show-hardware-config > "$NIXOS_DIR/hardware-configuration.nix"
 
   say "staging files (untracked files are invisible to the flake)..."
   chown -R "$USER_NAME":users "$NIXOS_DIR" 2>/dev/null || true
-  nix-shell -p git --run "
-    git -C '$NIXOS_DIR' add -A
-    git -C '$NIXOS_DIR' add -f hardware-configuration.nix
-  " 2>/dev/null || true
+  stage
 
-  say "building #$HOST (first build takes a while)..."
-  nixos-rebuild switch --flake "$NIXOS_DIR#$HOST" || { err "build failed"; return 1; }
+  read -rp "   build #$HOST from this? [Y/n] " a
+  [[ "$a" =~ ^[Nn] ]] && return 0
+
+  say "building #$HOST (first build takes a while; output also in $LOG)..."
+  # through script, so nix still sees a terminal (its progress bar, not
+  # every build's output) and the log gets a copy
+  if ! script -qefa -c "nixos-rebuild switch --flake '$NIXOS_DIR#$HOST'" "$LOG"; then
+    err "build or switch failed: see $LOG (less -R shows it with colours)"
+    echo "   fix it, then 1) install again and choose c) to carry on"
+    return 1
+  fi
   ok "built and switched"
 
   # users created by nix have no password — set one or you can't log in
   echo
   say "set a password for '$USER_NAME'"
-  until passwd "$USER_NAME"; do warn "try again"; done
+  local s
+  until passwd "$USER_NAME"; do
+    read -rp "   try again? [Y/n] " s || s=n
+    [[ "$s" =~ ^[Nn] ]] && { warn "skipped: set it before logging out (repair → 1)"; break; }
+  done
 
   say "creating xdg user directories..."
   sudo -u "$USER_NAME" xdg-user-dirs-update 2>/dev/null || true
 
-  local s
   # the weather key and birthday list, from the repo's encrypted copy
   if [ -f "$NIXOS_DIR/secrets.age" ]; then
     echo
@@ -100,7 +158,7 @@ EOF
     read -rp "   [Y/n] " s
     if [[ ! "$s" =~ ^[Nn] ]]; then
       until sudo -u "$USER_NAME" -i nxsecrets unpack; do
-        read -rp "   try again? [Y/n] " s
+        read -rp "   try again? [Y/n] " s || s=n
         [[ "$s" =~ ^[Nn] ]] && { warn "skipped: nxsecrets unpack later"; break; }
       done
     fi
@@ -146,7 +204,7 @@ github_push() {
     sudo -u "$USER_NAME" ssh-keygen -t ed25519 -C "$USER_NAME@$(hostname)" -f "$key" \
       || { err "no key made"; return 1; }
   fi
-  "$git" -C "$NIXOS_DIR" remote set-url origin "git@github.com:ilovealienz/nixos-config.git" \
+  "$git" -c safe.directory="$NIXOS_DIR" -C "$NIXOS_DIR" remote set-url origin "git@github.com:ilovealienz/nixos-config.git" \
     || { err "couldn't switch the repo to SSH"; return 1; }
   echo
   echo " add this key on GitHub: Settings → SSH and GPG keys → New SSH key"
@@ -236,10 +294,7 @@ MENU
       ;;
     3)
       chown -R "$USER_NAME":users "$NIXOS_DIR" 2>/dev/null || true
-      nix-shell -p git --run "
-        git -C '$NIXOS_DIR' add -A
-        git -C '$NIXOS_DIR' add -f hardware-configuration.nix
-      " 2>/dev/null || true
+      stage
       ok "ownership set to $USER_NAME, all files staged"
       ;;
     4)
@@ -277,6 +332,8 @@ ${B}─────────────────────────�
      swaymsg -t get_outputs
    fix desktop/monitors/<host>.nix if they don't match
 
+ ${C}install log${X}   $LOG
+
  log out and back in. from now on: ${B}nxrebuild${X}
 
 NOTE
@@ -289,7 +346,7 @@ main() {
 
 ${B}nixos-config${X}   $(hostname)
 
-  1) install       ${Y}(fresh machine)${X}
+  1) install       ${Y}(fresh machine, or carry on after a failed build)${X}
   2) repair
   3) flatpaks      ${Y}(Flathub, Sober, Bottles, Bazaar)${X}
   4) post-install notes
