@@ -12,7 +12,6 @@
 
   environment.systemPackages = with pkgs; [
     virtio-win
-    dnsmasq
   ];
 
   users.groups.libvirtd.members = [ "pc" ];

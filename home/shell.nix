@@ -23,7 +23,6 @@
     };
 
     shellAliases = {
-      nxupdate = "sudo nix flake update --flake /etc/nixos && nxrebuild";
       fpup = "flatpak update";
       v = "nvim";
     };

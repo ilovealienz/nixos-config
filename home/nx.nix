@@ -29,6 +29,7 @@ in
 {
   home.packages = with pkgs; [
     (nx "nxrebuild" [ diffutils ])
+    (nx "nxupdate" [ procps ])
     (nx "nxpull" [ ])
     (nx "nxpush" [ ])
     (nx "nxcheck" [ coreutils gnused gnugrep ])

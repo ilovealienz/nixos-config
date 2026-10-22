@@ -39,6 +39,10 @@ let
 in
 {
   programs.steam.enable = true;
+  # runs a game at a set size in its own window, so it never sees the monitor
+  # layout (Steam launch option: gamescope -W 1920 -H 1080 -r 144 -f -- %command%).
+  # No capSysNice: Steam's container can't run the setcap wrapper.
+  programs.gamescope.enable = true;
   programs.gamemode = {
     enable = true;
     settings.custom = {

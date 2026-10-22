@@ -24,6 +24,7 @@
     ./foot.nix
     ./weather.nix
     ./birthdays.nix
+    ./updates.nix
     ./sway-helpers.nix
     ./shortcuts.nix
     ./msqu.nix
