@@ -21,4 +21,7 @@ fi
 
 # hardware-configuration.nix: likewise staged, never committed
 sudo git -C "$nixos" add -f hardware-configuration.nix
-sudo nixos-rebuild switch --flake "$nixos#$(hostname)"
+# nh: a build tree while building, then what changed (packages added,
+# removed, upgraded) before switching; it uses sudo itself. Activation
+# output (units restarted or failed) shown too, as nixos-rebuild did
+NH_SHOW_ACTIVATION_LOGS=1 nh os switch "$nixos" -H "$(hostname)"

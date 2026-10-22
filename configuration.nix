@@ -114,8 +114,11 @@
 
   # Flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  # hard-link identical store files
-  nix.settings.auto-optimise-store = true;
+  # hard-link identical store files, weekly (on every build it slows builds)
+  nix.optimise = {
+    automatic = true;
+    dates = [ "weekly" ];
+  };
 
   # weekly cleanup, keeping the last 3 generations (nxclean runs it now)
   programs.nh = {

@@ -112,7 +112,7 @@ let
       (k [ "rec" ] "Click: stop recording" "")
     ]; }
     { name = "nx commands"; note = "zsh"; style = "cmd"; items = [
-      (k [ "nxrebuild" ] "Rebuild and switch" "")
+      (k [ "nxrebuild" ] "Rebuild and switch" "shows what changed")
       (k [ "nxupdate" ] "Update flake inputs, then rebuild" "")
       (k [ "nxpull" ] "Pull the config from GitHub, then rebuild" "drops an unpushed local flake.lock first")
       (k [ "nxpush" ] "Check, commit and push" "nxpush \"message\" (default: update); never commits hardware-configuration.nix")
