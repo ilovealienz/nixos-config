@@ -120,6 +120,7 @@ let
       (k [ "nxclean" ] "Clean old generations, keep 3" "")
       (k [ "nxedit" ] "Browse and edit the config" "type to filter · Enter edit · ^R rebuild · ^A stage · ^D diff · Tab tree/list")
       (k [ "theme-edit" ] "Theme editor" "colours, icons and wallpaper, with a preview")
+      (k [ "nxgs" ] "Games and apps in gamescope" "saved sizes per game · copies Steam and GE-Proton Wayland launch options · ? for when to use what")
       (k [ "nxshortcuts" ] "This list" "")
       (k [ "nxsearch" ] "Search nixpkgs" "")
       (k [ "nxsrun" ] "Search nixpkgs and run the pick" "")

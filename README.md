@@ -16,6 +16,7 @@ nxrebuild          rebuild and switch
 nxpull             pull from GitHub, then rebuild
 nxpush "message"   check, commit and push
 nxsecrets unpack   weather key and birthdays, once per machine (passphrase in Bitwarden)
+nxgs               a game at the wrong size: GE-Proton, Proton Wayland or gamescope
 ```
 
 Super+/ lists every shortcut and command.

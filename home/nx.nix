@@ -1,6 +1,6 @@
 # The nx commands: one script each in ../scripts/nx/, checked with
 # shellcheck when built. Listed: the programs each needs beyond the system's
-# (sudo, git, nix, nh, iptables...). nxedit is Rust: ../pkgs/nxedit/
+# (sudo, git, nix, nh, iptables...). nxedit and nxgs are Rust: ../pkgs/
 { pkgs, lib, osConfig, ... }:
 let
   nx = name: deps: pkgs.writeShellApplication {
@@ -25,6 +25,22 @@ let
       --add-flags "--colors ${pkgs.writeText "nxedit-colors.json" (builtins.toJSON osConfig.theme.colors)}" \
       --prefix PATH : ${lib.makeBinPath [ pkgs.bat ]}
   '';
+
+  # games and apps in gamescope at a set size (../pkgs/nxgs/)
+  nxgsBin = pkgs.rustPlatform.buildRustPackage {
+    pname = "nxgs";
+    version = "1.0.0";
+    src = ../pkgs/nxgs;
+    cargoLock.lockFile = ../pkgs/nxgs/Cargo.lock;
+  };
+  nxgs = pkgs.runCommand "nxgs" {
+    nativeBuildInputs = [ pkgs.makeBinaryWrapper ];
+    meta.mainProgram = "nxgs";
+  } ''
+    makeWrapper ${nxgsBin}/bin/nxgs $out/bin/nxgs \
+      --add-flags "--colors ${pkgs.writeText "nxgs-colors.json" (builtins.toJSON osConfig.theme.colors)}" \
+      --prefix PATH : ${lib.makeBinPath [ pkgs.wl-clipboard pkgs.util-linux ]}
+  '';
 in
 {
   home.packages = with pkgs; [
@@ -34,6 +50,7 @@ in
     (nx "nxpush" [ ])
     (nx "nxcheck" [ coreutils gnused gnugrep ])
     nxedit
+    nxgs
     (nx "nxsearch" [ nix-search-tv fzf gnused ])
     (nx "nxsrun" [ ])
     (nx "nxrun" [ ])
