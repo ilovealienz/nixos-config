@@ -2,7 +2,7 @@
 //! config, recent entries, window and app names, and running the tools.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -90,13 +90,12 @@ pub struct Running {
     pub timed: bool,
 }
 
-/// every tool with running ones, in the bar's order (notes have a block of
-/// their own, besides these)
+/// every tool with running ones, in the bar's order
 pub const TOOLS: [&str; 7] = ["timer", "stopwatch", "alarm", "repeat", "drink", "countdown", "clock"];
 /// the tools that run several at once (`slots` in desktop/msqu.nix)
 pub const SLOTTED: [&str; 4] = ["timer", "alarm", "countdown", "clock"];
 /// the tools whose state outlives a reboot
-pub const LASTING: [&str; 3] = ["countdown", "clock", "notes"];
+pub const LASTING: [&str; 2] = ["countdown", "clock"];
 
 /// where the tools keep their state: $XDG_RUNTIME_DIR/msqu/TOOL/ (/tmp if
 /// it's unset or empty, like the scripts' ${XDG_RUNTIME_DIR:-/tmp})
@@ -114,7 +113,7 @@ pub fn lasting_dir() -> PathBuf {
     base.join("msqu")
 }
 
-/// a tool's state files: countdowns, clocks and notes last, the rest go
+/// a tool's state files: countdowns and clocks last, the rest go
 /// with the session
 pub fn tool_dir(tool: &str) -> PathBuf {
     if LASTING.contains(&tool) { lasting_dir().join(tool) } else { state_dir().join(tool) }
@@ -578,60 +577,135 @@ pub fn offset_text(zone_off: i64) -> String {
     if m == 0 { format!("{sign}{h}h") } else { format!("{sign}{h}h {m}m") }
 }
 
-/// a note: its number, reminder time (0: none) and text
+/// a note: a text file in the notes folder
 #[derive(Debug, Clone, PartialEq)]
 pub struct Note {
-    pub id: u64,
-    pub at: i64,
+    /// the file name without .md or .txt
+    pub name: String,
+    pub path: PathBuf,
+    /// when it last changed (unix time)
+    pub modified: i64,
+    /// its text, or the start of a long one
     pub text: String,
 }
 
-/// the notes file: "ID\tAT\tTEXT" lines
-pub fn notes_file() -> PathBuf {
-    tool_dir("notes").join("notes")
+/// the notes folder: notes in the Documents folder
+pub fn notes_dir() -> PathBuf {
+    documents_dir().join("notes")
 }
 
-pub fn parse_notes(text: &str) -> Vec<Note> {
-    text.lines()
-        .filter_map(|l| {
-            let mut f = l.splitn(3, '\t');
-            Some(Note { id: f.next()?.parse().ok()?, at: f.next()?.parse().ok()?, text: f.next()?.to_string() })
-        })
-        .collect()
-}
-
-pub fn load_notes() -> Vec<Note> {
-    parse_notes(&std::fs::read_to_string(notes_file()).unwrap_or_default())
-}
-
-/// "call mum 6pm", "bins at 7:30" -> ("call mum", reminder): a time at the
-/// end is a reminder (with a colon or am/pm, so "chapter 7" stays a note)
-pub fn split_note(s: &str) -> (String, Option<i64>) {
-    let (text, at) = split_note_time(s);
-    match (text.strip_suffix(" at"), at) {
-        (Some(t), Some(at)) => (t.to_string(), Some(at)),
-        _ => (text, at),
+/// XDG_DOCUMENTS_DIR (the environment, then user-dirs.dirs), else ~/Documents
+fn documents_dir() -> PathBuf {
+    let home = PathBuf::from(std::env::var_os("HOME").unwrap_or_default());
+    if let Some(d) = std::env::var_os("XDG_DOCUMENTS_DIR").filter(|v| !v.is_empty()) {
+        return PathBuf::from(d);
     }
+    let config = std::env::var_os("XDG_CONFIG_HOME").filter(|v| !v.is_empty()).map(PathBuf::from).unwrap_or_else(|| home.join(".config"));
+    let dirs = std::fs::read_to_string(config.join("user-dirs.dirs")).unwrap_or_default();
+    user_dir(&dirs, "XDG_DOCUMENTS_DIR", &home).unwrap_or_else(|| home.join("Documents"))
 }
 
-fn split_note_time(s: &str) -> (String, Option<i64>) {
-    let words: Vec<&str> = s.split_whitespace().collect();
-    let is_time = |w: &str| {
-        let l = w.to_lowercase();
-        (l.contains(':') || l.ends_with("am") || l.ends_with("pm")) && clock(w).is_some()
+/// a folder from user-dirs.dirs: KEY="$HOME/Documents" or an absolute path.
+/// None if it's missing, or just $HOME (which means it's turned off)
+pub fn user_dir(dirs: &str, key: &str, home: &Path) -> Option<PathBuf> {
+    let v = dirs.lines().find_map(|l| l.trim().strip_prefix(key)?.trim_start().strip_prefix('='))?;
+    let v = v.trim().trim_matches('"');
+    let path = match v.strip_prefix("$HOME") {
+        Some(rest) => home.join(rest.trim_start_matches('/')),
+        None if v.starts_with('/') => PathBuf::from(v),
+        None => return None,
     };
-    let n = words.len();
-    if n >= 3 && matches!(words[n - 1].to_lowercase().as_str(), "am" | "pm") {
-        if let Some((h, m)) = clock(&format!("{}{}", words[n - 2], words[n - 1])) {
-            return (words[..n - 2].join(" "), Some(next_at(h, m)));
+    (path != home).then_some(path)
+}
+
+/// the notes, newest first: the files in the folder, not hidden ones or
+/// editor backups
+pub fn list_notes(dir: &Path) -> Vec<Note> {
+    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    let mut notes: Vec<Note> = entries
+        .filter_map(|e| {
+            let e = e.ok()?;
+            let file = e.file_name().to_string_lossy().into_owned();
+            if file.starts_with('.') || file.ends_with('~') || file.ends_with(".swp") {
+                return None;
+            }
+            let meta = std::fs::metadata(e.path()).ok().filter(|m| m.is_file())?;
+            let modified = meta.modified().ok()?.duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
+            Some(Note { name: note_name(&file), path: e.path(), modified, text: read_start(&e.path()) })
+        })
+        .collect();
+    notes.sort_by(|a, b| b.modified.cmp(&a.modified).then_with(|| a.name.cmp(&b.name)));
+    notes
+}
+
+/// "shopping list.md" -> "shopping list"
+fn note_name(file: &str) -> String {
+    match file.rsplit_once('.') {
+        Some((stem, "md" | "txt")) if !stem.is_empty() => stem.to_string(),
+        _ => file.to_string(),
+    }
+}
+
+/// the first 16 KiB of a file, as text
+fn read_start(path: &Path) -> String {
+    use std::io::Read;
+    let mut buf = Vec::new();
+    if let Ok(f) = std::fs::File::open(path) {
+        let _ = f.take(16 * 1024).read_to_end(&mut buf);
+    }
+    String::from_utf8_lossy(&buf).into_owned()
+}
+
+/// where a note called this goes: NAME.md, unless it has its own .md or
+/// .txt. None for a name that can't be a file name.
+pub fn note_path(dir: &Path, name: &str) -> Option<PathBuf> {
+    let name: String = name.trim().replace('/', "-").chars().filter(|c| !c.is_control()).collect();
+    let name = name.trim_start_matches('.').trim();
+    if name.is_empty() {
+        return None;
+    }
+    let file = if name.ends_with(".md") || name.ends_with(".txt") { name.to_string() } else { format!("{name}.md") };
+    Some(dir.join(file))
+}
+
+/// the old one-line notes (msqu's notes file) become note files, once
+pub fn migrate_notes() {
+    let old = lasting_dir().join("notes").join("notes");
+    let Ok(text) = std::fs::read_to_string(&old) else { return };
+    let dir = notes_dir();
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    for line in text.lines() {
+        // "ID\tREMINDER\tTEXT"
+        let Some(note) = line.splitn(3, '\t').nth(2).map(str::trim).filter(|t| !t.is_empty()) else { continue };
+        // its first words, up to 40 characters
+        let mut short = String::new();
+        for w in note.split_whitespace() {
+            if !short.is_empty() && short.chars().count() + 1 + w.chars().count() > 40 {
+                break;
+            }
+            if !short.is_empty() {
+                short.push(' ');
+            }
+            short.push_str(w);
+        }
+        let short: String = short.chars().take(40).collect();
+        let Some(mut path) = note_path(&dir, &short) else { continue };
+        let mut n = 2;
+        while path.exists() {
+            let Some(p) = note_path(&dir, &format!("{short} ({n})")) else { break };
+            path = p;
+            n += 1;
+        }
+        if std::fs::write(&path, format!("{note}\n")).is_err() {
+            // left as it was, to try again next time
+            return;
         }
     }
-    if n >= 2 && is_time(words[n - 1]) {
-        if let Some((h, m)) = clock(words[n - 1]) {
-            return (words[..n - 1].join(" "), Some(next_at(h, m)));
-        }
-    }
-    (words.join(" "), None)
+    let _ = std::fs::remove_file(&old);
+    let _ = std::fs::remove_dir(old.parent().unwrap_or(&old));
+    unmark("notes", "notes");
 }
 
 /// a sum typed into the menu ("1024x8", "(3+4)*2^3", "17%5"); None if it
@@ -1229,6 +1303,17 @@ mod tests {
 
     #[test]
     fn zones_and_notes() {
+        let home = Path::new("/home/pc");
+        assert_eq!(user_dir("# c\nXDG_DOCUMENTS_DIR=\"$HOME/Documents\"\n", "XDG_DOCUMENTS_DIR", home), Some(home.join("Documents")));
+        assert_eq!(user_dir("XDG_DOCUMENTS_DIR=\"/mnt/Shared/User/Documents\"", "XDG_DOCUMENTS_DIR", home), Some("/mnt/Shared/User/Documents".into()));
+        assert_eq!(user_dir("XDG_DOCUMENTS_DIR=\"$HOME/\"", "XDG_DOCUMENTS_DIR", home), None);
+        assert_eq!(user_dir("XDG_DESKTOP_DIR=\"$HOME/Desktop\"", "XDG_DOCUMENTS_DIR", home), None);
+        let d = Path::new("/n");
+        assert_eq!(note_path(d, " shopping list "), Some(d.join("shopping list.md")));
+        assert_eq!(note_path(d, "a/b.txt"), Some(d.join("a-b.txt")));
+        assert_eq!(note_path(d, "../x"), Some(d.join("-x.md")));
+        assert_eq!(note_path(d, " .. "), None);
+        assert_eq!((note_name("todo.md"), note_name("log.txt"), note_name("x.rs"), note_name(".md")), ("todo".into(), "log".into(), "x.rs".into(), ".md".into()));
         let all = vec!["America/New_York".to_string(), "Asia/Tokyo".into(), "Europe/London".into(), "UTC".into()];
         assert_eq!(find_zones(&all, "tokyo"), ["Asia/Tokyo"]);
         assert_eq!(find_zones(&all, "new york"), ["America/New_York"]);
@@ -1242,17 +1327,6 @@ mod tests {
             assert!(zones().iter().any(|z| z == "Europe/London"));
         }
         assert_eq!(zone_time("../../etc/passwd", 0), None);
-        assert_eq!(split_note("call mum 6pm").0, "call mum");
-        assert!(split_note("call mum 6 pm").1.is_some());
-        assert_eq!(split_note("bins 7:30").0, "bins");
-        assert_eq!(split_note("call mum at 6pm").0, "call mum");
-        assert_eq!(split_note("look at"), ("look at".into(), None));
-        assert_eq!(split_note("read chapter 7"), ("read chapter 7".into(), None));
-        assert_eq!(split_note("7pm").1, None);
-        assert_eq!(
-            parse_notes("1\t0\tmilk\n2\t99\tcall\tmum\nbad\n"),
-            [Note { id: 1, at: 0, text: "milk".into() }, Note { id: 2, at: 99, text: "call\tmum".into() }]
-        );
         assert_eq!(parse_recent("clock\tAsia/Tokyo\tTokyo\n"), [Recent::Clock { zone: "Asia/Tokyo".into(), label: "Tokyo".into() }]);
         let b = parse_bar("mode one\npin timer 1\nhide clock 2\nbad line\n");
         assert!(b.one && b.shown("timer", "1") && !b.shown("timer", "2") && !b.shown("clock", "2"));

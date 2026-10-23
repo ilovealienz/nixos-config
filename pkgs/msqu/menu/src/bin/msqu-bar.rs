@@ -1,6 +1,6 @@
 //! msqu-bar TOOL [SLOT]: one waybar block, printed on change. Wakes on state
 //! file changes (inotify), each second while counting (each minute for the
-//! clocks), and at midnight. TOOL is one of model::TOOLS, or notes.
+//! clocks), and at midnight. TOOL is one of model::TOOLS.
 //! Classes: "msqu", its colour, "paused".
 //!
 //! msqu-bar all: the one block, when the menu has the bar set to that: what
@@ -21,7 +21,6 @@ const DRINK: &str = "󰆫";
 const PAUSED: &str = "󰏤";
 const COUNTDOWN: &str = "󰃭";
 const CLOCK: &str = "󰥔";
-const REMINDER: &str = "󰂞";
 const MSQU: &str = "󰀻";
 
 /// the tooltip's last line: what the clicks do
@@ -140,22 +139,6 @@ fn show(tool: &str, r: Option<&Running>) -> Option<Block> {
     })
 }
 
-/// the notes block, as JSON
-pub fn render_notes(text: &str) -> String {
-    show_notes(text).map_or(EMPTY.into(), |b| b.json())
-}
-
-/// the notes block: the next reminder, None without one
-fn show_notes(text: &str) -> Option<Block> {
-    let mut due: Vec<model::Note> = model::parse_notes(text).into_iter().filter(|n| n.at > 0).collect();
-    due.sort_by_key(|n| n.at);
-    let next = due.first()?;
-    let more = if due.len() > 1 { format!(" +{}", due.len() - 1) } else { String::new() };
-    let list: Vec<String> = due.iter().map(|n| format!("{}  {}", clock_text(n.at), n.text)).collect();
-    let tip = format!("{}{}", list.join("\n"), clicks("cancel the next reminder"));
-    Some(block(&format!("{REMINDER} {}{more}", msqu_ui::tool::hm(next.at)), "orange", &tip, false))
-}
-
 /// the one block, and how long until it changes: icons for what's folded
 /// into it (not pinned or hidden), each listed in the tooltip; with nothing
 /// folded, just msqu's icon
@@ -186,11 +169,6 @@ fn show_all(bar: &model::Bar) -> (Option<Block>, i32) {
             fold(b, &r.label, wait_ms(r.tool, Some(&r)));
         }
     }
-    if !bar.has("hide", "notes", "notes") && !bar.has("pin", "notes", "notes") {
-        if let Some(b) = show_notes(&std::fs::read_to_string(model::notes_file()).unwrap_or_default()) {
-            fold(b, "", wait_ms("notes", None));
-        }
-    }
     if lines.is_empty() {
         return (Some(block(MSQU, "accent", "msqu\nclick: msqu · right-click: options", false)), wait);
     }
@@ -214,8 +192,6 @@ fn wait_ms(tool: &str, r: Option<&Running>) -> i32 {
         // midnight, or when it gets under a day away
         Some(r) if tool == "countdown" && r.timed && r.left >= 86400 => midnight().min(((r.left - 86400) * 1000 + 500).min(i32::MAX as i64) as i32),
         Some(_) if tool == "countdown" => midnight(),
-        // the next reminder's day ("tomorrow" becomes today)
-        _ if tool == "notes" => midnight(),
         // counting: just after the next whole second
         Some(r) if !r.paused && tool != "alarm" => (1000 - ms_now() % 1000 + 5) as i32,
         // the alarm's day: just after midnight
@@ -238,8 +214,8 @@ fn main() {
         }
         return;
     }
-    let Some(tool) = model::TOOLS.into_iter().chain(["notes", "all"]).find(|t| *t == tool) else {
-        eprintln!("usage: msqu-bar TOOL [SLOT]   tools: {} notes, or all", model::TOOLS.join(" "));
+    let Some(tool) = model::TOOLS.into_iter().chain(["all"]).find(|t| *t == tool) else {
+        eprintln!("usage: msqu-bar TOOL [SLOT]   tools: {}, or all", model::TOOLS.join(" "));
         std::process::exit(2);
     };
     let slot = args.next();
@@ -247,7 +223,7 @@ fn main() {
     let file = model::tool_dir(tool).join(&name);
     // its state directory (all: every tool's), and the bar settings'
     let mut dirs: Vec<std::path::PathBuf> = if tool == "all" {
-        model::TOOLS.into_iter().chain(["notes"]).map(model::tool_dir).collect()
+        model::TOOLS.into_iter().map(model::tool_dir).collect()
     } else {
         vec![model::tool_dir(tool)]
     };
@@ -275,13 +251,9 @@ fn main() {
             (b.map_or(EMPTY.into(), |b| b.json()), wait)
         } else {
             let text = std::fs::read_to_string(&file).ok();
-            let r = text.as_deref().filter(|_| tool != "notes").and_then(|t| model::read_running(tool, t));
-            let line = match tool {
-                // pinned, or a block each; and not hidden
-                _ if !bar.shown(tool, &name) => EMPTY.into(),
-                "notes" => render_notes(text.as_deref().unwrap_or("")),
-                _ => render(tool, r.as_ref()),
-            };
+            let r = text.as_deref().and_then(|t| model::read_running(tool, t));
+            // pinned, or a block each; and not hidden
+            let line = if bar.shown(tool, &name) { render(tool, r.as_ref()) } else { EMPTY.into() };
             (line, wait_ms(tool, r.as_ref()))
         };
         if line != last {
@@ -342,9 +314,5 @@ mod tests {
             assert!(render("clock", Some(&k)).starts_with(r#"{"text":"󰥔 UTC "#));
         }
         assert!(wait_ms("clock", Some(&k)) <= 60_005);
-        assert_eq!(render_notes("1\t0\tmilk\n"), r#"{"text":""}"#);
-        let soon = model::now() + 3600;
-        let b = render_notes(&format!("1\t0\tmilk\n2\t{soon}\tcall mum\n3\t{}\tbins\n", soon + 60));
-        assert!(b.starts_with(&format!(r#"{{"text":"󰂞 {} +1","class":["msqu","orange"]"#, msqu_ui::tool::hm(soon))), "{b}");
     }
 }

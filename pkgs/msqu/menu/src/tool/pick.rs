@@ -34,7 +34,7 @@ struct Item {
     paused: bool,
 }
 
-const ICONS: [(&str, &str); 8] = [
+const ICONS: [(&str, &str); 7] = [
     ("timer", "󰔛"),
     ("stopwatch", "󰁫"),
     ("alarm", "󰀠"),
@@ -42,7 +42,6 @@ const ICONS: [(&str, &str); 8] = [
     ("drink", "󰆫"),
     ("countdown", "󰃭"),
     ("clock", "󰥔"),
-    ("notes", "󰂞"),
 ];
 
 fn icon(tool: &str) -> &'static str {
@@ -64,20 +63,13 @@ fn describe(r: &Running) -> String {
     }
 }
 
-/// what's open: running ones, and the notes if a reminder is set
+/// what's open: the running ones
 fn items() -> Vec<Item> {
-    let mut out: Vec<Item> = model::running()
+    model::running()
         .iter()
         .filter(|r| r.tool != "countdown" || model::countdown_text(r.at, r.timed).is_some())
         .map(|r| Item { tool: r.tool, name: model::bar_name(r), slot: r.slot.clone(), text: describe(r), paused: r.paused })
-        .collect();
-    let mut due: Vec<model::Note> = model::load_notes().into_iter().filter(|n| n.at > 0).collect();
-    due.sort_by_key(|n| n.at);
-    if let Some(n) = due.first() {
-        let more = if due.len() > 1 { format!(" +{}", due.len() - 1) } else { String::new() };
-        out.push(Item { tool: "notes", name: "notes".into(), slot: String::new(), text: format!("{} {}{more}", super::hm(n.at), n.text), paused: false });
-    }
-    out
+        .collect()
 }
 
 /// what can be done to one
@@ -101,11 +93,10 @@ fn options(it: &Item, bar: &Bar) -> Vec<(String, Do)> {
         "repeat" => vec![toggle(), ("Start the wait over".into(), Do::Run("repeat", cmd("reset"))), ("Stop".into(), Do::Run("repeat", cmd("cancel")))],
         "drink" => vec![toggle(), ("Start the wait over".into(), Do::Run("drink", cmd("reset"))), ("Stop".into(), Do::Run("drink", cmd("stop")))],
         "countdown" => vec![("Remove".into(), Do::Run("countdown", cmd("cancel")))],
-        "clock" => vec![("Remove".into(), Do::Run("clock", cmd("remove")))],
-        _ => vec![("Cancel the next reminder".into(), Do::Run("notes", vec!["right-click".into()]))],
+        _ => vec![("Remove".into(), Do::Run("clock", cmd("remove")))],
     };
     let hidden = bar.has("hide", it.tool, &it.name);
-    if matches!(it.tool, "countdown" | "clock" | "notes") {
+    if matches!(it.tool, "countdown" | "clock") {
         o.push((if hidden { "Show on the bar" } else { "Hide from the bar" }.into(), Do::Mark("hide", it.tool, it.name.clone(), !hidden)));
     }
     if bar.one {
@@ -194,11 +185,11 @@ pub fn main(args: &[String]) -> i32 {
         return run(o.swap_remove(i).1);
     }
     let (tool, slot) = (arg(0), arg(1));
-    let found = all.into_iter().find(|it| it.tool == tool && (tool == "notes" || it.slot == slot));
+    let found = all.into_iter().find(|it| it.tool == tool && it.slot == slot);
     match found {
         Some(it) => item_menu(&it),
         // gone since the click
-        None if model::TOOLS.contains(&tool) || tool == "notes" => 0,
+        None if model::TOOLS.contains(&tool) => 0,
         None => {
             eprintln!("usage: msqu pick TOOL [SLOT] | all");
             2

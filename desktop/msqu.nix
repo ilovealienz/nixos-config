@@ -1,6 +1,7 @@
 # msqu (my sway quick utils), Super+Shift+A: timer, stopwatch, alarm,
-# repeat, drink reminder, countdown to a date, world clock and notes, with
-# bar blocks. Source: ../pkgs/msqu/
+# repeat, drink reminder, countdown to a date and world clock, with bar
+# blocks, and notes (text files in Documents/notes, edited in nano).
+# Source: ../pkgs/msqu/
 #
 # Adding a tool: menu/src/tool/NAME.rs, bin/msqu-tool.rs and `tools` below,
 # plus model.rs (state), main.rs (menu) and bin/msqu-bar.rs (block).
@@ -39,7 +40,7 @@ let
       deps = with pkgs; [ systemd libnotify pipewire mako ];
       bar = true;
     };
-    # kept across reboots, like clock and notes (~/.local/state/msqu)
+    # kept across reboots, like clock (~/.local/state/msqu)
     countdown = {
       deps = with pkgs; [ systemd libnotify pipewire mako ];
       bar = true;
@@ -50,15 +51,10 @@ let
       bar = true;
       slots = 3;
     };
-    # a block only while a reminder is set
-    notes = {
-      deps = with pkgs; [ systemd libnotify pipewire mako ];
-      bar = true;
-    };
   };
 
   # block order on the bar
-  order = [ "timer" "stopwatch" "alarm" "repeat" "drink" "notes" "countdown" "clock" ];
+  order = [ "timer" "stopwatch" "alarm" "repeat" "drink" "countdown" "clock" ];
 
   # repeat and drink bell, as FLAC for pw-play
   bellSound = pkgs.runCommand "msqu-bell.flac" { nativeBuildInputs = [ pkgs.ffmpeg-headless ]; } ''
@@ -108,8 +104,8 @@ let
   };
   menu = pkgs.writeShellApplication {
     name = "msqu-menu";
-    # calculator: copy the answer
-    runtimeInputs = [ msquUi pkgs.wl-clipboard pkgs.libnotify ] ++ lib.attrValues toolPkgs;
+    # calculator: copy the answer; notes: nano
+    runtimeInputs = [ msquUi pkgs.wl-clipboard pkgs.libnotify pkgs.nano ] ++ lib.attrValues toolPkgs;
     text = ''exec msqu-ui --config ${menuConfig} "$@"'';
   };
 
@@ -141,8 +137,6 @@ let
       --add-flags pick \
       --prefix PATH : ${lib.makeBinPath ([ pkgs.fuzzel pkgs.libnotify ] ++ lib.attrValues toolPkgs)}
   '';
-  # middle-click: cancel, stop or remove it (notes: the next reminder)
-  middle = tool: if tool == "notes" then "right-click" else "cancel";
 in
 {
   home.packages = [ msqu ];
@@ -152,18 +146,18 @@ in
   services.mako.settings."category=msqu-drink".history = false;
   # ringing shows even in do-not-disturb (closing it stops the sound)
   services.mako.settings."mode=dnd category=msqu-ring".invisible = false;
-  # at login: countdown and note reminders armed again (their timers don't
+  # at login: countdown notifications armed again (their timers don't
   # outlive a reboot), and any missed meanwhile sent
   systemd.user.services.msqu-rearm = {
     Unit = {
-      Description = "Arm msqu's countdown and note reminders again";
+      Description = "Arm msqu's countdown notifications again";
       After = [ "sway-session.target" ];
     };
     Service = {
       Type = "oneshot";
       # mako up first, for the missed ones
       ExecStartPre = "${pkgs.coreutils}/bin/sleep 5";
-      ExecStart = [ "${run "countdown"} rearm" "${run "notes"} rearm" ];
+      ExecStart = "${run "countdown"} rearm";
     };
     Install.WantedBy = [ "sway-session.target" ];
   };
@@ -197,7 +191,7 @@ in
     return-type = "json";
     on-click = lib.getExe msqu;
     on-click-right = "${pick}/bin/msqu-pick ${b.tool}${b.arg}";
-    on-click-middle = "${run b.tool} ${middle b.tool}${b.arg}";
+    on-click-middle = "${run b.tool} cancel${b.arg}";
   }) blocks);
 
   # paused: dimmer with a red underline; tabular digits

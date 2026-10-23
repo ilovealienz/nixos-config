@@ -4,6 +4,9 @@
 //!   FILE: "color NAME HEX", "preset LABEL|EVERY|WINDOW" and
 //!   "slots TOOL N" lines
 //!   TOOL: open straight on that tool's form (clock, notes: its search)
+//!
+//! Notes are text files in Documents/notes; picking one leaves the menu for
+//! nano on it, in the same window.
 
 use msqu_ui::{model, term};
 
@@ -32,9 +35,8 @@ enum Act {
     /// replace: the slot of a countdown this changes
     StartCountdown { at: i64, timed: bool, label: String, replace: Option<String> },
     AddClock { zone: String, label: String },
-    /// at: its reminder (0: none)
-    AddNote { text: String, at: i64 },
-    DoneNote(u64),
+    /// a note file in nano (made when it's first saved)
+    EditNote(std::path::PathBuf),
     /// types this into the search ("tz ", "n ")
     Query(String),
     /// the bar: a block each, or one block
@@ -110,6 +112,10 @@ struct App {
     error: String,
     /// Enter was pressed once on "clear all": the next Enter clears
     confirm_clear: bool,
+    /// Ctrl+X was pressed once on this note: the next Ctrl+X deletes it
+    confirm_delete: Option<std::path::PathBuf>,
+    /// the note to open in nano once the menu is closed
+    edit: Option<std::path::PathBuf>,
     /// the time zones, read once they're needed
     zones: std::cell::OnceCell<Vec<String>>,
 }
@@ -125,7 +131,6 @@ const CALC: &str = "󰃬";
 const COUNTDOWN: &str = "󰃭";
 const CLOCK: &str = "󰥔";
 const NOTE: &str = "󰎞";
-const REMINDER: &str = "󰂞";
 const BAR: &str = "󰕮";
 
 fn icon(tool: &str) -> &'static str {
@@ -161,9 +166,18 @@ fn countdown_note(at: i64, timed: bool) -> String {
     format!("{days} · {}{time}", date_text(at))
 }
 
-/// a note's reminder: "18:00 (in 3h)"
-fn reminder_text(at: i64) -> String {
-    format!("{} (in {})", model::clock_text(at), rough(at - model::now()))
+/// a note's text on one line: "milk · eggs · bread"
+fn note_snippet(text: &str) -> String {
+    let lines: Vec<&str> = text.lines().map(str::trim).filter(|l| !l.is_empty()).take(8).collect();
+    if lines.is_empty() { "empty".into() } else { lines.join(" · ") }
+}
+
+/// the note a row opens, if it's an existing file
+fn note_file(r: &Row) -> Option<&std::path::Path> {
+    match &r.act {
+        Act::EditNote(p) if p.is_file() => Some(p),
+        _ => None,
+    }
 }
 
 /// a form's time field, read the way that tool reads it: seconds, or for
@@ -182,7 +196,6 @@ fn when_secs(tool: &str, when: &str) -> Option<i64> {
 /// a row's pin / hide key in the bar file: (tool, name)
 fn mark_of(r: &Row) -> Option<(&'static str, String)> {
     match r.cancel.as_ref()? {
-        ("notes", _) => Some(("notes", "notes".into())),
         (t, s) if s.is_empty() => Some((t, t.to_string())),
         (t, s) => Some((t, s.clone())),
     }
@@ -190,7 +203,7 @@ fn mark_of(r: &Row) -> Option<(&'static str, String)> {
 
 /// middle-click hides these (the rest use it for something else)
 fn hideable(tool: &str) -> bool {
-    matches!(tool, "countdown" | "clock" | "notes")
+    matches!(tool, "countdown" | "clock")
 }
 
 /// " · pinned", " · hidden" for a row's note
@@ -208,7 +221,7 @@ fn mark_note(bar: &model::Bar, tool: &str, name: &str) -> String {
 fn stop_word(tool: &str) -> &'static str {
     match tool {
         "timer" | "alarm" => "cancel",
-        "countdown" | "notes" => "remove",
+        "countdown" => "remove",
         "clock" => "remove",
         _ => "stop",
     }
@@ -304,16 +317,30 @@ impl App {
             rows.push(start(CLOCK, title.into(), "like tokyo, new york or la paz".into(), Act::Nothing));
             return rows;
         } else if tool == "notes" {
-            let (text, at) = model::split_note(rest);
-            if !text.is_empty() {
-                let note = at.map_or("no reminder · add a time for one: 6pm, 18:30".to_string(), |at| format!("reminds you at {}", reminder_text(at)));
-                rows.push(start(NOTE, format!("note: {text}"), note, Act::AddNote { text, at: at.unwrap_or(0) }));
-                return rows;
+            // "n": every note; "n shop": the ones with those words in their
+            // name or text, then a new one called that if none is
+            let dir = model::notes_dir();
+            let notes = model::list_notes(&dir);
+            let name = rest.trim();
+            let words: Vec<String> = name.to_lowercase().split_whitespace().map(String::from).collect();
+            let taken = notes.iter().any(|n| n.name.eq_ignore_ascii_case(name));
+            for n in notes {
+                let text = format!("{} {}", n.name, n.text).to_lowercase();
+                if words.iter().all(|w| text.contains(w)) {
+                    let age = model::now() - n.modified;
+                    let age = if age < 60 { "just now".to_string() } else { format!("{} ago", rough(age)) };
+                    let note = format!("{age} · {}", note_snippet(&n.text));
+                    rows.push(Row { section: "NOTES", tool: "notes", icon: NOTE, title: n.name, note, act: Act::EditNote(n.path), cancel: None, forget: None });
+                }
             }
-            if rest.trim().is_empty() {
-                rows.push(start(NOTE, "type a note".into(), "a time at the end reminds you: bins 7pm".into(), Act::Nothing));
-                return rows;
+            if !taken && let Some(path) = model::note_path(&dir, name) {
+                let file = path.file_name().map(|f| f.to_string_lossy().into_owned()).unwrap_or_default();
+                rows.push(Row { section: "NEW", ..start(NOTE, format!("new note: {name}"), format!("{file}, in nano"), Act::EditNote(path)) });
             }
+            if rows.is_empty() {
+                rows.push(start(NOTE, "no notes yet".into(), "type a name to start one".into(), Act::Nothing));
+            }
+            return rows;
         } else if tool == "alarm" {
             if let Some(((h, m), label)) = split_clock(rest) {
                 let at = model::next_at(h, m);
@@ -371,18 +398,6 @@ impl App {
                 forget: None,
             });
         }
-        for n in model::load_notes() {
-            rows.push(Row {
-                section: "NOTES",
-                tool: "notes",
-                icon: if n.at > 0 { REMINDER } else { NOTE },
-                title: n.text.clone(),
-                note: if n.at > 0 { format!("reminds you at {}{}", reminder_text(n.at), mark_note(&bar, "notes", "notes")) } else { String::new() },
-                act: Act::DoneNote(n.id),
-                cancel: Some(("notes", n.id.to_string())),
-                forget: None,
-            });
-        }
         for (tool, note, act) in [
             ("timer", replaces("timer", "count down, then ring".into()), Act::Open("timer", String::new())),
             ("stopwatch", if running.iter().any(|r| r.tool == "stopwatch") { "starts again from 0".into() } else { "count up, starts now".into() }, Act::StartStopwatch),
@@ -391,7 +406,7 @@ impl App {
             ("drink", "a reminder to drink water, every so often".into(), Act::Open("drink", hms(self.last_drink()))),
             ("countdown", replaces("countdown", "days to a date: c xmas 25/12".into()), Act::Open("countdown", String::new())),
             ("clock", replaces("clock", "the time somewhere else, on the bar: tz tokyo".into()), Act::Query("tz ".into())),
-            ("notes", "a note, with a reminder if you add a time: n bins 7pm".into(), Act::Query("n ".into())),
+            ("notes", "text files in Documents/notes: n shopping".into(), Act::Query("n ".into())),
         ] {
             rows.push(Row { section: "NEW", tool, icon: icon(tool), title: tool.into(), note, act, cancel: None, forget: None });
         }
@@ -610,13 +625,10 @@ impl App {
                 model::remember(Recent::Clock { zone, label });
                 Ok(true)
             }
-            Act::AddNote { text, at } => {
-                model::run("notes", &["add".into(), at.to_string(), text])?;
-                self.query.clear();
-                self.sel = 0;
-                Ok(false)
+            Act::EditNote(path) => {
+                self.edit = Some(path);
+                Ok(true)
             }
-            Act::DoneNote(id) => model::run("notes", &["done".into(), id.to_string()]).map(|_| false),
             Act::Query(q) => {
                 self.query = q;
                 self.sel = 0;
@@ -673,10 +685,12 @@ impl App {
             Screen::Home => {
                 let rows = self.home_rows();
                 self.sel = self.sel.min(rows.len().saturating_sub(1));
-                // "clear all" asks for a second Enter, straight after
+                // "clear all" asks for a second Enter, straight after, and
+                // deleting a note a second Ctrl+X
                 if k != Key::Enter {
                     self.confirm_clear = false;
                 }
+                let deleting = self.confirm_delete.take();
                 match k {
                     Key::Esc if !self.query.is_empty() => {
                         self.query.clear();
@@ -698,7 +712,15 @@ impl App {
                     }
                     Key::CtrlX | Key::Delete => {
                         let row = rows.get(self.sel);
-                        if let Some((tool, slot)) = row.and_then(|r| r.cancel.clone()) {
+                        if let Some(path) = row.and_then(note_file) {
+                            if deleting.as_deref() == Some(path) {
+                                if let Err(e) = std::fs::remove_file(path) {
+                                    self.error = format!("couldn't delete it: {e}");
+                                }
+                            } else {
+                                self.confirm_delete = Some(path.to_path_buf());
+                            }
+                        } else if let Some((tool, slot)) = row.and_then(|r| r.cancel.clone()) {
                             match model::run(tool, &["cancel".into(), slot]) {
                                 Ok(()) => self.sel = 0,
                                 Err(e) => self.error = e,
@@ -858,14 +880,11 @@ impl App {
         .map(|(tool, paused, name)| {
             let mut parts = vec![match tool {
                 "alarm" | "countdown" => "enter change".to_string(),
-                "notes" => "enter done".into(),
                 "clock" => String::new(),
                 _ if paused => "enter resume".into(),
                 _ => "enter pause".into(),
             }];
-            if tool != "notes" {
-                parts.push(format!("ctrl+x {}", stop_word(tool)));
-            }
+            parts.push(format!("ctrl+x {}", stop_word(tool)));
             if bar.one {
                 parts.push(if bar.has("pin", tool, &name) { "ctrl+p unpin".into() } else { "ctrl+p pin".into() });
             }
@@ -895,16 +914,21 @@ impl App {
         let (crumb, input, hints) = match &self.screen {
             Screen::Home => {
                 let act = self.home_rows().into_iter().nth(self.sel).map(|r| r.act);
+                let note_hint = match &act {
+                    Some(Act::EditNote(p)) if self.confirm_delete.as_ref() == Some(p) => Some("ctrl+x again to delete it · any other key keeps it"),
+                    Some(Act::EditNote(p)) if p.is_file() => Some("enter edit in nano · ctrl+x delete · ↑↓ move · esc quit"),
+                    Some(Act::EditNote(_)) => Some("enter start it in nano (saved when you save) · esc quit"),
+                    _ => None,
+                };
                 let clear_hint = match (&act, self.confirm_clear) {
                     (Some(Act::ClearRecent), true) => Some("enter again to clear · any other key keeps them"),
                     (Some(Act::ClearRecent), false) => Some("enter clear all recent · ↑↓ move · esc quit"),
                     (Some(Act::Copy(_)), _) => Some("enter copy the answer · esc quit"),
-                    (Some(Act::AddNote { .. }), _) => Some("enter add the note · esc quit"),
                     (Some(Act::ToggleBar), _) => Some("enter switch · ↑↓ move · esc quit"),
                     (Some(Act::Nothing), _) => Some("keep typing · esc quit"),
                     _ => None,
                 };
-                ("", self.query.clone(), running_hint.as_deref().or(replace_hint.as_deref()).or(clear_hint).unwrap_or("↑↓ move · enter start · esc quit"))
+                ("", self.query.clone(), note_hint.or(running_hint.as_deref()).or(replace_hint.as_deref()).or(clear_hint).unwrap_or("↑↓ move · enter start · esc quit"))
             }
             Screen::Form(f) => (
                 f.tool,
@@ -966,6 +990,16 @@ impl App {
             lines.push(format!("  {}nothing matches{RESET}", p.muted));
             return;
         }
+        // a note's text under the list, as much as fits in half the room
+        let preview: Vec<String> = rows.get(self.sel).and_then(note_file).map_or_else(Vec::new, |p| {
+            let text = std::fs::read_to_string(p).unwrap_or_default();
+            let mut l: Vec<String> = text.lines().map(|l| format!("   {}{}{RESET}", self.pal.fg, cut(&l.replace('\t', "    "), cols.saturating_sub(4)))).take(room / 2).collect();
+            if text.trim().is_empty() {
+                l = vec![format!("   {}empty{RESET}", self.pal.muted)];
+            }
+            l
+        });
+        let room = if preview.is_empty() { room } else { room.saturating_sub(preview.len() + 1).max(1) };
         // keep the selected row in view
         let mut out: Vec<(usize, String)> = Vec::new(); // (row index or MAX for headers, text)
         let mut last = "";
@@ -1011,7 +1045,15 @@ impl App {
         }
         let at = out.iter().position(|(i, _)| *i == self.sel).unwrap_or(0);
         let start = (at + 1).saturating_sub(room);
-        lines.extend(out.into_iter().skip(start).take(room).map(|(_, l)| l));
+        let shown: Vec<String> = out.into_iter().skip(start).take(room).map(|(_, l)| l).collect();
+        let pad = room.saturating_sub(shown.len());
+        lines.extend(shown);
+        if !preview.is_empty() {
+            // the preview sits at the bottom
+            lines.extend(std::iter::repeat_n(String::new(), pad));
+            lines.push(format!("  {}{}{RESET}", p.line, "╌".repeat(cols.saturating_sub(4))));
+            lines.extend(preview);
+        }
     }
 
     fn draw_form(&self, f: &Form, lines: &mut Vec<String>, cols: usize, room: usize) {
@@ -1171,8 +1213,12 @@ fn main() {
         sel: 0,
         error: String::new(),
         confirm_clear: false,
+        confirm_delete: None,
+        edit: None,
         zones: std::cell::OnceCell::new(),
     };
+    // the old one-line notes, as files
+    model::migrate_notes();
     if let Some(q) = match open.as_deref() {
         Some("clock") => Some("tz "),
         Some("notes") => Some("n "),
@@ -1215,4 +1261,22 @@ fn main() {
         }
     }
     drop(raw);
+    if let Some(path) = app.edit {
+        edit(&path);
+    }
+}
+
+/// nano on the note, in this window (it closes when nano does)
+fn edit(path: &std::path::Path) {
+    use std::os::unix::process::CommandExt;
+    if let Some(dir) = path.parent()
+        && let Err(e) = std::fs::create_dir_all(dir)
+    {
+        eprintln!("msqu: can't make {}: {e}", dir.display());
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        return;
+    }
+    let err = std::process::Command::new("nano").arg("--").arg(path).exec();
+    eprintln!("msqu: can't start nano: {err}");
+    std::thread::sleep(std::time::Duration::from_secs(3));
 }

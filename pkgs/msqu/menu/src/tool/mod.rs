@@ -9,7 +9,6 @@ pub mod alarm;
 pub mod clock;
 pub mod countdown;
 pub mod drink;
-pub mod notes;
 pub mod pick;
 pub mod repeat;
 pub mod stopwatch;
