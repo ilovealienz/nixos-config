@@ -15,6 +15,8 @@ let
   groups = {
     chat = [ "vesktop" "signal" "ferdium" "org.telegram.desktop" "TelegramDesktop" ];
     minecraft = [ "org.prismlauncher.PrismLauncher" "com.mojang.minecraft" ];
+    # the manager and its VM windows
+    vm = [ ".virt-manager-wrapped" "virt-manager" ];
   };
 
   # must match the title_format rule in sway.nix

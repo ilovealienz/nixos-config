@@ -9,7 +9,8 @@ let
     "4" = [ { app_id = "kitty"; } { app_id = "foot"; } ];
     "5" = [ { app_id = "thunar"; } ];
     "6" = [ { app_id = "org.qbittorrent.qBittorrent"; } ];
-    "7" = [ { app_id = "virt-manager"; } ];
+    # NixOS's virt-manager reports its wrapper's name
+    "7" = [ { app_id = "virt-manager"; } { app_id = ".virt-manager-wrapped"; } ];
   };
   placementConf = lib.concatStrings (lib.flatten (lib.mapAttrsToList (ws: rules:
     map (r: "assign [${lib.concatStringsSep " "
