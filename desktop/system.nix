@@ -8,6 +8,14 @@
   programs.dconf.enable = true;
 
   services.displayManager.ly.enable = true;
+
+  # G502 X PLUS sends several scroll steps per notch with hi-res scrolling
+  environment.etc."libinput/local-overrides.quirks".text = ''
+    [Logitech G502 X PLUS]
+    MatchName=*G502 X PLUS*
+    AttrEventCode=-REL_WHEEL_HI_RES;-REL_HWHEEL_HI_RES;
+  '';
+
   services.blueman.enable = true;
   security.polkit.enable = true;
 

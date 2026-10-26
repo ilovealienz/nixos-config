@@ -1,13 +1,27 @@
-{ pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   imports = [ ../programs/virt.nix ];
 
   home-manager.users.pc.imports = [ ../desktop/monitors/pc.nix ];
 
-  # a second sway in ly without direct scanout, for gamescope in fullscreen:
-  # sway switching scanout on and off as the cursor moves corrupts the
-  # screen on this card (sway#8929)
+  # second boot entry on the newest kernel
+  specialisation.latest-kernel.configuration = {
+    boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
+    # lets nh rebuild into it
+    environment.etc."specialisation".text = "latest-kernel";
+  };
+
+  # rebuilding from a specialisation leaves the boot default on an older generation
+  boot.loader.systemd-boot.extraInstallCommands = ''
+    esp=${config.boot.loader.efi.efiSysMountPoint}
+    newest=$(${pkgs.coreutils}/bin/ls "$esp/loader/entries" | ${pkgs.gnused}/bin/sed -n 's/^nixos-generation-\([0-9]*\)\.conf$/\1/p' | ${pkgs.coreutils}/bin/sort -n | ${pkgs.coreutils}/bin/tail -n 1)
+    if [ -n "$newest" ]; then
+      ${pkgs.gnused}/bin/sed -i "s/^default .*/default nixos-generation-$newest.conf/" "$esp/loader/loader.conf"
+    fi
+  '';
+
+  # sway without direct scanout, for fullscreen gamescope (sway#8929)
   services.displayManager.sessionPackages = [
     ((pkgs.writeTextDir "share/wayland-sessions/sway-noscanout.desktop" ''
       [Desktop Entry]

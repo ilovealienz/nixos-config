@@ -4,6 +4,7 @@ let c = osConfig.theme.colors; in
   services.mako = {
     enable = true;
     settings = {
+      layer = "overlay";
       background-color = "#${c.bg}";
       text-color = "#${c.fg}";
       border-color = "#${c.accent}";

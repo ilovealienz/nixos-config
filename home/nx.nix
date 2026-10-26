@@ -57,5 +57,7 @@ in
     (nx "nxport" [ ])
     (nx "nxaudio" [ alsa-utils ])
     (nx "nxclean" [ ])
+    # temporary: slow boot debugging
+    (nx "nxdebug" [ procps diffutils less ])
   ];
 }
