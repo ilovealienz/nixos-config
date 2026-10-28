@@ -14,8 +14,9 @@ usage() {
 case "${1:-menu}" in
   menu)
     shift || true
-    # own app_id for sway's float rule
-    exec foot --app-id msqu "$MSQU_MENU" "$@"
+    # a layer-shell overlay, so it shows over fullscreen windows
+    exec kitty +kitten panel --edge=center-sized --layer=overlay --focus-policy=exclusive \
+      --columns=660px --lines=460px --app-id=msqu "$MSQU_MENU" --frame "$@"
     ;;
 esac
 

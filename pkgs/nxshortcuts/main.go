@@ -18,6 +18,9 @@ import (
 // set at build time: -X main.dataPath=/nix/store/...-shortcuts.json
 var dataPath = ""
 
+// --frame: draw a border (run as an overlay, which sway doesn't border)
+var frame = false
+
 type item struct {
 	Keys []string `json:"keys"`
 	Desc string   `json:"desc"`
@@ -233,8 +236,30 @@ func (v *view) refilter() {
 	v.scroll = 0
 }
 
+// the size to draw in: the whole terminal, or inside the frame
+func area() (rows, cols int) {
+	rows, cols = size()
+	if frame {
+		rows, cols = rows-2, cols-2
+	}
+	return max(rows, 1), max(cols, 1)
+}
+
+// an edge-hugging line around the whole screen, like a sway border
+func drawFrame(b *strings.Builder, color string) {
+	rows, cols := size()
+	if rows < 2 || cols < 2 {
+		return
+	}
+	b.WriteString("\x1b[1;1H" + color + "🭽" + strings.Repeat("▔", cols-2) + "🭾")
+	for r := 2; r < rows; r++ {
+		b.WriteString(fmt.Sprintf("\x1b[%d;1H▏\x1b[%d;%dH▕", r, r, cols))
+	}
+	b.WriteString(fmt.Sprintf("\x1b[%d;1H🭼", rows) + strings.Repeat("▁", cols-2) + "🭿" + reset)
+}
+
 func (v *view) height() int {
-	rows, _ := size()
+	rows, _ := area()
 	return max(rows-4, 1) // search bar + rule on top, rule + hints below
 }
 
@@ -244,10 +269,21 @@ func (v *view) clamp() {
 }
 
 func (v *view) draw() {
-	rows, cols := size()
+	_, cols := area()
 	p := v.p
 	var b strings.Builder
-	b.WriteString("\x1b[H")
+	// each line starts at its own row, inside the frame if there is one
+	at := 1
+	if frame {
+		at = 2
+	}
+	row := 0
+	next := func() {
+		b.WriteString("\x1b[K")
+		row++
+		b.WriteString(fmt.Sprintf("\x1b[%d;%dH", at+row, at))
+	}
+	b.WriteString(fmt.Sprintf("\x1b[%d;%dH", at, at))
 
 	// search bar
 	count := fmt.Sprintf("%d/%d", v.shown, total(v.d))
@@ -258,9 +294,11 @@ func (v *view) draw() {
 		b.WriteString(p.muted + cut("type to filter", cols-width(count)-18) + reset)
 	}
 	b.WriteString("\x1b[K")
-	b.WriteString(fmt.Sprintf("\x1b[1;%dH", max(cols-width(count), 1)))
-	b.WriteString(p.muted + count + reset + "\r\n")
-	b.WriteString(p.line + strings.Repeat("─", cols) + reset + "\x1b[K\r\n")
+	b.WriteString(fmt.Sprintf("\x1b[%d;%dH", at, at+max(cols-width(count)-1, 0)))
+	b.WriteString(p.muted + count + reset)
+	next()
+	b.WriteString(p.line + strings.Repeat("─", cols) + reset)
+	next()
 
 	h := v.height()
 	v.clamp()
@@ -292,13 +330,16 @@ func (v *view) draw() {
 		} else if idx == 0 && len(v.lines) == 0 {
 			b.WriteString("  " + p.muted + "nothing matches" + reset)
 		}
-		b.WriteString("\x1b[K\r\n")
+		next()
 	}
 
-	b.WriteString(p.line + strings.Repeat("─", cols) + reset + "\x1b[K\r\n")
+	b.WriteString(p.line + strings.Repeat("─", cols) + reset)
+	next()
 	hints := "↑↓ pgup/pgdn scroll · tab next section · esc clear/quit"
 	b.WriteString(" " + p.muted + cut(hints, cols-2) + reset + "\x1b[K")
-	_ = rows
+	if frame {
+		drawFrame(&b, p.accent)
+	}
 	os.Stdout.WriteString(b.String())
 }
 
@@ -341,8 +382,12 @@ func plain(d *data) {
 
 func main() {
 	path := dataPath
-	if len(os.Args) > 1 {
-		path = os.Args[1]
+	for _, a := range os.Args[1:] {
+		if a == "--frame" {
+			frame = true
+		} else {
+			path = a
+		}
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {

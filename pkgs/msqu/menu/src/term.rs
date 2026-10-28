@@ -75,6 +75,19 @@ pub fn out(s: &str) {
 }
 
 /// (rows, cols)
+/// an edge-hugging line around the whole screen, like a sway border
+pub fn frame(color: &str, rows: usize, cols: usize) -> String {
+    if rows < 2 || cols < 2 {
+        return String::new();
+    }
+    let mut s = format!("\x1b[1;1H{color}🭽{}🭾", "▔".repeat(cols - 2));
+    for r in 2..rows {
+        s += &format!("\x1b[{r};1H▏\x1b[{r};{cols}H▕");
+    }
+    s += &format!("\x1b[{rows};1H🭼{}🭿{RESET}", "▁".repeat(cols - 2));
+    s
+}
+
 pub fn size() -> (usize, usize) {
     let mut ws: libc::winsize = unsafe { std::mem::zeroed() };
     if unsafe { libc::ioctl(std::io::stdout().as_raw_fd(), libc::TIOCGWINSZ, &mut ws) } != 0 || ws.ws_col == 0 {

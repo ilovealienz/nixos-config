@@ -46,6 +46,7 @@ in
     proton-vpn
     xdg-utils
     fzf
+    jq
     nix-search-tv
     gparted
     wireguard-tools

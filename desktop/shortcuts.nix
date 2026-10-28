@@ -153,7 +153,7 @@ in
 {
   home.packages = [ nxshortcuts ];
 
-  # popup in a floating foot
+  # a layer-shell overlay, so it shows over fullscreen windows
   wayland.windowManager.sway.config.keybindings."Mod4+slash" =
-    "exec foot --app-id foot-float ${lib.getExe nxshortcuts}";
+    "exec kitty +kitten panel --edge=center-sized --layer=overlay --focus-policy=exclusive --columns=900px --lines=600px --app-id=nxshortcuts ${lib.getExe nxshortcuts} --frame";
 }

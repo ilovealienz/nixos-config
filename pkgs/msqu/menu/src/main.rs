@@ -1,6 +1,6 @@
 //! msqu-ui: the Super+Shift+A menu. Asks, then runs the msqu-TOOL commands.
 //!
-//! Usage: msqu-ui --config FILE [TOOL]
+//! Usage: msqu-ui --config FILE [--frame] [TOOL]
 //!   FILE: "color NAME HEX", "preset LABEL|EVERY|WINDOW" and
 //!   "slots TOOL N" lines
 //!   TOOL: open straight on that tool's form (clock, notes: its search)
@@ -118,6 +118,8 @@ struct App {
     edit: Option<std::path::PathBuf>,
     /// the time zones, read once they're needed
     zones: std::cell::OnceCell<Vec<String>>,
+    /// draw a border (run as an overlay, which sway doesn't border)
+    frame: bool,
 }
 
 const TIMER: &str = "󰔛";
@@ -867,7 +869,9 @@ impl App {
     // ── drawing ──
 
     fn draw(&self) {
-        let (rows, cols) = term::size();
+        let (full_rows, full_cols) = term::size();
+        let inset = if self.frame { 2 } else { 0 };
+        let (rows, cols) = (full_rows.saturating_sub(inset), full_cols.saturating_sub(inset));
         let p = &self.pal;
         let mut b = String::from("\x1b[H");
         let mut lines: Vec<String> = Vec::new();
@@ -973,12 +977,14 @@ impl App {
         } else {
             lines.push(format!(" {}{}{RESET}", p.red, cut(&self.error, cols.saturating_sub(2))));
         }
+        let at = 1 + inset / 2;
         for (i, l) in lines.iter().enumerate() {
+            b += &format!("\x1b[{};{at}H", at + i);
             b += l;
             b += "\x1b[K";
-            if i + 1 < lines.len() {
-                b += "\r\n";
-            }
+        }
+        if self.frame {
+            b += &term::frame(&p.accent, full_rows, full_cols);
         }
         term::out(&b);
     }
@@ -1189,14 +1195,16 @@ fn main() {
     let mut args = std::env::args().skip(1);
     let mut config = String::new();
     let mut open = None;
+    let mut frame = false;
     while let Some(a) = args.next() {
         match a.as_str() {
             "--config" => config = args.next().unwrap_or_default(),
+            "--frame" => frame = true,
             "timer" | "repeat" | "alarm" | "drink" | "countdown" | "clock" | "notes" => open = Some(a),
             // no form: starts straight from the home screen
             "stopwatch" => {}
             _ => {
-                eprintln!("usage: msqu-ui --config FILE [timer|repeat|alarm|drink|countdown|clock|notes]");
+                eprintln!("usage: msqu-ui --config FILE [--frame] [timer|repeat|alarm|drink|countdown|clock|notes]");
                 std::process::exit(2);
             }
         }
@@ -1216,6 +1224,7 @@ fn main() {
         confirm_delete: None,
         edit: None,
         zones: std::cell::OnceCell::new(),
+        frame,
     };
     // the old one-line notes, as files
     model::migrate_notes();

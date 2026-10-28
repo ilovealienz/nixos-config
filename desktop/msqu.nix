@@ -111,7 +111,7 @@ let
 
   msqu = pkgs.writeShellApplication {
     name = "msqu";
-    runtimeInputs = lib.attrValues toolPkgs;
+    runtimeInputs = [ pkgs.kitty ] ++ lib.attrValues toolPkgs;
     runtimeEnv = {
       MSQU_TOOLS = lib.concatStringsSep " " (lib.attrNames tools);
       MSQU_MENU = lib.getExe menu;
@@ -162,13 +162,7 @@ in
     Install.WantedBy = [ "sway-session.target" ];
   };
 
-  wayland.windowManager.sway.config = {
-    keybindings."Mod4+Shift+a" = "exec ${lib.getExe msqu}";
-    window.commands = [{
-      criteria.app_id = "^msqu$";
-      command = "floating enable, resize set 660 460, move position center";
-    }];
-  };
+  wayland.windowManager.sway.config.keybindings."Mod4+Shift+a" = "exec ${lib.getExe msqu}";
 
   # custom/msqu-all: the one block, when the menu has the bar set to that
   # (the others then show only if pinned). Every block: click opens msqu,
