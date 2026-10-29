@@ -108,6 +108,8 @@
   # Home Manager
   home-manager.users.pc = import ./home.nix;
   home-manager.backupFileExtension = "backup";
+  # an old .backup no longer blocks activation
+  home-manager.overwriteBackup = true;
 
   # Unfree packages
   nixpkgs.config.allowUnfree = true;
