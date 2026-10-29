@@ -118,6 +118,7 @@ let
       (k [ "nxpush" ] "Check, commit and push" "nxpush \"message\" (default: update); never commits hardware-configuration.nix")
       (k [ "nxcheck" ] "Check every host still builds" "evaluates pc, laptop, x1carbon without building")
       (k [ "nxclean" ] "Clean old generations, keep 3" "")
+      (k [ "nxdisplay" ] "Arrange displays" "nwg-displays, this session only; keep a layout in monitors/*.nix")
       (k [ "nxdebug slow|fast|diff" ] "Save boot state, then compare" "temporary: run on a slow boot, then a normal one")
       (k [ "nxedit" ] "Browse and edit the config" "type to filter · Enter edit · ^R rebuild · ^A stage · ^D diff · Tab tree/list")
       (k [ "theme-edit" ] "Theme editor" "colours, icons and wallpaper, with a preview")

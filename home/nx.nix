@@ -57,6 +57,7 @@ in
     (nx "nxport" [ ])
     (nx "nxaudio" [ alsa-utils ])
     (nx "nxclean" [ ])
+    (nx "nxdisplay" [ nwg-displays util-linux jq ])
     # temporary: slow boot debugging
     (nx "nxdebug" [ procps diffutils less ])
   ];
