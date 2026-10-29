@@ -13,7 +13,7 @@ let c = osConfig.theme.colors; in
       font = "Inter 11";
       padding = "10";
       margin = "8";
-      default-timeout = 5000;
+      default-timeout = 10000;
       width = 350;
       height = 150;
       progress-color = "over #${c.accentDim}";
@@ -21,7 +21,13 @@ let c = osConfig.theme.colors; in
 
       max-history = 10;
 
-      "urgency=high" = {
+      "urgency=low" = {
+        default-timeout = 5000;
+      };
+
+      # stays until clicked
+      "urgency=critical" = {
+        default-timeout = 0;
         border-color = "#${c.red}";
         text-color = "#${c.red}";
       };

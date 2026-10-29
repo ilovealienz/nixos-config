@@ -33,6 +33,8 @@
   boot.loader.efi.canTouchEfiVariables = true;
   # keep the last 10 generations in the boot menu
   boot.loader.systemd-boot.configurationLimit = 10;
+  # no kernel command-line editing at boot (init=/bin/sh is a root shell)
+  boot.loader.systemd-boot.editor = false;
 
   # SFTP support
   services.gvfs.enable = true;
@@ -115,7 +117,21 @@
   nixpkgs.config.allowUnfree = true;
 
   # Flakes
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings = {
+    experimental-features = [ "nix-command" "flakes" ];
+    # free space mid-build when under 1 GiB, up to 5 GiB
+    min-free = 1024 * 1024 * 1024;
+    max-free = 5 * 1024 * 1024 * 1024;
+    # no "download buffer is full" stalls on big downloads
+    download-buffer-size = 256 * 1024 * 1024;
+    # give up on an unreachable cache after 5s, not 5 minutes
+    connect-timeout = 5;
+  };
+  # builds yield to the desktop
+  nix.daemonCPUSchedPolicy = "batch";
+  nix.daemonIOSchedClass = "idle";
+  # flakes only: no stale channel nixpkgs
+  nix.channel.enable = false;
   # hard-link identical store files, weekly (on every build it slows builds)
   nix.optimise = {
     automatic = true;
@@ -134,6 +150,12 @@
 
   # firmware updates: fwupdmgr refresh && fwupdmgr update
   services.fwupd.enable = true;
+
+  # disk health warnings, as notifications
+  services.smartd = {
+    enable = true;
+    notifications.systembus-notify.enable = true;
+  };
 
   system.stateVersion = "26.05";
 }
