@@ -12,7 +12,7 @@ USER_NAME="pc"
 LOG="/var/log/nixos-bootstrap.log"
 # installed from Flathub on a new machine, also named in the main menu
 # (more later: flatpak install flathub <id>)
-FLATPAKS=(org.vinegarhq.Sober com.usebottles.bottles io.github.kolunmi.Bazaar)
+FLATPAKS=(org.vinegarhq.Sober com.usebottles.bottles io.github.kolunmi.Bazaar com.spotify.Client)
 
 # flakes are off on a fresh install
 export NIX_CONFIG="experimental-features = nix-command flakes"
@@ -348,7 +348,7 @@ ${B}nixos-config${X}   $(hostname)
 
   1) install       ${Y}(fresh machine, or carry on after a failed build)${X}
   2) repair
-  3) flatpaks      ${Y}(Flathub, Sober, Bottles, Bazaar)${X}
+  3) flatpaks      ${Y}(Flathub, Sober, Bottles, Bazaar, Spotify)${X}
   4) post-install notes
   q) quit
 MENU

@@ -19,6 +19,16 @@
   services.blueman.enable = true;
   # secret store for app logins (Spotifast); ly unlocks it at login
   services.gnome.gnome-keyring.enable = true;
+  # sway doesn't run autostart entries, so without this D-Bus starts a second daemon
+  systemd.user.services.gnome-keyring-secrets = {
+    description = "gnome-keyring secret store";
+    wantedBy = [ "sway-session.target" ];
+    partOf = [ "sway-session.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "/run/wrappers/bin/gnome-keyring-daemon --start --components=secrets";
+    };
+  };
   security.polkit.enable = true;
 
   environment.sessionVariables = {
