@@ -17,6 +17,8 @@
   '';
 
   services.blueman.enable = true;
+  # secret store for app logins (Spotifast); ly unlocks it at login
+  services.gnome.gnome-keyring.enable = true;
   security.polkit.enable = true;
 
   environment.sessionVariables = {
@@ -24,6 +26,8 @@
     DESKTOP_SESSION = "sway";
     NIXOS_OZONE_WL = "1";
     TERMINAL = "kitty";
+    # OpenAL's PipeWire output has no app name, so Vesktop can't list it
+    ALSOFT_DRIVERS = "pulse";
   };
 
   # portals: gtk for most things, wlr for screen sharing and screenshots

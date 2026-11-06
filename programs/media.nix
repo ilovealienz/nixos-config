@@ -1,5 +1,6 @@
 { pkgs, ... }:
 {
+  # Spotify itself is the com.spotify.Client flatpak
   environment.systemPackages = with pkgs; [
     mpv
     qbittorrent
@@ -7,7 +8,7 @@
     ffmpeg
     obs-studio
     yt-dlp
-    spotify
     streamlink
+    (callPackage ../pkgs/spotifast.nix { })
   ];
 }

@@ -56,7 +56,7 @@ let
     ]; }
     { name = "App placement"; note = "while Super+Alt+P is on"; items = [
       (k [ "1" ] "LibreWolf, Brave, Firefox" "")
-      (k [ "2" ] "Spotify, Signal, Vesktop" "")
+      (k [ "2" ] "Spotifast, Spotify, Signal, Vesktop" "")
       (k [ "3" ] "mpv" "")
       (k [ "4" ] "kitty, foot" "")
       (k [ "5" ] "Thunar" "")

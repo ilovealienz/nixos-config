@@ -1,7 +1,7 @@
 { pkgs, lib, ... }:
 let
   autostart = {
-    spotify = true;
+    spotifast = true;
     signal  = true;
   };
 
@@ -21,11 +21,11 @@ let
   };
 in
 {
-  systemd.user.services = lib.optionalAttrs autostart.spotify {
-    spotify-delayed = mkDelayed {
-      description = "Spotify delayed autostart";
+  systemd.user.services = lib.optionalAttrs autostart.spotifast {
+    spotifast-delayed = mkDelayed {
+      description = "Spotifast delayed autostart";
       delay = 5;
-      exec = "${pkgs.spotify}/bin/spotify";
+      exec = lib.getExe (pkgs.callPackage ../pkgs/spotifast.nix { });
     };
   } // lib.optionalAttrs autostart.signal {
     signal-delayed = mkDelayed {

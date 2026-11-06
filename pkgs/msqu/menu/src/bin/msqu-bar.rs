@@ -4,7 +4,8 @@
 //! Classes: "msqu", its colour, "paused".
 //!
 //! msqu-bar all: the one block, when the menu has the bar set to that: what
-//! isn't pinned or hidden, as icons, and listed on hover.
+//! isn't pinned or hidden, as icons, and listed on hover; empty when
+//! there's nothing.
 //!
 //! msqu-bar --set one|each: sets the bar to one block, or a block each.
 
@@ -21,7 +22,6 @@ const DRINK: &str = "󰆫";
 const PAUSED: &str = "󰏤";
 const COUNTDOWN: &str = "󰃭";
 const CLOCK: &str = "󰥔";
-const MSQU: &str = "󰀻";
 
 /// the tooltip's last line: what the clicks do
 fn clicks(middle: &str) -> String {
@@ -140,8 +140,7 @@ fn show(tool: &str, r: Option<&Running>) -> Option<Block> {
 }
 
 /// the one block, and how long until it changes: icons for what's folded
-/// into it (not pinned or hidden), each listed in the tooltip; with nothing
-/// folded, just msqu's icon
+/// into it (not pinned or hidden), each listed in the tooltip
 fn show_all(bar: &model::Bar) -> (Option<Block>, i32) {
     if !bar.one {
         return (None, -1);
@@ -170,7 +169,7 @@ fn show_all(bar: &model::Bar) -> (Option<Block>, i32) {
         }
     }
     if lines.is_empty() {
-        return (Some(block(MSQU, "accent", "msqu\nclick: msqu · right-click: options", false)), wait);
+        return (None, wait);
     }
     let tip = format!("{}\nclick: msqu · right-click: options", lines.join("\n"));
     (Some(block(&icons.join(" "), "accent", &tip, false)), wait)

@@ -4,7 +4,7 @@
 let
   placementRules = {
     "1" = [ { app_id = "firefox"; } { app_id = "brave-browser"; } { class = "Brave-browser"; } { app_id = "librewolf"; } { app_id = "LibreWolf"; } ];
-    "2" = [ { app_id = "spotify"; } { app_id = "signal"; } { app_id = "vesktop"; } ];
+    "2" = [ { app_id = "spotifast"; } { app_id = "spotify"; } { class = "Spotify"; } { app_id = "signal"; } { app_id = "vesktop"; } ];
     "3" = [ { app_id = "mpv"; } ];
     "4" = [ { app_id = "kitty"; } { app_id = "foot"; } ];
     "5" = [ { app_id = "thunar"; } ];
