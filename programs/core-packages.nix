@@ -37,7 +37,7 @@ in
     tealdeer
     fastfetch
     alsa-utils
-    (brave.override { commandLineArgs = "--ozone-platform=x11"; })
+   # (brave.override { commandLineArgs = "--ozone-platform=x11"; })
     librewolf-bin
     vscodium
     neovim

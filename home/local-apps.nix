@@ -10,7 +10,8 @@ let
   ];
 
   # Keeps GitHub release binaries in ~/.bin up to date (sha256-checked,
-  # versions in ~/.bin/.versions). Runs at login, daily, and on nxapps.
+  # versions in ~/.bin/.versions: name, release key, installed file's sha256).
+  # Runs at login, daily, and on nxapps.
   fetchApps = pkgs.writeShellApplication {
     name = "local-apps-fetch";
     runtimeInputs = with pkgs; [ curl jq patchelf coreutils util-linux networkmanager libnotify ];
@@ -26,25 +27,32 @@ let
 
       # the key stored for an app, if any
       have() { awk -v n="$1" '$1 == n { print $2 }' "$state"; }
+      # the installed file's sha256 when it was put there
+      sum() { awk -v n="$1" '$1 == n { print $3 }' "$state"; }
+      sha() { sha256sum "$1" | cut -d' ' -f1; }
       forget() {
         { grep -v "^$1 " "$state" || true; } > "$state.new"
         mv "$state.new" "$state"
       }
       remember() {
         forget "$1"
-        echo "$1 $2" >> "$state"
+        echo "$1 $2 $3" >> "$state"
       }
 
       # app, owner/repo, asset name, patchelf options
       update() {
         local name=$1 repo=$2 asset=$3; shift 3
-        local dest="$bin/$name" part="$bin/.$name.part" json url digest key
+        local dest="$bin/$name" part="$bin/.$name.part" json url digest key damaged=""
+        # changed since it was installed
+        if [ -f "$dest" ] && [ -n "$(sum "$name")" ] && [ "$(sha "$dest")" != "$(sum "$name")" ]; then
+          damaged=1
+        fi
         if ! json=$(curl -fsSL --retry 2 --connect-timeout 10 --max-time 30 \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null) \
             || ! jq -e '.tag_name and (.assets | type == "array")' >/dev/null 2>&1 <<<"$json"; then
           # offline, rate-limited, or a wifi login page
-          if [ -f "$dest" ]; then
+          if [ -f "$dest" ] && [ -z "$damaged" ]; then
             echo "$name: can't check for updates, keeping it" >&2
             return 0
           fi
@@ -60,7 +68,9 @@ let
             return 0
           fi
           if [ -f "$dest" ] && [ "$(have "$name")" = "$key" ]; then
-            return 0
+            # from before sums were kept
+            [ -z "$(sum "$name")" ] && remember "$name" "$key" "$(sha "$dest")"
+            [ -z "$damaged" ] && return 0
           fi
         else
           url="https://github.com/$repo/releases/latest/download/$asset" digest="" key=""
@@ -73,7 +83,7 @@ let
           echo "$name: couldn't download" >&2
           return 0
         fi
-        if [ -n "$digest" ] && [ "sha256:$(sha256sum "$part" | cut -d' ' -f1)" != "$digest" ]; then
+        if [ -n "$digest" ] && [ "sha256:$(sha "$part")" != "$digest" ]; then
           rm -f "$part"
           echo "$name: download doesn't match its sha256, not installed" >&2
           return 0
@@ -84,19 +94,32 @@ let
           echo "$name: the download isn't a Linux program, not installed" >&2
           return 0
         fi
-        # patchelf fails on static binaries (no .interp), that's fine
-        patchelf --set-interpreter ${glibcPath} "$@" "$part" 2>/dev/null || true
+        # static binaries have no interpreter and need no patching
+        if patchelf --print-interpreter "$part" >/dev/null 2>&1; then
+          if ! patchelf --set-interpreter ${glibcPath} "$@" "$part" ||
+             [ "$(patchelf --print-interpreter "$part" 2>/dev/null)" != ${glibcPath} ]; then
+            rm -f "$part"
+            echo "$name: couldn't patch it for NixOS, not installed" >&2
+            return 0
+          fi
+        fi
         chmod +x "$part"
+        # on disk before it replaces the old one, so a crash can't leave half a file
+        sync "$part"
         # an update, not a first install
         local was=""
         [ -f "$dest" ] && [ -n "$(have "$name")" ] && was=1
         # a running copy keeps going; the next start gets the new one
         mv "$part" "$dest"
+        sync "$bin"
         # without a key (fetched unchecked), the next check fetches it again
-        if [ -n "$key" ]; then remember "$name" "$key"; else forget "$name"; fi
+        remember "$name" "''${key:-unchecked}" "$(sha "$dest")"
         local tag
         tag=$(jq -r '.tag_name // empty' <<<"$json" 2>/dev/null || true)
-        if [ -n "$was" ]; then
+        if [ -n "$damaged" ]; then
+          echo "$name: the installed copy was damaged, downloaded it again"
+          notify-send -a apps "$name repaired" "the installed copy was damaged, downloaded it again" 2>/dev/null || true
+        elif [ -n "$was" ]; then
           echo "$name: updated''${tag:+ to $tag}"
           notify-send -a apps "$name updated" "''${tag:-new version}" 2>/dev/null || true
         else

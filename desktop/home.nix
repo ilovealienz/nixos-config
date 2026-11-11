@@ -34,5 +34,6 @@
     ./awake.nix
     ./power.nix
     ./extract.nix
+    ./spotifast.nix
   ];
 }
