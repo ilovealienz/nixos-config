@@ -41,6 +41,8 @@ enum Act {
     Query(String),
     /// the bar: a block each, or one block
     ToggleBar,
+    /// waybar's size: the one to switch to
+    BarSize(&'static str),
     Nothing,
 }
 
@@ -423,6 +425,25 @@ impl App {
             cancel: None,
             forget: None,
         });
+        let size = model::bar_size();
+        let next = match size.as_str() {
+            "auto" => "compact",
+            "compact" => "full",
+            _ => "auto",
+        };
+        rows.push(Row {
+            section: "BAR",
+            tool: "bar",
+            icon: BAR,
+            title: format!("bar size: {size}"),
+            note: match next {
+                "auto" => "enter for auto: compact on small screens".into(),
+                n => format!("enter for {n}"),
+            },
+            act: Act::BarSize(next),
+            cancel: None,
+            forget: None,
+        });
         for p in &self.presets {
             if let Some(secs) = duration(&p.every) {
                 let to = if p.window == "-" { String::new() } else { format!(" · brings up {}", self.window_name(&p.window)) };
@@ -638,6 +659,10 @@ impl App {
             }
             Act::ToggleBar => {
                 model::set_bar_one(!model::load_bar().one);
+                Ok(false)
+            }
+            Act::BarSize(size) => {
+                model::set_bar_size(size);
                 Ok(false)
             }
             Act::Nothing => Ok(false),
@@ -928,7 +953,7 @@ impl App {
                     (Some(Act::ClearRecent), true) => Some("enter again to clear · any other key keeps them"),
                     (Some(Act::ClearRecent), false) => Some("enter clear all recent · ↑↓ move · esc quit"),
                     (Some(Act::Copy(_)), _) => Some("enter copy the answer · esc quit"),
-                    (Some(Act::ToggleBar), _) => Some("enter switch · ↑↓ move · esc quit"),
+                    (Some(Act::ToggleBar | Act::BarSize(_)), _) => Some("enter switch · ↑↓ move · esc quit"),
                     (Some(Act::Nothing), _) => Some("keep typing · esc quit"),
                     _ => None,
                 };

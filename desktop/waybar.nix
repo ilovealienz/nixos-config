@@ -1,6 +1,91 @@
-{ pkgs, osConfig, ... }:
-let c = osConfig.theme.colors; in
+{ pkgs, lib, osConfig, ... }:
+let
+  c = osConfig.theme.colors;
+
+  # screens narrower than this (logical px, after scaling) get the compact bar
+  compactWidth = 1500;
+  compact = {
+    "sway/window".max-length = 25;
+    cpu.format = "󰍛 {usage}%";
+    memory.format = "󰘚 {percentage}%";
+    pulseaudio = { format = "󰕾 {volume}%"; format-muted = "󰝟"; };
+    network = {
+      format-wifi = "󰖩";
+      format-ethernet = "󰈀";
+      format-disconnected = "󰖪";
+      tooltip-format-wifi = "{essid}";
+      tooltip-format-ethernet = "{ifname}";
+    };
+    # the date is in the calendar tooltip
+    clock.format = "{:%H:%M}";
+  };
+
+  # sway's bar command. Size (msqu, or waybar-start size MODE): auto gives
+  # screens under compactWidth the compact bar, compact and full apply to all.
+  # Kept in ~/.local/state/waybar/size; worked out again on each sway reload.
+  waybarStart = pkgs.writeShellApplication {
+    name = "waybar-start";
+    runtimeInputs = [ pkgs.sway pkgs.jq pkgs.waybar ];
+    text = ''
+      cfg="''${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config"
+      run="''${XDG_RUNTIME_DIR:-/tmp}/waybar-config.json"
+      state="''${XDG_STATE_HOME:-$HOME/.local/state}/waybar"
+
+      mode() {
+        case "$(cat "$state/size" 2>/dev/null || true)" in
+          compact) echo compact ;;
+          full) echo full ;;
+          *) echo auto ;;
+        esac
+      }
+
+      # the config waybar runs, for this size and these screens
+      write() {
+        local small
+        case "$(mode)" in
+          full) small='[]' ;;
+          compact) small='"all"' ;;
+          auto) small=$(swaymsg -r -t get_outputs | jq -c '[.[] | select(.active and .rect.width < ${toString compactWidth}) | .name]') || return 1 ;;
+        esac
+        # screens plugged in later get the full bar
+        jq --argjson small "$small" --argjson compact '${builtins.toJSON compact}' '
+          (if type == "array" then .[0] else . end) as $bar
+          | if $small == "all" then [$bar * $compact]
+            elif $small == [] then [$bar]
+            else [ $bar + { output: (($small | map("!" + .)) + ["*"]) },
+                   ($bar * $compact) + { output: $small } ]
+            end' "$cfg" > "$run.tmp" || return 1
+        mv "$run.tmp" "$run"
+      }
+
+      case "''${1:-}" in
+        size)
+          case "''${2:-}" in
+            "") mode ;;
+            auto | compact | full)
+              mkdir -p "$state"
+              echo "$2" > "$state/size"
+              # sway restarts its bar on reload (waybar's own reload signal
+              # crashes with several bars and the tray)
+              swaymsg -q reload
+              ;;
+            *) echo "usage: waybar-start size [auto|compact|full]" >&2; exit 1 ;;
+          esac
+          ;;
+        *)
+          # sway adds -b <bar id>; the plain config if this one can't be made
+          if write; then exec waybar -c "$run" "$@"; fi
+          exec waybar "$@"
+          ;;
+      esac
+    '';
+  };
+in
 {
+  wayland.windowManager.sway.config.bars = [{ command = lib.getExe waybarStart; }];
+  # msqu sets the size with it
+  home.packages = [ waybarStart ];
+
   programs.waybar = {
     enable = true;
     systemd.enable = false;

@@ -63,8 +63,7 @@ in
         };
       };
 
-      bars = [{ command = "${pkgs.waybar}/bin/waybar"; }];
-
+      # bars: waybar.nix
       # wallpaper: wallpaper.nix
       startup = [
         { command = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"; }

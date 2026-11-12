@@ -1019,6 +1019,25 @@ fn save_bar(b: &Bar) {
     }
 }
 
+/// waybar's size (desktop/waybar.nix): auto, compact or full
+pub fn bar_size() -> String {
+    let path = lasting_dir().with_file_name("waybar").join("size");
+    match std::fs::read_to_string(path).unwrap_or_default().trim() {
+        s @ ("compact" | "full") => s.to_string(),
+        _ => "auto".to_string(),
+    }
+}
+
+/// waybar-start saves it and reloads sway, which restarts the bar
+pub fn set_bar_size(size: &str) {
+    let _ = Command::new("waybar-start")
+        .args(["size", size])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
+
 pub fn set_bar_one(on: bool) {
     let mut b = load_bar();
     b.one = on;
