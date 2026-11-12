@@ -107,7 +107,7 @@ let
       (k [ "battery" ] "Click: power menu" "")
       (k [ "clock" ] "Right-click: month / year" "scroll: change month")
       (k [ "dnd" ] "Click: history" "right-click: on / off")
-      (k [ "birthday" ] "Click: coming up" "right-click: hide until next login; names in ~/.config/birthdays")
+      (k [ "birthday" ] "Click: coming up" "right-click: hide until next login; birthdays and [yearly] days in ~/.config/birthdays")
       (k [ "idle" ] "Click: stay awake on / off" "right-click: game mode")
       (k [ "rec" ] "Click: stop recording" "")
     ]; }
