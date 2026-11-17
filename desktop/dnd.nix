@@ -45,7 +45,6 @@ in
     }
     #custom-dnd.dnd {
       color: #${c.red};
-      background: alpha(#${c.red}, 0.15);
     }
   '';
 }

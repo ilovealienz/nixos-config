@@ -113,7 +113,7 @@ in
       modules-left = [ "sway/workspaces" ];
       modules-center = [ "sway/window" ];
       # msqu.nix and birthdays.nix add theirs first
-      modules-right = [ "custom/rec" "group/tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "custom/dnd" "custom/awake" ];
+      modules-right = [ "custom/rec" "group/tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "pulseaudio#mic" "custom/dnd" "custom/awake" ];
 
       "sway/workspaces" = {
         disable-scroll = true;
@@ -172,6 +172,17 @@ in
         format-muted = "muted";
         on-click = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
         on-click-right = "pavucontrol";
+      };
+      # beside the bell, only while the default mic is muted; click to unmute
+      "pulseaudio#mic" = {
+        format = "{format_source}";
+        format-source = "";
+        format-source-muted = "󰍭";
+        tooltip-format = "mic muted";
+        on-click = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 0";
+        # scrolling would change the speaker volume
+        on-scroll-up = "";
+        on-scroll-down = "";
       };
       network = {
         format-wifi = "[{essid}]";
@@ -270,6 +281,11 @@ in
       #tray, #cpu, #memory, #pulseaudio, #network, #battery, #clock {
         padding: 0 3px;
         color: #${c.fg};
+      }
+
+      #pulseaudio.mic {
+        padding: 0 0 0 6px;
+        color: #${c.red};
       }
 
       /* the tray's group box is #tray too; its padding would double up */
