@@ -73,5 +73,6 @@ in
     (prismlauncher.override { jdks = [ jdk25 ]; })
     protonup-qt
     dolphin-emu
+    pcsx2
   ];
 }

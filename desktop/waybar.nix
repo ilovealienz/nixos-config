@@ -18,6 +18,7 @@ let
     };
     # the date is in the calendar tooltip
     clock.format = "{:%H:%M}";
+    "custom/tray-toggle".exec = "${lib.getExe trayToggle} status --compact";
   };
 
   # sway's bar command. Size (msqu, or waybar-start size MODE): auto gives
@@ -73,12 +74,26 @@ let
           esac
           ;;
         *)
+          # drawers start closed
+          rm -rf "''${XDG_RUNTIME_DIR:-/tmp}/waybar-tray"
           # sway adds -b <bar id>; the plain config if this one can't be made
           if write; then exec waybar -c "$run" "$@"; fi
           exec waybar "$@"
           ;;
       esac
     '';
+  };
+
+  # the tray drawer's toggle (../pkgs/tray-toggle): [3] (tray apps, names in
+  # the tooltip) when closed, [<] when open, hidden with no tray apps.
+  # Runs only when clicked or when tray apps come and go.
+  trayToggle = pkgs.rustPlatform.buildRustPackage {
+    pname = "tray-toggle";
+    version = "1.0.0";
+    src = ../pkgs/tray-toggle;
+    cargoLock.lockFile = ../pkgs/tray-toggle/Cargo.lock;   # no dependencies
+    buildInputs = [ pkgs.systemdLibs ];   # sd-bus
+    meta.mainProgram = "tray-toggle";
   };
 in
 {
@@ -98,7 +113,7 @@ in
       modules-left = [ "sway/workspaces" ];
       modules-center = [ "sway/window" ];
       # msqu.nix and birthdays.nix add theirs first
-      modules-right = [ "custom/rec" "tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "custom/dnd" "custom/awake" ];
+      modules-right = [ "custom/rec" "group/tray" "cpu" "memory" "pulseaudio" "network" "custom/weather" "clock" "battery" "custom/dnd" "custom/awake" ];
 
       "sway/workspaces" = {
         disable-scroll = true;
@@ -123,7 +138,33 @@ in
 
       "sway/window" = { max-length = 60; separate-outputs = true; };
 
-      tray = { spacing = 10; icon-size = 16; };
+      # tray icons behind a toggle, click it to show them
+      "group/tray" = {
+        orientation = "inherit";
+        drawer = {
+          click-to-reveal = true;
+          transition-duration = 250;
+          transition-left-to-right = false;
+          children-class = "tray-hidden";
+        };
+        modules = [ "custom/tray-toggle" "tray" ];
+      };
+      # the drawer opens on press, the toggle changes on release
+      "custom/tray-toggle" = {
+        return-type = "json";
+        exec = "${lib.getExe trayToggle} status";
+        # refreshed by tray-toggle (pkgs/tray-toggle/src/main.rs: SIGNAL)
+        signal = 12;
+        on-click-release = "${lib.getExe trayToggle} flip";
+      };
+      tray = {
+        spacing = 10;
+        icon-size = 16;
+        # refreshes the toggle if the tray apps changed
+        on-update = "${lib.getExe trayToggle} update";
+        # clicks between icons would close the drawer behind the toggle's back
+        on-click = "";
+      };
       cpu = { format = "[CPU: {usage}%]"; interval = 5; };
       memory = { format = "[RAM: {percentage}%]"; interval = 5; };
       pulseaudio = {
@@ -229,6 +270,18 @@ in
       #tray, #cpu, #memory, #pulseaudio, #network, #battery, #clock {
         padding: 0 3px;
         color: #${c.fg};
+      }
+
+      /* the tray's group box is #tray too; its padding would double up */
+      #tray:not(.module) {
+        padding: 0;
+      }
+      #custom-tray-toggle {
+        padding: 0 3px;
+        color: #${c.fg};
+      }
+      #custom-tray-toggle:hover {
+        color: #${c.accent};
       }
 
       /* awake sliver: amber = staying awake, green = game mode */

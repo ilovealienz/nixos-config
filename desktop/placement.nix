@@ -7,7 +7,7 @@ let
     "2" = [ { app_id = "spotifast"; } { app_id = "spotify"; } { class = "Spotify"; } { app_id = "signal"; } { app_id = "vesktop"; } ];
     "3" = [ { app_id = "mpv"; } ];
     "4" = [ { app_id = "kitty"; } { app_id = "foot"; } ];
-    "5" = [ { app_id = "thunar"; } ];
+    "5" = [ { app_id = "yazi"; } { app_id = "thunar"; } ];
     "6" = [ { app_id = "org.qbittorrent.qBittorrent"; } ];
     # NixOS's virt-manager reports its wrapper's name
     "7" = [ { app_id = "virt-manager"; } { app_id = ".virt-manager-wrapped"; } ];

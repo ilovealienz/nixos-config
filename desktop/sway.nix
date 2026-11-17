@@ -85,6 +85,7 @@ in
         "${mod}+Return" = "exec kitty; exec ${lib.getExe follow} 4";
         "${mod}+Shift+Return" = "exec foot; exec ${lib.getExe follow} 4";
         "${mod}+e" = "exec thunar; exec ${lib.getExe follow} 5";
+        "${mod}+Alt+e" = "exec kitty --class yazi -e yazi-files; exec ${lib.getExe follow} 5";   # desktop/yazi.nix
 
         # window management
         "${mod}+q" = "kill";

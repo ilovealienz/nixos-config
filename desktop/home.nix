@@ -35,5 +35,6 @@
     ./power.nix
     ./extract.nix
     ./spotifast.nix
+    ./yazi.nix
   ];
 }
