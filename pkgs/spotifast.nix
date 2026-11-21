@@ -3,10 +3,10 @@
 { stdenv, lib, fetchurl, autoPatchelfHook, makeWrapper, pipewire, alsa-lib, dbus, libxkbcommon, wayland, libGL }:
 stdenv.mkDerivation rec {
   pname = "spotifast";
-  version = "0.17.1";
+  version = "0.17.2";
   src = fetchurl {
     url = "https://github.com/crmne/spotifast/releases/download/v${version}/spotifast-v${version}-x86_64-unknown-linux-gnu.tar.gz";
-    hash = "sha256-ZRcC1PGL+cM47/lhN3I8Ei4Yf9SJAq9L5WLcmwZMSXA=";
+    hash = "sha256-ikQ5R451WdcC75A/MqunS+Bj7J9bNa2K/8rhNGu0+tQ=";
   };
   nativeBuildInputs = [ autoPatchelfHook makeWrapper ];
   buildInputs = [ pipewire alsa-lib stdenv.cc.cc.lib ];
